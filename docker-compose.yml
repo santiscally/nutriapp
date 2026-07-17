@@ -1,0 +1,122 @@
+name: nutriapp
+
+# Stack de desarrollo. Una sola Postgres con dos DBs adentro (nutriapp + keycloak).
+# Puertos bindeados a 127.0.0.1 para no exponerlos fuera del host.
+# Prod (Fase 3): docker-compose.prod.yml agrega nginx TLS y Keycloak en modo produccion.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: nutriapp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nutriapp}
+      POSTGRES_USER: ${POSTGRES_USER:-nutriapp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nutriapp_dev}
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+    volumes:
+      - nutriapp_db_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-nutriapp}"]
+      interval: 5s
+      retries: 10
+    networks: [nutriapp-net]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: nutriapp-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER:-nutriapp}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-nutriapp_dev}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import:ro
+    ports:
+      - "127.0.0.1:${KEYCLOAK_PORT:-8081}:8080"
+    networks: [nutriapp-net]
+
+  backend:
+    build:
+      context: ./backend
+    image: nutriapp/backend:dev
+    container_name: nutriapp-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-nutriapp}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-nutriapp}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-nutriapp_dev}
+      # En dev NO validamos iss (mismatch localhost:8081 vs keycloak:8080 interno).
+      # Spring valida firma via JWK; alcanza para dev local. Prod si setea issuer-uri.
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/nutriapp/protocol/openid-connect/certs}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      # --- Integraciones (stub|live) ---
+      CONTABILIUM_MODE: ${CONTABILIUM_MODE:-stub}
+      CONTABILIUM_CLIENT_ID: ${CONTABILIUM_CLIENT_ID:-}
+      CONTABILIUM_CLIENT_SECRET: ${CONTABILIUM_CLIENT_SECRET:-}
+      CONTABILIUM_BASE_URL: ${CONTABILIUM_BASE_URL:-https://rest.contabilium.com}
+      TIENDANUBE_MODE: ${TIENDANUBE_MODE:-stub}
+      TIENDANUBE_STORE_ID: ${TIENDANUBE_STORE_ID:-}
+      TIENDANUBE_ACCESS_TOKEN: ${TIENDANUBE_ACCESS_TOKEN:-}
+      TIENDANUBE_CLIENT_ID: ${TIENDANUBE_CLIENT_ID:-}
+      TIENDANUBE_CLIENT_SECRET: ${TIENDANUBE_CLIENT_SECRET:-}
+      TIENDANUBE_USER_AGENT: ${TIENDANUBE_USER_AGENT:-NutriApp (contacto.simpleapps@gmail.com)}
+      MAIL_MODE: ${MAIL_MODE:-stub}
+      MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
+      MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-587}
+      MAIL_SMTP_USERNAME: ${MAIL_SMTP_USERNAME:-}
+      MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@nutriapp.local}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-NutriApp}
+      WHATSAPP_MODE: ${WHATSAPP_MODE:-stub}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+    networks: [nutriapp-net]
+
+  # frontend: lo scaffoldea Fran (Fase 0, tarea F.1). Descomentar cuando exista
+  # frontend/Dockerfile. Mientras tanto: docker compose up -d db keycloak backend
+  # (o `up -d` a secas, que solo falla en este servicio) + `npm run dev` local.
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     args:
+  #       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+  #       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://localhost:8081}
+  #       VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-nutriapp}
+  #       VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-nutriapp-frontend}
+  #   image: nutriapp/frontend:dev
+  #   container_name: nutriapp-frontend
+  #   restart: unless-stopped
+  #   depends_on: [backend]
+  #   ports:
+  #     - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
+  #   networks: [nutriapp-net]
+
+volumes:
+  nutriapp_db_data:
+
+networks:
+  nutriapp-net:
+    driver: bridge

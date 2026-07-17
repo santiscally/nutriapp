@@ -1,0 +1,48 @@
+#!/bin/sh
+# ----------------------------------------------------------------------------
+# Apache Maven Wrapper startup POSIX script
+# ----------------------------------------------------------------------------
+set -euf
+
+# shellcheck disable=SC2006
+basedir=$(dirname -- "$0")
+basedir=$(cd "$basedir" && pwd)
+
+die() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+MVNW_VERBOSE=${MVNW_VERBOSE:-false}
+case "${MVNW_VERBOSE}" in
+  true) set -x ;;
+esac
+
+MAVEN_PROJECTBASEDIR=${MAVEN_BASEDIR:-"$basedir"}
+WRAPPER_JAR="$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.jar"
+WRAPPER_PROPERTIES="$MAVEN_PROJECTBASEDIR/.mvn/wrapper/maven-wrapper.properties"
+
+[ -f "$WRAPPER_PROPERTIES" ] || die "Cannot find $WRAPPER_PROPERTIES"
+
+wrapperUrl=$(grep '^wrapperUrl=' "$WRAPPER_PROPERTIES" | cut -d '=' -f 2-)
+[ -n "$wrapperUrl" ] || die "wrapperUrl no definido en $WRAPPER_PROPERTIES"
+
+if [ ! -f "$WRAPPER_JAR" ]; then
+  printf 'Descargando Maven Wrapper desde %s\n' "$wrapperUrl"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$wrapperUrl" -o "$WRAPPER_JAR" || die "No pude descargar el wrapper"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$wrapperUrl" -O "$WRAPPER_JAR" || die "No pude descargar el wrapper"
+  else
+    die "Necesito curl o wget para descargar el Maven Wrapper"
+  fi
+fi
+
+JAVA_EXE=${JAVA_HOME:+$JAVA_HOME/bin/java}
+[ -z "${JAVA_EXE}" ] && JAVA_EXE=$(command -v java) || true
+[ -x "$JAVA_EXE" ] || die "Java no encontrado. Seteá JAVA_HOME."
+
+exec "$JAVA_EXE" \
+  -classpath "$WRAPPER_JAR" \
+  "-Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR" \
+  org.apache.maven.wrapper.MavenWrapperMain "$@"

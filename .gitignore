@@ -1,0 +1,31 @@
+# Secretos — NUNCA commitear
+.env
+*.env.txt
+*.env.local
+
+# Material confidencial del cliente (contrato/presupuesto firmado): no va al repo público
+presupuesto_nutriapp.pdf
+
+# Java / Maven
+backend/target/
+*.class
+*.jar
+!backend/.mvn/wrapper/*.jar
+
+# Node / Vite (frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
