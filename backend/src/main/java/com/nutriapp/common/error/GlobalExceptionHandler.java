@@ -1,6 +1,7 @@
 package com.nutriapp.common.error;
 
 import com.nutriapp.integrations.IntegrationUnavailableException;
+import com.nutriapp.integrations.keycloak.KeycloakAdminException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -40,6 +41,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> handleIntegrationUnavailable(
             IntegrationUnavailableException ex, HttpServletRequest req) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, "INTEGRATION_UNAVAILABLE", ex.getMessage(), req);
+    }
+
+    /** Keycloak (nuestro server de identidad) inaccesible o con error: 503 con mensaje claro. */
+    @ExceptionHandler(KeycloakAdminException.class)
+    public ResponseEntity<ApiError> handleKeycloakAdmin(KeycloakAdminException ex, HttpServletRequest req) {
+        log.error("Error contra Keycloak Admin en {}", req.getRequestURI(), ex);
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_SERVER_UNAVAILABLE",
+                "El servidor de identidad no está disponible, intentá más tarde", req);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

@@ -10,6 +10,8 @@ import com.nutriapp.modules.paciente.dto.PacienteUpdateRequest;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.paciente.mapper.PacienteMapper;
 import com.nutriapp.modules.paciente.repository.PacienteRepository;
+import com.nutriapp.modules.receta.entity.EstadoReceta;
+import com.nutriapp.modules.receta.repository.RecetaRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -24,6 +26,7 @@ public class PacienteService {
     private final PacienteRepository repository;
     private final PacienteMapper mapper;
     private final NutricionistaService nutricionistaService;
+    private final RecetaRepository recetaRepository;
 
     @Transactional(readOnly = true)
     public Page<PacienteResponse> search(String q, Pageable pageable) {
@@ -72,6 +75,9 @@ public class PacienteService {
     @Transactional
     public void delete(UUID id) {
         Paciente p = getOwned(id);
+        if (recetaRepository.existsByPacienteIdAndEstadoAndDeletedAtIsNull(p.getId(), EstadoReceta.PENDIENTE)) {
+            throw new ConflictException("No se puede eliminar: el paciente tiene recetas pendientes");
+        }
         p.softDelete();
         repository.save(p);
     }

@@ -14,20 +14,25 @@
 
 ## Santi / backend / infra / db / auth
 
-**Fase actual:** Fase 0 — Cimientos (17–21 jul). **Scaffolding Fase 0 cerrado y verificado e2e (2026-07-17).**
+**Fase actual:** Fase 1 — Backend completo con stubs (21 jul – 8 ago, Santi solo). **Núcleo de Fase 1 cerrado y verificado e2e (2026-07-22, smoke 17/17).**
 
 **En qué estoy ahora:**
-- **Backend seeded arriba y andando** contra el stack real. Todo lo mínimo de Fase 0 hecho: infra (docker-compose,
-  realm `nutriapp`, .env), esqueleto Spring Boot portado de imedba, migraciones V001–V003 + `DevDataSeeder`,
-  y endpoints `GET /me`, `/productos` (+filtros), CRUD `/pacientes`, `GET/POST /recetas`, `GET /dashboard/resumen`.
-- Integraciones como ports+stubs (`mode=stub`); emitir receta degrada el cupón a PENDIENTE sin romper. Detalle
-  + los 2 bugs de runtime resueltos (bean `mailSender`, claim `sub`/scope `basic` de Keycloak) en DIARIO 2026-07-17.
-- **Por ahora un solo usuario** (indicación del cliente): el seed crea 1 nutricionista (`nutri@nutriapp.dev`).
+- **Fase 1 núcleo hecha y verificada** contra el stack real. Todo lo que Fran flaggeó en 500 anda:
+  módulo `notificacion` (cola + `NotificacionDispatcher` scheduled + templates), `emitir` encola EMAIL+WHATSAPP,
+  `RecetaResponse.notificaciones`, `POST /recetas/{id}/anular` + `/reenviar` (guards de estado → 409),
+  `DELETE /pacientes/{id}` → 409 si hay PENDIENTES, `RecetaVencimientoJob` (cron diario + catch-up al startup),
+  `GET /dashboard/cierre-mensual`, y **registro + admin vía Keycloak Admin API** (`POST /registro` público crea
+  usuario deshabilitado + PENDIENTE; `GET/POST /admin/nutricionistas` aprobar/rechazar habilita/deshabilita en KC).
+- Integraciones externas siguen en `mode=stub` (degradan sin romper). Keycloak Admin es always-live (nuestro IdP).
+- Backend local en **:8088**, Keycloak :8081, Postgres :5432. Login dev `nutri@nutriapp.dev` / `test1234` (y `admin@nutriapp.dev`).
+- **Review pasado** (code + security): fixes aplicados (dispatcher I/O fuera de tx, anular cancela notifs, N+1 en lista,
+  compensación de registro, timeouts+cache de Keycloak) + **suite de tests unitarios** (22, `mvn test`). Hardening de
+  Fase 3 (service-account KC, rate limiting `/registro`) documentado en DIARIO — no bloquea.
 
-**Próximo paso (Fase 1, no bloquea a Fran):**
-- Notificaciones (cola + dispatcher + templates), webhook TiendaNube (HMAC + idempotencia + polling respaldo),
-  scheduler de vencimiento (diario + catch-up al startup), anular/reenviar receta, registro público + validación admin,
-  clientes HTTP reales de las 4 integraciones (aún en stub). Tests unit + Testcontainers.
+**Próximo paso (resto de Fase 1 + Fase 2, no bloquea a Fran):**
+- Webhook TiendaNube (HMAC + idempotencia + polling de respaldo) y **clientes HTTP reales** de las 4 integraciones
+  (TiendaNube, Contabilium, mail, WhatsApp) — necesitan credenciales de Gon (Fase 2).
+- Suite de tests formal (unit + Testcontainers): hoy hay smoke e2e (`scripts/smoke-fase1.sh`), falta la cobertura.
 
 **Bloqueado por el otro:** nada.
 

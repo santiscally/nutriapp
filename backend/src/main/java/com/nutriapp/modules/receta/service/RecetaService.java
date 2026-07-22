@@ -4,6 +4,7 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
+import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
 import com.nutriapp.modules.paciente.entity.Paciente;
@@ -48,6 +49,7 @@ public class RecetaService {
     private final PacienteMapper pacienteMapper;
     private final ProductoMapper productoMapper;
     private final NutricionistaService nutricionistaService;
+    private final NotificacionService notificacionService;
     private final CodigoGenerator codigoGenerator;
     private final TiendaNubeClient tiendaNubeClient;
     private final RecetaProperties props;
@@ -60,7 +62,7 @@ public class RecetaService {
 
     @Transactional(readOnly = true)
     public RecetaResponse get(UUID id) {
-        return toResponse(getOwned(id));
+        return toResponseDetalle(getOwned(id));
     }
 
     /**
@@ -105,9 +107,57 @@ public class RecetaService {
         registrarCupon(receta);
 
         Receta saved = repo.save(receta);
-        log.info("Receta {} emitida por nutri {} (cupon: {})",
+        // Encolar sólo inserta filas de notificación (misma tx, respeta la FK a recetas). El
+        // desacople de las integraciones externas lo da el dispatcher async, NO este insert:
+        // ninguna llamada a mail/WhatsApp/TiendaNube ocurre en la ruta de emisión.
+        notificacionService.encolarEmisionReceta(saved, paciente);
+        log.info("Receta {} emitida por nutri {} (cupon: {}) — notificaciones encoladas",
                 saved.getCodigo(), nutri.getEmail(), saved.getCuponSyncEstado());
-        return toResponse(saved);
+        return toResponseDetalle(saved);
+    }
+
+    /**
+     * Anula una receta PENDIENTE: intenta borrar el cupón en TiendaNube (degrada si está
+     * en stub/caída) y la marca ANULADA. Sólo el estado PENDIENTE es anulable — una receta
+     * ya APLICADA/VENCIDA/ANULADA no se toca.
+     */
+    @Transactional
+    public RecetaResponse anular(UUID id) {
+        Receta receta = getOwned(id);
+        if (receta.getEstado() != EstadoReceta.PENDIENTE) {
+            throw new ConflictException("Sólo se pueden anular recetas pendientes (esta está "
+                    + receta.getEstado().name().toLowerCase() + ")");
+        }
+        if (receta.getCuponTiendanubeId() != null) {
+            try {
+                tiendaNubeClient.deleteCoupon(receta.getCuponTiendanubeId());
+            } catch (IntegrationUnavailableException ex) {
+                log.info("No se pudo borrar el cupón {} de receta {} (integración no conectada): {}",
+                        receta.getCuponTiendanubeId(), receta.getCodigo(), ex.getMessage());
+            }
+        }
+        receta.setEstado(EstadoReceta.ANULADA);
+        receta.setAnuladaAt(Instant.now());
+        Receta saved = repo.save(receta);
+        // Cancelar las notificaciones aún QUEUED: no queremos que salga un cupón ya invalidado.
+        notificacionService.cancelarPendientes(saved.getId());
+        log.info("Receta {} anulada", saved.getCodigo());
+        return toResponseDetalle(saved);
+    }
+
+    /** Reenvía (reencola) las notificaciones de una receta PENDIENTE. */
+    @Transactional
+    public RecetaResponse reenviar(UUID id) {
+        Receta receta = getOwned(id);
+        if (receta.getEstado() != EstadoReceta.PENDIENTE) {
+            throw new ConflictException("Sólo se pueden reenviar recetas pendientes (esta está "
+                    + receta.getEstado().name().toLowerCase() + ")");
+        }
+        Paciente paciente = pacienteRepository.findById(receta.getPacienteId())
+                .orElseThrow(() -> new NotFoundException("Paciente de la receta no encontrado"));
+        notificacionService.reencolar(receta, paciente);
+        log.info("Notificaciones de receta {} reencoladas", receta.getCodigo());
+        return toResponseDetalle(receta);
     }
 
     /** Intenta crear el cupón en TiendaNube; degrada a PENDIENTE si la integración está en stub/caída. */
@@ -149,8 +199,21 @@ public class RecetaService {
                 .orElseThrow(() -> new NotFoundException("Receta no encontrada"));
     }
 
-    /** Ensambla el RecetaResponse resolviendo paciente y productos (batch para evitar N+1). */
+    /**
+     * Versión de lista (resumida): NO incluye notificaciones para evitar una query por receta
+     * en `GET /recetas` y el dashboard. El front sólo muestra notificaciones en el detalle.
+     */
     public RecetaResponse toResponse(Receta receta) {
+        return build(receta, false);
+    }
+
+    /** Versión de detalle: incluye las notificaciones de la receta (`GET /recetas/{id}`). */
+    public RecetaResponse toResponseDetalle(Receta receta) {
+        return build(receta, true);
+    }
+
+    /** Ensambla el RecetaResponse resolviendo paciente y productos (batch para evitar N+1). */
+    private RecetaResponse build(Receta receta, boolean conNotificaciones) {
         Paciente paciente = pacienteRepository.findById(receta.getPacienteId()).orElse(null);
 
         Map<UUID, Producto> productos = new LinkedHashMap<>();
@@ -188,6 +251,7 @@ public class RecetaService {
                 receta.getEmitidaAt(),
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),
+                conNotificaciones ? notificacionService.forReceta(receta.getId()) : null,
                 conversion);
     }
 }

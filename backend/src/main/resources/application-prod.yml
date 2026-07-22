@@ -6,6 +6,13 @@ spring:
           issuer-uri: ${KEYCLOAK_ISSUER_URI:}
           jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:}
 
+server:
+  # No filtrar mensajes de excepción crudos al cliente por el /error por defecto de Spring Boot
+  # (lo que escapa al GlobalExceptionHandler). Los ApiError propios siguen con su mensaje.
+  error:
+    include-message: never
+    include-binding-errors: never
+
 springdoc:
   api-docs:
     enabled: false

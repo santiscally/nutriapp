@@ -48,4 +48,16 @@ public class RecetaController {
         RecetaResponse created = service.emitir(req);
         return ResponseEntity.created(URI.create("/api/v1/recetas/" + created.id())).body(created);
     }
+
+    @PostMapping("/{id}/anular")
+    @PreAuthorize("hasAuthority('recetas:write')")
+    public RecetaResponse anular(@PathVariable UUID id) {
+        return service.anular(id);
+    }
+
+    @PostMapping("/{id}/reenviar")
+    @PreAuthorize("hasAuthority('recetas:write')")
+    public RecetaResponse reenviar(@PathVariable UUID id) {
+        return service.reenviar(id);
+    }
 }

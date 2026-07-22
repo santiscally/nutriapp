@@ -1,5 +1,6 @@
 package com.nutriapp.modules.receta.dto;
 
+import com.nutriapp.modules.notificacion.dto.NotificacionResponse;
 import com.nutriapp.modules.paciente.dto.PacienteResponse;
 import com.nutriapp.modules.producto.dto.ProductoResponse;
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ public record RecetaResponse(
         Instant emitidaAt,
         LocalDate venceAt,
         String cuponSyncEstado,
+        List<NotificacionResponse> notificaciones,
         Conversion conversion
 ) {
     public record Item(

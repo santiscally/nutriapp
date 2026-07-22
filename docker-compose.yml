@@ -70,6 +70,11 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/nutriapp/protocol/openid-connect/certs}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
       TZ: ${TZ:-America/Argentina/Buenos_Aires}
+      # --- Keycloak Admin API (registro/aprobación de nutricionistas) ---
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-nutriapp}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
       # --- Integraciones (stub|live) ---
       CONTABILIUM_MODE: ${CONTABILIUM_MODE:-stub}
       CONTABILIUM_CLIENT_ID: ${CONTABILIUM_CLIENT_ID:-}

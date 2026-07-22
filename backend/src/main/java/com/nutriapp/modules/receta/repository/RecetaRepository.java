@@ -21,6 +21,12 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
 
     long countByNutricionistaIdAndEstadoAndDeletedAtIsNull(UUID nutricionistaId, EstadoReceta estado);
 
+    /** Guard del borrado de paciente: ¿tiene recetas en un estado dado? (409 si PENDIENTE). */
+    boolean existsByPacienteIdAndEstadoAndDeletedAtIsNull(UUID pacienteId, EstadoReceta estado);
+
+    /** Job de vencimiento: recetas PENDIENTES cuya vigencia ya pasó (global, todos los nutris). */
+    List<Receta> findByEstadoAndVenceAtBeforeAndDeletedAtIsNull(EstadoReceta estado, java.time.LocalDate fecha);
+
     /** Listado del nutricionista con filtro opcional por estado. */
     @Query("""
             SELECT r FROM Receta r
@@ -79,4 +85,28 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     BigDecimal sumVentasEntre(@Param("nutricionistaId") UUID nutricionistaId,
                               @Param("desde") Instant desde,
                               @Param("hasta") Instant hasta);
+
+    /** Cierre mensual: recetas emitidas en la ventana (por emitidaAt). */
+    @Query("""
+            SELECT COUNT(r) FROM Receta r
+            WHERE r.nutricionistaId = :nutricionistaId
+              AND r.deletedAt IS NULL
+              AND r.emitidaAt >= :desde AND r.emitidaAt < :hasta
+            """)
+    long countEmitidasEntre(@Param("nutricionistaId") UUID nutricionistaId,
+                            @Param("desde") Instant desde,
+                            @Param("hasta") Instant hasta);
+
+    /** Cierre mensual: detalle de las aplicadas (convertidas) en la ventana. */
+    @Query("""
+            SELECT r FROM Receta r
+            WHERE r.nutricionistaId = :nutricionistaId
+              AND r.deletedAt IS NULL
+              AND r.estado = 'APLICADA'
+              AND r.aplicadaAt >= :desde AND r.aplicadaAt < :hasta
+            ORDER BY r.aplicadaAt DESC
+            """)
+    List<Receta> findAplicadasEntre(@Param("nutricionistaId") UUID nutricionistaId,
+                                    @Param("desde") Instant desde,
+                                    @Param("hasta") Instant hasta);
 }
