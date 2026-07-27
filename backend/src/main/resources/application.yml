@@ -79,9 +79,8 @@ app:
 nutriapp:
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
-    # TBD con Gon (preguntas abiertas 1 y 2 de 04-plan-de-fases.md). Defaults provisorios.
-    descuento-default-pct: ${RECETA_DESCUENTO_DEFAULT_PCT:15}
-    comision-pct: ${RECETA_COMISION_PCT:10}
+    # Los % de descuento y comisión ya NO viven acá: son configurables por el admin en runtime
+    # (tabla configuracion_sistema, seed inicial 15/10 en la migración V004).
     max-items: ${RECETA_MAX_ITEMS:1}
     # Cron del job de vencimiento (diario 03:00 AR). Catch-up adicional al arrancar.
     vencimiento-cron: ${RECETA_VENCIMIENTO_CRON:0 0 3 * * *}

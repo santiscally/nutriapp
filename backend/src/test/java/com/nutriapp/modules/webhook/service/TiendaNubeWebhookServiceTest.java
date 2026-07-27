@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.receta.RecetaProperties;
+import com.nutriapp.modules.configuracion.service.ConfiguracionService;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
@@ -42,6 +42,7 @@ class TiendaNubeWebhookServiceTest {
     @Mock WebhookEventRepository eventRepo;
     @Mock RecetaRepository recetaRepository;
     @Mock TiendaNubeClient tiendaNubeClient;
+    @Mock ConfiguracionService configuracionService;
 
     private final HmacVerifier hmacVerifier = new HmacVerifier();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -56,10 +57,10 @@ class TiendaNubeWebhookServiceTest {
                 new IntegrationsProperties.TiendaNube("stub", null, null, null, null, null, null, SECRET),
                 new IntegrationsProperties.Mail("stub", null, null),
                 new IntegrationsProperties.WhatsApp("stub", null, null, null));
-        RecetaProperties recetaProps = new RecetaProperties(30, new BigDecimal("15"), new BigDecimal("10"), 1);
         service = new TiendaNubeWebhookService(
-                eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, recetaProps, objectMapper);
+                eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, configuracionService, objectMapper);
         when(recetaRepository.save(any(Receta.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(configuracionService.getComisionPct()).thenReturn(new BigDecimal("10"));
     }
 
     private byte[] body(String event, long id) {
