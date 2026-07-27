@@ -1,0 +1,29 @@
+# Normalización de fin de línea. Evita el CRLF que rompía mvnw / scripts sh en Windows
+# (ver DIARIO: Fran tuvo que arreglar CRLF a mano en mvnw, maven-wrapper.properties, init db).
+
+# Por defecto: normalizar a LF en el repo, auto en el working tree.
+* text=auto
+
+# Scripts que DEBEN ser LF sí o sí (los ejecuta un shell POSIX / entrypoint de contenedor).
+*.sh            text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+mvnw            text eol=lf
+gradlew         text eol=lf
+Dockerfile      text eol=lf
+*.sql           text eol=lf
+
+# Scripts de Windows: CRLF.
+*.cmd           text eol=crlf
+*.bat           text eol=crlf
+
+# Binarios: sin tocar.
+*.jar           binary
+*.png           binary
+*.jpg           binary
+*.jpeg          binary
+*.gif           binary
+*.ico           binary
+*.pdf           binary
+*.woff          binary
+*.woff2         binary

@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela corridas viejas de la misma rama/PR si llega un push nuevo.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (test + IT)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      # `verify` corre unit (surefire) + integración Testcontainers (failsafe).
+      # El runner de GitHub trae Docker → Testcontainers levanta Postgres 16 solo.
+      # Se invoca con `sh mvnw` para no depender del bit de ejecución del wrapper (Windows lo pierde).
+      - name: Build, test e integración
+        run: sh mvnw -B --no-transfer-progress verify
+
+  frontend:
+    name: Frontend (tsc + lint + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # `build` = tsc -b && vite build → chequea tipos y compila.
+      - name: Type-check y build
+        run: npm run build
