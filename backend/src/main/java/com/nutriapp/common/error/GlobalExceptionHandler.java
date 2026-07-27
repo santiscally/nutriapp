@@ -2,6 +2,7 @@ package com.nutriapp.common.error;
 
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminException;
+import com.nutriapp.modules.webhook.exception.WebhookSignatureException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -49,6 +50,16 @@ public class GlobalExceptionHandler {
         log.error("Error contra Keycloak Admin en {}", req.getRequestURI(), ex);
         return build(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_SERVER_UNAVAILABLE",
                 "El servidor de identidad no está disponible, intentá más tarde", req);
+    }
+
+    /**
+     * Firma HMAC de webhook inválida/ausente. 401: la firma ES la autenticación del webhook
+     * (no hay JWT). No revela detalle de por qué falló (no filtrar pistas de verificación).
+     */
+    @ExceptionHandler(WebhookSignatureException.class)
+    public ResponseEntity<ApiError> handleWebhookSignature(WebhookSignatureException ex, HttpServletRequest req) {
+        log.warn("Webhook con firma inválida en {}: {}", req.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.UNAUTHORIZED, "INVALID_SIGNATURE", "Firma de webhook inválida", req);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)

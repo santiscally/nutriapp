@@ -19,6 +19,9 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
 
     boolean existsByCodigo(String codigo);
 
+    /** Matcheo del cupón de una orden pagada → receta (global, sin scope de nutricionista). */
+    Optional<Receta> findByCodigoAndDeletedAtIsNull(String codigo);
+
     long countByNutricionistaIdAndEstadoAndDeletedAtIsNull(UUID nutricionistaId, EstadoReceta estado);
 
     /** Guard del borrado de paciente: ¿tiene recetas en un estado dado? (409 si PENDIENTE). */
