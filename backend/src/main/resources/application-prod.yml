@@ -28,6 +28,13 @@ management:
     health:
       show-details: never
 
+nutriapp:
+  integrations:
+    tiendanube:
+      # Sin default de dev en prod: si no se setea el env, el HMAC no verifica y el webhook
+      # responde 401 (fail-closed). En live este valor = client_secret de la app TiendaNube.
+      webhook-secret: ${TIENDANUBE_WEBHOOK_SECRET:}
+
 logging:
   level:
     com.nutriapp: INFO

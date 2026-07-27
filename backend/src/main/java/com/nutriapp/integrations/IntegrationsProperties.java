@@ -15,12 +15,13 @@ public record IntegrationsProperties(
 ) {
     public record Contabilium(String mode, String baseUrl, String clientId, String clientSecret) {}
 
-    public record TiendaNube(String mode, String storeId, String accessToken,
-                             String clientId, String clientSecret, String userAgent) {}
+    public record TiendaNube(String mode, String baseUrl, String storeId, String accessToken,
+                             String clientId, String clientSecret, String userAgent,
+                             String webhookSecret) {}
 
-    public record Mail(String mode) {}
+    public record Mail(String mode, String fromAddress, String fromName) {}
 
-    public record WhatsApp(String mode, String phoneNumberId, String accessToken) {}
+    public record WhatsApp(String mode, String baseUrl, String phoneNumberId, String accessToken) {}
 
     public static boolean isLive(String mode) {
         return "live".equalsIgnoreCase(mode);

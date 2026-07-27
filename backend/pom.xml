@@ -26,6 +26,7 @@
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.20.3</testcontainers.version>
+        <wiremock.version>3.9.2</wiremock.version>
     </properties>
 
     <dependencies>
@@ -126,6 +127,15 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- WireMock: server HTTP falso para testear los clientes reales de integraciones
+             (Contabilium/TiendaNube/WhatsApp) sin conectar. `standalone` viene shaded para
+             no chocar Jetty/Jackson con los del starter-web. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>${wiremock.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

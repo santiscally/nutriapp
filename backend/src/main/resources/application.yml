@@ -76,11 +76,6 @@ app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
-mail:
-  from:
-    address: ${MAIL_FROM_ADDRESS:no-reply@nutriapp.local}
-    name: ${MAIL_FROM_NAME:NutriApp}
-
 nutriapp:
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
@@ -95,6 +90,13 @@ nutriapp:
     dispatch-interval-ms: ${NOTIF_DISPATCH_INTERVAL_MS:30000}
     max-intentos: ${NOTIF_MAX_INTENTOS:5}
     batch-size: ${NOTIF_BATCH_SIZE:25}
+  webhooks:
+    # Processor que drena webhook_events sin procesar (lee la orden y aplica la conversión).
+    process-interval-ms: ${WEBHOOK_PROCESS_INTERVAL_MS:20000}
+    batch-size: ${WEBHOOK_BATCH_SIZE:25}
+    # Polling de respaldo de órdenes pagadas (en stub no-op). Ventana en horas hacia atrás.
+    polling-interval-ms: ${WEBHOOK_POLLING_INTERVAL_MS:300000}
+    polling-window-hours: ${WEBHOOK_POLLING_WINDOW_HOURS:24}
   keycloak:
     # Admin REST API: crear usuarios al registrar y habilitarlos al aprobar.
     # En Docker el backend ve Keycloak por la red interna (http://keycloak:8080).
@@ -113,15 +115,24 @@ nutriapp:
       client-secret: ${CONTABILIUM_CLIENT_SECRET:}
     tiendanube:
       mode: ${TIENDANUBE_MODE:stub}
+      base-url: ${TIENDANUBE_BASE_URL:https://api.tiendanube.com/2025-03}
       store-id: ${TIENDANUBE_STORE_ID:}
       access-token: ${TIENDANUBE_ACCESS_TOKEN:}
       client-id: ${TIENDANUBE_CLIENT_ID:}
       client-secret: ${TIENDANUBE_CLIENT_SECRET:}
       user-agent: ${TIENDANUBE_USER_AGENT:NutriApp (contacto.simpleapps@gmail.com)}
+      # Secreto para verificar el HMAC de los webhooks. En live = client_secret de la app TiendaNube.
+      # Default de dev conocido para poder firmar el webhook en los smoke tests. En prod: env obligatorio
+      # (application-prod.yml lo deja vacío → fail-closed si no se setea).
+      webhook-secret: ${TIENDANUBE_WEBHOOK_SECRET:dev-webhook-secret}
     mail:
       mode: ${MAIL_MODE:stub}
+      # Remitente del SmtpMailSender (Fase 2). El SMTP en sí va en spring.mail.* (arriba).
+      from-address: ${MAIL_FROM_ADDRESS:no-reply@nutriapp.local}
+      from-name: ${MAIL_FROM_NAME:NutriApp}
     whatsapp:
       mode: ${WHATSAPP_MODE:stub}
+      base-url: ${WHATSAPP_BASE_URL:https://graph.facebook.com/v21.0}
       phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
       access-token: ${WHATSAPP_ACCESS_TOKEN:}
 

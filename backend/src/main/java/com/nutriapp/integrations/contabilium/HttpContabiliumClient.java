@@ -1,0 +1,197 @@
+package com.nutriapp.integrations.contabilium;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nutriapp.integrations.IntegrationUnavailableException;
+import com.nutriapp.integrations.IntegrationsProperties;
+import com.nutriapp.integrations.support.Throttle;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriBuilder;
+
+/**
+ * Cliente HTTP real de Contabilium (ERP, solo lectura). Se conecta recién en Fase 2: hoy el bean
+ * se registra sólo si {@code CONTABILIUM_MODE=live} (ver {@code IntegrationsConfig}).
+ *
+ * <p><b>Auth</b>: OAuth2 {@code client_credentials} — Email → {@code client_id}, API Key →
+ * {@code client_secret} (así lo define su docu). Token ~24h; se cachea y se renueva proactivamente
+ * (margen de 30 min) o ante un 401 (reintento único).
+ *
+ * <p><b>Rate limit (crítico)</b>: en AR el límite es 25 req/10s y excederlo bloquea la IP ~1 min
+ * afectando hasta la facturación del cliente. Todo request sale detrás de un {@link Throttle} a
+ * 15 req/10s (ver instrucciones_claude/03-integraciones-apis.md §1).
+ *
+ * <p>Un fallo de red (host caído) se traduce a {@link IntegrationUnavailableException} para que la
+ * lógica de negocio degrade con gracia, igual que el stub.
+ */
+@Slf4j
+public class HttpContabiliumClient implements ContabiliumClient {
+
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(15);
+    /** Margen para no usar un token a punto de expirar. */
+    private static final long EXPIRY_MARGIN_SECONDS = 1800;
+
+    private final IntegrationsProperties.Contabilium props;
+    private final RestClient http;
+    private final Throttle throttle;
+
+    private volatile String cachedToken;
+    private volatile Instant tokenExpiry = Instant.EPOCH;
+
+    public HttpContabiliumClient(IntegrationsProperties.Contabilium props) {
+        this(props, new Throttle(15, 10_000));
+    }
+
+    HttpContabiliumClient(IntegrationsProperties.Contabilium props, Throttle throttle) {
+        this.props = props;
+        this.throttle = throttle;
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
+        factory.setReadTimeout((int) READ_TIMEOUT.toMillis());
+        this.http = RestClient.builder().baseUrl(props.baseUrl()).requestFactory(factory).build();
+    }
+
+    @Override
+    public CompanyInfo obtenerInfo() {
+        InfoDto dto = authedGet("/api/usuarios/obtenerinfo", InfoDto.class);
+        return new CompanyInfo(dto != null ? dto.razonSocial() : null, dto != null ? dto.cuit() : null);
+    }
+
+    @Override
+    public ConceptoPage buscarConceptos(String filtro, int page) {
+        ConceptoPageDto dto = authedGet(
+                uri -> uri.path("/api/conceptos/search")
+                        .queryParam("filtro", filtro == null ? "" : filtro)
+                        .queryParam("page", page)
+                        .build(),
+                ConceptoPageDto.class);
+        List<Concepto> items = dto == null || dto.items() == null
+                ? List.of()
+                : dto.items().stream().map(HttpContabiliumClient::toConcepto).toList();
+        return new ConceptoPage(items, nz(dto == null ? null : dto.totalPage()), nz(dto == null ? null : dto.totalItems()));
+    }
+
+    // --- HTTP interno ---
+
+    private <T> T authedGet(String path, Class<T> type) {
+        return authedGet(uri -> uri.path(path).build(), type);
+    }
+
+    private <T> T authedGet(Function<UriBuilder, URI> uriFn, Class<T> type) {
+        try {
+            return withTokenRetry(() -> {
+                throttle.acquire();
+                return http.get()
+                        .uri(uriFn)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token())
+                        .retrieve()
+                        .body(type);
+            });
+        } catch (ResourceAccessException ex) {
+            // Timeout / conexión rechazada: proveedor caído → degradar como el stub.
+            log.warn("[contabilium] sin conexión: {}", ex.getMessage());
+            throw new IntegrationUnavailableException("contabilium");
+        }
+    }
+
+    /** Ejecuta el request; ante 401 invalida el token y reintenta una vez. */
+    private <T> T withTokenRetry(Supplier<T> call) {
+        try {
+            return call.get();
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            log.info("[contabilium] 401 — renovando token y reintentando una vez");
+            invalidateToken();
+            return call.get();
+        }
+    }
+
+    private String token() {
+        String current = cachedToken;
+        if (current != null && Instant.now().isBefore(tokenExpiry)) {
+            return current;
+        }
+        return refreshToken();
+    }
+
+    private synchronized String refreshToken() {
+        // Re-check: otro hilo pudo renovarlo mientras esperábamos el lock.
+        if (cachedToken != null && Instant.now().isBefore(tokenExpiry)) {
+            return cachedToken;
+        }
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "client_credentials");
+        form.add("client_id", props.clientId());
+        form.add("client_secret", props.clientSecret());
+        throttle.acquire();
+        TokenDto resp = http.post()
+                .uri("/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(form)
+                .retrieve()
+                .body(TokenDto.class);
+        if (resp == null || resp.accessToken() == null) {
+            throw new IllegalStateException("Contabilium no devolvió access_token");
+        }
+        long expiresIn = resp.expiresIn() != null ? resp.expiresIn() : 86399L;
+        cachedToken = resp.accessToken();
+        tokenExpiry = Instant.now().plusSeconds(Math.max(60L, expiresIn - EXPIRY_MARGIN_SECONDS));
+        return cachedToken;
+    }
+
+    private synchronized void invalidateToken() {
+        cachedToken = null;
+        tokenExpiry = Instant.EPOCH;
+    }
+
+    private static Concepto toConcepto(ConceptoDto d) {
+        return new Concepto(d.id(), d.tipo(), d.nombre(), d.codigo(), d.descripcion(),
+                d.estado(), d.precio(), d.precioFinal(), d.stock());
+    }
+
+    private static int nz(Integer v) {
+        return v == null ? 0 : v;
+    }
+
+    // --- DTOs de deserialización (PascalCase de Contabilium) ---
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record TokenDto(@JsonProperty("access_token") String accessToken,
+                            @JsonProperty("expires_in") Long expiresIn) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record InfoDto(@JsonProperty("RazonSocial") String razonSocial,
+                           @JsonProperty("Cuit") String cuit) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ConceptoDto(
+            @JsonProperty("Id") Long id,
+            @JsonProperty("Tipo") String tipo,
+            @JsonProperty("Nombre") String nombre,
+            @JsonProperty("Codigo") String codigo,
+            @JsonProperty("Descripcion") String descripcion,
+            @JsonProperty("Estado") String estado,
+            @JsonProperty("Precio") BigDecimal precio,
+            @JsonProperty("PrecioFinal") BigDecimal precioFinal,
+            @JsonProperty("Stock") Integer stock) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ConceptoPageDto(
+            @JsonProperty("Items") List<ConceptoDto> items,
+            @JsonProperty("TotalPage") Integer totalPage,
+            @JsonProperty("TotalItems") Integer totalItems) {}
+}

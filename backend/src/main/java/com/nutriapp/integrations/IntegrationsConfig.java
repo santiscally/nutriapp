@@ -1,20 +1,27 @@
 package com.nutriapp.integrations;
 
 import com.nutriapp.integrations.contabilium.ContabiliumClient;
+import com.nutriapp.integrations.contabilium.HttpContabiliumClient;
 import com.nutriapp.integrations.contabilium.StubContabiliumClient;
 import com.nutriapp.integrations.mail.MailSender;
+import com.nutriapp.integrations.mail.SmtpMailSender;
 import com.nutriapp.integrations.mail.StubMailSender;
+import com.nutriapp.integrations.tiendanube.HttpTiendaNubeClient;
 import com.nutriapp.integrations.tiendanube.StubTiendaNubeClient;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
+import com.nutriapp.integrations.whatsapp.CloudApiWhatsAppSender;
 import com.nutriapp.integrations.whatsapp.StubWhatsAppSender;
 import com.nutriapp.integrations.whatsapp.WhatsAppSender;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.mail.javamail.JavaMailSender;
 
 /**
- * Registra el adapter de cada integración según `nutriapp.integrations.<x>.mode`.
- * Las impls live llegan en Fase 1.6/2 — pedir `live` antes de eso corta el arranque
- * con un error claro (mejor que un stub silencioso haciéndose pasar por real).
+ * Registra el adapter de cada integración según {@code nutriapp.integrations.<x>.mode}:
+ * {@code stub} (default) o {@code live}. Flip por env sin tocar código de negocio (CLAUDE.md
+ * "Regla de oro"). Las impls {@code Http*}/{@code Smtp*}/{@code CloudApi*} sólo se instancian en
+ * modo {@code live}: en {@code stub} nunca se construyen (evita exigir credenciales/SMTP en dev).
  */
 @Configuration
 public class IntegrationsConfig {
@@ -22,8 +29,7 @@ public class IntegrationsConfig {
     @Bean
     public TiendaNubeClient tiendaNubeClient(IntegrationsProperties props) {
         if (IntegrationsProperties.isLive(props.tiendanube().mode())) {
-            throw new IllegalStateException(
-                    "TIENDANUBE_MODE=live pero HttpTiendaNubeClient aún no está implementado (Fase 2)");
+            return new HttpTiendaNubeClient(props.tiendanube());
         }
         return new StubTiendaNubeClient();
     }
@@ -31,8 +37,7 @@ public class IntegrationsConfig {
     @Bean
     public ContabiliumClient contabiliumClient(IntegrationsProperties props) {
         if (IntegrationsProperties.isLive(props.contabilium().mode())) {
-            throw new IllegalStateException(
-                    "CONTABILIUM_MODE=live pero HttpContabiliumClient aún no está implementado (Fase 2)");
+            return new HttpContabiliumClient(props.contabilium());
         }
         return new StubContabiliumClient();
     }
@@ -40,10 +45,14 @@ public class IntegrationsConfig {
     // Nombre explícito distinto de "mailSender" para no chocar con el JavaMailSender
     // que autoconfigura spring-boot-starter-mail (bean 'mailSender').
     @Bean("nutriappMailSender")
-    public MailSender nutriappMailSender(IntegrationsProperties props) {
+    public MailSender nutriappMailSender(IntegrationsProperties props, ObjectProvider<JavaMailSender> javaMailSender) {
         if (IntegrationsProperties.isLive(props.mail().mode())) {
-            throw new IllegalStateException(
-                    "MAIL_MODE=live pero SmtpMailSender aún no está implementado (Fase 2)");
+            JavaMailSender delegate = javaMailSender.getIfAvailable();
+            if (delegate == null) {
+                throw new IllegalStateException(
+                        "MAIL_MODE=live pero no hay JavaMailSender: configurá MAIL_SMTP_HOST (spring.mail.host)");
+            }
+            return new SmtpMailSender(delegate, props.mail());
         }
         return new StubMailSender();
     }
@@ -51,8 +60,7 @@ public class IntegrationsConfig {
     @Bean
     public WhatsAppSender whatsAppSender(IntegrationsProperties props) {
         if (IntegrationsProperties.isLive(props.whatsapp().mode())) {
-            throw new IllegalStateException(
-                    "WHATSAPP_MODE=live pero el sender de Cloud API aún no está implementado (Fase 2)");
+            return new CloudApiWhatsAppSender(props.whatsapp());
         }
         return new StubWhatsAppSender();
     }
