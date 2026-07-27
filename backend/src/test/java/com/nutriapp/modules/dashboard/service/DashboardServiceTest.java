@@ -84,6 +84,39 @@ class DashboardServiceTest {
     }
 
     @Test
+    void estadisticas_devuelveSerieCronologicaDeNMeses() {
+        when(recetaRepository.countEmitidasEntre(any(), any(), any())).thenReturn(4L);
+        when(recetaRepository.countAplicadasEntre(any(), eq(EstadoReceta.APLICADA), any(), any()))
+                .thenReturn(2L);
+
+        var resp = service.estadisticas(6);
+
+        assertThat(resp.meses()).hasSize(6);
+        // El último elemento es el mes en curso (orden cronológico ascendente).
+        var actual = java.time.YearMonth.now(java.time.ZoneId.of("America/Argentina/Buenos_Aires"));
+        var ultimo = resp.meses().get(5);
+        assertThat(ultimo.year()).isEqualTo(actual.getYear());
+        assertThat(ultimo.month()).isEqualTo(actual.getMonthValue());
+        assertThat(ultimo.recetasEmitidas()).isEqualTo(4);
+        assertThat(ultimo.recetasAplicadas()).isEqualTo(2);
+        assertThat(ultimo.ventasGeneradas()).isEqualByComparingTo("55930.00");
+        assertThat(ultimo.comisionTotal()).isEqualByComparingTo("5593.00");
+        // El primero es (n-1) meses atrás.
+        assertThat(resp.meses().get(0).year() * 12 + resp.meses().get(0).month())
+                .isEqualTo(actual.minusMonths(5).getYear() * 12 + actual.minusMonths(5).getMonthValue());
+    }
+
+    @Test
+    void estadisticas_acotaElRangoDeMeses() {
+        when(recetaRepository.countEmitidasEntre(any(), any(), any())).thenReturn(0L);
+        when(recetaRepository.countAplicadasEntre(any(), any(), any(), any())).thenReturn(0L);
+
+        assertThat(service.estadisticas(0).meses()).hasSize(6); // <=0 → default 6
+        assertThat(service.estadisticas(1).meses()).hasSize(1); // mínimo
+        assertThat(service.estadisticas(100).meses()).hasSize(24); // máximo
+    }
+
+    @Test
     void cierreMensual_armaDetalleDeConvertidas() {
         Paciente juan = new Paciente();
         juan.setId(UUID.randomUUID());

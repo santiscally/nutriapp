@@ -3,6 +3,7 @@ package com.nutriapp.modules.dashboard.service;
 import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.modules.dashboard.dto.CierreMensualResponse;
 import com.nutriapp.modules.dashboard.dto.DashboardResumenResponse;
+import com.nutriapp.modules.dashboard.dto.EstadisticasResponse;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.paciente.repository.PacienteRepository;
@@ -18,6 +19,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class DashboardService {
 
     private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
+    private static final int ESTADISTICAS_MESES_DEFAULT = 6;
+    private static final int ESTADISTICAS_MESES_MAX = 24;
 
     private final RecetaRepository recetaRepository;
     private final RecetaService recetaService;
@@ -103,5 +107,33 @@ public class DashboardService {
 
         return new CierreMensualResponse(
                 year, month, emitidas, aplicadas, tasa, ventas, comision, detalle);
+    }
+
+    /**
+     * Serie mensual (últimos {@code meses}, cronológica) para los gráficos del dashboard: recetas
+     * emitidas/aplicadas y ventas/comisión por mes. Reusa las mismas queries por ventana del cierre.
+     * {@code meses} se acota a [1, 24]; default 6.
+     */
+    @Transactional(readOnly = true)
+    public EstadisticasResponse estadisticas(int meses) {
+        UUID nutriId = nutricionistaService.getCurrent().getId();
+        int n = Math.max(1, Math.min(ESTADISTICAS_MESES_MAX,
+                meses <= 0 ? ESTADISTICAS_MESES_DEFAULT : meses));
+        YearMonth actual = YearMonth.now(AR);
+
+        List<EstadisticasResponse.MesStat> serie = new ArrayList<>(n);
+        for (int i = n - 1; i >= 0; i--) {
+            YearMonth ym = actual.minusMonths(i);
+            Instant desde = ym.atDay(1).atStartOfDay(AR).toInstant();
+            Instant hasta = ym.plusMonths(1).atDay(1).atStartOfDay(AR).toInstant();
+            serie.add(new EstadisticasResponse.MesStat(
+                    ym.getYear(),
+                    ym.getMonthValue(),
+                    recetaRepository.countEmitidasEntre(nutriId, desde, hasta),
+                    recetaRepository.countAplicadasEntre(nutriId, EstadoReceta.APLICADA, desde, hasta),
+                    recetaRepository.sumVentasEntre(nutriId, desde, hasta),
+                    recetaRepository.sumComisionEntre(nutriId, desde, hasta)));
+        }
+        return new EstadisticasResponse(serie);
     }
 }

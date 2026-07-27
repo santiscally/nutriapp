@@ -2,6 +2,7 @@ package com.nutriapp.modules.dashboard.controller;
 
 import com.nutriapp.modules.dashboard.dto.CierreMensualResponse;
 import com.nutriapp.modules.dashboard.dto.DashboardResumenResponse;
+import com.nutriapp.modules.dashboard.dto.EstadisticasResponse;
 import com.nutriapp.modules.dashboard.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,5 +30,12 @@ public class DashboardController {
             @RequestParam int year,
             @RequestParam int month) {
         return service.cierreMensual(year, month);
+    }
+
+    /** Serie mensual (últimos {@code meses}, cronológica) para los gráficos del dashboard. */
+    @GetMapping("/estadisticas")
+    @PreAuthorize("hasAuthority('dashboard:read')")
+    public EstadisticasResponse estadisticas(@RequestParam(defaultValue = "6") int meses) {
+        return service.estadisticas(meses);
     }
 }
