@@ -32,6 +32,46 @@
 
 ## Entradas
 
+## 2026-07-27 — Santi — tests+infra (Fase 1.7 integración Testcontainers + 1.8 CI GitHub Actions — cierra Fase 1)
+**Qué:** Cerré las dos tareas que faltaban de Fase 1.
+- **1.7 — Test de integración end-to-end (Testcontainers).** `PostgresITBase` (levanta la app real contra Postgres 16 de
+  Testcontainers; corre las migraciones Flyway reales incl. seeds V003/V004; perfil `test`, el DevDataSeeder NO corre) +
+  **`RecetaFlowIT`**: emisión (descuento fijo de config = 15%) → webhook simulado `order/paid` con el cupón → **APLICADA**
+  con comisión de config (10% → $100 sobre $1000) → **cierre mensual** reflejando la conversión. Auth vía `jwt()` post-processor
+  de spring-security-test (bypassa Keycloak; setea `sub`+`email`+authorities `recetas:write`/`dashboard:read`).
+- **Separación surefire/failsafe:** agregué `maven-failsafe-plugin`. **`mvn test`** = solo unit (sin Docker, 61 tests);
+  **`mvn verify`** = unit + los `*IT` (Testcontainers). Así el ciclo rápido no necesita Docker y CI corre todo.
+- **1.8 — CI** (`.github/workflows/ci.yml`): job **backend** (JDK21 temurin, cache maven, `sh mvnw verify` — el runner trae
+  Docker → Testcontainers levanta Postgres solo) + job **frontend** (Node22, `npm ci` + `npm run lint` + `npm run build`).
+  Trigger push/PR a `main`, con `concurrency` cancel-in-progress. Se invoca `sh mvnw` (no `./mvnw`) porque el wrapper está
+  trackeado sin bit de ejecución (Windows lo pierde) — evita "Permission denied" en Linux sin tener que chmodear el índice.
+- **`.gitattributes`** nuevo (pendiente que había flaggeado Fran): normaliza EOL, fuerza LF en `*.sh`/`mvnw`/`*.yml`/`*.sql`/
+  Dockerfile (lo que rompía en Windows por CRLF), CRLF en `*.cmd`/`*.bat`, binarios marcados. NO renormalicé el repo (evita
+  diff ruidoso); aplica a cambios futuros. `mvnw` ya estaba LF-clean; su bit de ejecución sigue en 100644 (por eso el `sh mvnw`).
+**Verificación:** `mvn verify` en contenedor JDK21 con el socket Docker montado (DinD, `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal`,
+Ryuk disabled) → **61 unit + 1 IT (RecetaFlowIT), BUILD SUCCESS.** Front build+lint ya verdes. YAML del workflow validado.
+**Estado:** **Fase 1 COMPLETA** (1.1–1.8). Pendiente transversal: verificación visual e2e del rediseño (no bloquea).
+**Refs:** `backend/pom.xml` (failsafe), `src/test/java/com/nutriapp/integration/{PostgresITBase,RecetaFlowIT}.java`,
+`.github/workflows/ci.yml`, `.gitattributes`.
+
+## 2026-07-27 — Santi — backend+frontend (parámetros de negocio configurables por admin: descuento + comisión)
+**Qué:** Nuevo módulo `modules/configuracion/`. El % de **descuento** (fijo global, el nutri NO lo edita) y el % de
+**comisión** ahora los define el **admin en runtime** (antes fijos en `application.yml`). Cierra preguntas abiertas #1 y #2 del plan (el mecanismo; el valor sigue TBD con Gon).
+- **DB:** `V004__configuracion_sistema.sql` (tabla singleton, seed 15/10).
+- **Backend:** entidad + repo + `ConfiguracionService` (fuente de verdad; falla si falta el seed) + DTOs + controller:
+  **`GET /api/v1/configuracion`** (cualquier autenticado — el emisor necesita el descuento) + **`PUT /api/v1/admin/configuracion`** (`admin:manage`, ambos % en [0,100]).
+- **Wiring:** `RecetaService.emitir` setea el descuento desde `ConfiguracionService` e **ignora** cualquier valor del request →
+  `RecetaCreateRequest` ya **no** tiene `descuentoPct`. `TiendaNubeWebhookService.aplicar` toma la comisión de `ConfiguracionService`
+  (ya no de `RecetaProperties`). `RecetaProperties` quedó con `vigenciaDias`+`maxItems`; se sacaron `descuento-default-pct`/`comision-pct` de `application.yml`.
+- **Frontend:** `EmitirReceta` quita el input de descuento y lee el % de `GET /configuracion` (read-only en el resumen). Nueva pantalla
+  **`/configuracion`** (solo ADMIN — si no, redirige) con form descuento+comisión → `PUT`. Nav "Configuración" visible solo para admin.
+**Decisión (con el usuario):** descuento **fijo global** (no editable por nutri) + **ambos** parámetros configurables.
+**Nota histórica importante:** las recetas ya emitidas conservan su `descuentoPct`/`comisionPct` snapshoteado — cambiar la config
+solo afecta emisiones/conversiones **futuras** (el cierre mensual suma el `comisionMonto` guardado, no recalcula).
+**Tests:** `ConfiguracionServiceTest` (3) + webhook/receta tests actualizados (nuevo dep `ConfiguracionService`). **Backend 61/61 BUILD SUCCESS.** Front build+lint OK.
+**Refs:** `modules/configuracion/**`, `db/migration/V004__configuracion_sistema.sql`, `RecetaService`, `dto/RecetaCreateRequest`, `RecetaProperties`,
+`webhook/service/TiendaNubeWebhookService`, `application.yml`, `frontend/src/pages/{EmitirReceta,Configuracion}.tsx`, `api/configuracion.ts`, `types/configuracion.ts`, `components/layout/AppLayout.tsx`, `App.tsx`.
+
 ## 2026-07-27 — Santi — frontend (rediseño: fine-tuning de Recetas / Pacientes / EmitirReceta — cierra R.1–R.7)
 **Qué:** Últimos ajustes de las pantallas de listado/emisión (ya heredaban navbar+tokens):
 - **Recetas:** `page-head` con subtítulo **real** (`{totalElements} recetas emitidas`) + CTA "Emitir receta". **No** puse los

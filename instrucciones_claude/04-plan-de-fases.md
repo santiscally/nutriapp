@@ -91,8 +91,8 @@ incompatiblemente mientras Fran no está; si es inevitable, entrada de DIARIO bi
 | 1.4 | Webhook TiendaNube: endpoint + verificación HMAC + `webhook_events` idempotente + procesamiento (matcheo cupón → APLICADA + comisión) + job de polling de respaldo. **Testeable en stub simulando el POST del webhook** |
 | 1.5 | Dashboard cierre-mensual + `productos/filtros` + refinamiento de búsqueda (unaccent) |
 | 1.6 | Clientes HTTP reales (sin conectar): `HttpContabiliumClient` (token manager 24h + throttle 15 req/10s), `HttpTiendaNubeClient` (User-Agent, backoff 429), `SmtpMailSender`, `CloudApiWhatsAppSender` — con tests unit contra WireMock |
-| 1.7 | Tests: unit + integration Testcontainers (flujo emisión→webhook simulado→APLICADA→cierre mensual), cobertura ≥80% en `modules/` |
-| 1.8 | CI GitHub Actions backend (port de imedba) + si sobra tiempo: frontend-ci (tsc + lint + build) |
+| 1.7 | ✅ Tests: unit + integration Testcontainers (`RecetaFlowIT`: emisión→webhook simulado→APLICADA→cierre mensual). Separación surefire (`mvn test`, sin Docker) / failsafe (`mvn verify`, con Testcontainers) |
+| 1.8 | ✅ CI GitHub Actions (`.github/workflows/ci.yml`): backend `mvn verify` + frontend tsc/lint/build. Push/PR a `main`. + `.gitattributes` (EOL LF para scripts) |
 
 **Demo intermedia con Gon (~fin jul)**: flujo completo en stub — emitir receta, simular webhook, ver
 APLICADA + $$$ en dashboard. Sirve para validar UX y cerrar las preguntas abiertas (abajo).
@@ -143,8 +143,8 @@ enciende en 2.1/2.2 al conectar los clientes HTTP reales.
 
 ## Preguntas abiertas para Gon (cerrar en Fase 0/1 — ninguna bloquea el arranque)
 
-1. **% de descuento**: ¿fijo global (ej. 30%)? ¿lo elige el nutricionista por receta con un tope? Default actual: parámetro global.
-2. **Comisión del nutricionista**: ¿qué %? ¿sobre el total de la orden o solo sobre los productos recetados? (impacta el cálculo del cierre mensual)
+1. **% de descuento**: ✅ RESUELTO (2026-07-27) — **fijo global, configurable por el admin** en runtime (el nutricionista NO lo elige). Implementado: `configuracion_sistema` + `GET /configuracion` / `PUT /admin/configuracion` + pantalla admin. El **valor** concreto sigue TBD con Gon (seed inicial 15%).
+2. **Comisión del nutricionista**: ✅ el % es **configurable por el admin** (mismo módulo; seed 10%). Pendiente con Gon: el **valor** y si es sobre el total de la orden o solo sobre los productos recetados (hoy: sobre el total de la orden).
 3. **Metadata de productos** (principio activo, laboratorio, presentación): ¿está cargada en TiendaNube (tags/atributos)? Si no, ¿la cargan ellos en nuestra webapp o pasan planilla?
 4. **Productos por receta**: arrancamos con 1 (el mail lo sugiere). ¿Confirmás? El modelo ya soporta N.
 5. **Proveedor de email y WhatsApp** (costos a cargo del cliente): proponemos SES + Meta Cloud API. ¿Tienen WABA (WhatsApp Business) verificado? Si no, iniciar el trámite YA (tarda semanas).

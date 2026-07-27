@@ -96,9 +96,8 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 | POST | `/recetas/{id}/reenviar` | re-encola las notificaciones (solo PENDIENTE) |
 
 ```json
-// RecetaCreateRequest
-{ "pacienteId": "...", "items": [ { "productoId": "...", "cantidad": 1, "indicaciones": "1 medida post-entreno" } ],
-  "descuentoPct": 30.0 }        // opcional: default del parámetro de config
+// RecetaCreateRequest — el % de descuento NO viaja: es fijo global, lo define el admin (ver Configuración).
+{ "pacienteId": "...", "items": [ { "productoId": "...", "cantidad": 1, "indicaciones": "1 medida post-entreno" } ] }
 
 // RecetaResponse
 { "id": "...", "codigo": "RX-7K2M4X", "estado": "PENDIENTE",
@@ -144,6 +143,16 @@ Todo dato real; el front deriva ticket promedio (`ventas/aplicadas`) y el delta 
 ] }
 ```
 
+## Configuración — parámetros de negocio
+
+Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión** los define el admin en runtime
+(tabla `configuracion_sistema`, seed inicial 15/10). El emisor de recetas lee el descuento de acá (read-only).
+
+| Método | Path | Auth | Notas |
+|---|---|---|---|
+| GET | `/configuracion` | autenticado | `{ "descuentoPct": 15.0, "comisionPct": 10.0 }` |
+| PUT | `/admin/configuracion` | `admin:manage` | body `{ "descuentoPct": 25.0, "comisionPct": 12.0 }` (ambos [0,100]); comisión afecta solo conversiones futuras |
+
 ## Admin — `admin:manage`
 
 | Método | Path | Notas |
@@ -165,7 +174,8 @@ Todo dato real; el front deriva ticket promedio (`ventas/aplicadas`) y el delta 
 | Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
 | Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |
 | Pacientes | CRUD `/pacientes` |
-| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` + `POST /recetas` |
+| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` + `GET /configuracion` (descuento) + `POST /recetas` |
 | Recetas | `GET /recetas` + detalle + anular/reenviar |
+| Configuración (admin) | `GET /configuracion` + `PUT /admin/configuracion` |
 | Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar |
 | Admin Integraciones | `GET /admin/integraciones/estado` + sync (Fase 2, baja prioridad) |

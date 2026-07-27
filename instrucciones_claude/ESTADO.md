@@ -14,7 +14,11 @@
 
 ## Santi / backend / infra / db / auth
 
-**Fase actual:** Fase 1 — Backend completo con stubs (21 jul – 8 ago, Santi solo). **Núcleo + webhook (1.4) + clientes HTTP reales (1.6) cerrados; suite 56/56.**
+**Fase actual:** Fase 1 — Backend completo con stubs. **✅ COMPLETA (1.1–1.8), 2026-07-27.** Núcleo + webhook (1.4) + clientes HTTP reales (1.6) + estadísticas + config de negocio por admin + **integración Testcontainers (1.7)** + **CI (1.8)**. `mvn verify` = 61 unit + 1 IT, BUILD SUCCESS.
+
+**1.7/1.8 (2026-07-27):** `RecetaFlowIT` (Testcontainers Postgres, flujo emisión→webhook→APLICADA→cierre) vía failsafe (`mvn verify`; `mvn test` sigue sin Docker). CI `.github/workflows/ci.yml` (backend `sh mvnw verify` + frontend tsc/lint/build, push/PR a main). `.gitattributes` nuevo (EOL LF para scripts, cierra el pendiente de Fran).
+
+**Parámetros de negocio configurables por admin (2026-07-27):** `modules/configuracion/` — descuento (fijo global) y comisión editables en runtime (`GET /configuracion`, `PUT /admin/configuracion`, tabla `configuracion_sistema` seed 15/10). `RecetaService`/webhook leen de ahí; `RecetaCreateRequest` ya no lleva `descuentoPct`. Front: pantalla `/configuracion` (solo admin) + `EmitirReceta` lo muestra read-only. Cierra preguntas abiertas #1/#2 (valor exacto TBD con Gon).
 
 **⚠️ Prioridad #1 — rediseño de UI COMPLETO (2026-07-27, R.1–R.7):** todas las pantallas alineadas al mockup
 (`instrucciones_claude/Diseño gestor recetas nutricionista/`). Usuario autorizó implementarlo **sobre main** (Comic Neue).
@@ -46,11 +50,11 @@ Emitir/Recetas/Pacientes (ya heredan tokens+navbar; consistentes). Detalle R.1�
   (`smoke-fase1.sh` 17/17, `smoke-webhook.sh` 13/13). Hardening de Fase 3 (service-account KC, rate limiting `/registro`
   **y `/webhooks`**) documentado en DIARIO — no bloquea.
 
-**Próximo paso:**
-- **Rediseño de UI (prioridad #1)** — en espera de la decisión de coordinación con Fran (arriba). Sistema de diseño ya
-  extraído (verde `#0f8a66`/`#16302c`, Comic Neue, top navbar). Ver `04-plan-de-fases.md` §"Rediseño de UI".
-- **1.7** Suite formal (integration Testcontainers del flujo emisión→webhook→APLICADA→cierre); hoy hay unit + smoke e2e.
-- **1.8** CI GitHub Actions (backend + tsc/lint/build front).
+**Próximo paso (Fase 1 CERRADA — lo que sigue es Fase 2 / pendientes menores):**
+- **Verificación visual e2e del rediseño** (único pendiente del rediseño; no bloquea): levantar stack y revisar en vivo.
+- **Fase 2 — integraciones reales** (necesita a Gon: credenciales + tienda demo TiendaNube + proveedor mail/WhatsApp).
+  Incluye tareas de resiliencia 2.7–2.9 ya planificadas.
+- **Hardening Fase 3:** rate-limiting `/registro` y `/webhooks`, service-account KC (documentado, no bloquea).
 
 **Bloqueado por el otro:** nada.
 
