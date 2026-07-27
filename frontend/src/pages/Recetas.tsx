@@ -48,7 +48,20 @@ export function Recetas() {
 
   return (
     <section>
-      <h1 className="page-title">Recetas</h1>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Recetas</h1>
+          <p className="muted">
+            {data
+              ? `${data.totalElements} receta${data.totalElements === 1 ? "" : "s"} emitida${data.totalElements === 1 ? "" : "s"}`
+              : "Historial de recetas emitidas"}
+          </p>
+        </div>
+        <Link className="btn btn--primary" to="/recetas/nueva">
+          <Icon name="file-plus" />
+          Emitir receta
+        </Link>
+      </div>
 
       <div className="filtros card">
         <input

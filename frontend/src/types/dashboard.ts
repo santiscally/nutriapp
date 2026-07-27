@@ -10,6 +10,20 @@ export interface DashboardResumen {
   ultimasRecetas: RecetaResponse[];
 }
 
+// GET /dashboard/estadisticas?meses=6 — serie mensual real (cronológica; el último es el mes en curso).
+export interface EstadisticasMes {
+  year: number;
+  month: number;
+  recetasEmitidas: number;
+  recetasAplicadas: number;
+  ventasGeneradas: number;
+  comisionTotal: number;
+}
+
+export interface Estadisticas {
+  meses: EstadisticasMes[];
+}
+
 // GET /dashboard/cierre-mensual?year=&month= — shape del contrato (endpoint aún en 500, no verificado).
 export interface CierreMensual {
   year: number;

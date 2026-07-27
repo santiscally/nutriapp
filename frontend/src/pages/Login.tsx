@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { Icon } from "../components/ui/Icon";
 
 export function Login() {
   const { me, initializing, login } = useAuth();
@@ -30,20 +31,43 @@ export function Login() {
 
   return (
     <div className="auth">
-      {/* Panel izquierdo: marca (hueco para el logo cuando esté) */}
+      {/* Panel izquierdo: marca + propuesta de valor */}
       <aside className="auth__brand">
-        <div className="auth__brand-inner">
-          {/* logo va acá cuando lo tengamos */}
-          <h1 className="auth__brand-name">NutriApp</h1>
-          <p className="auth__brand-sub">Recetas digitales para nutricionistas</p>
+        <div className="auth__brand-top">
+          <span className="auth__brand-badge">
+            <Icon name="leaf" />
+          </span>
+          <span className="auth__brand-name">NutriApp</span>
         </div>
+
+        <div className="auth__value">
+          <h2 className="auth__headline">Recetas digitales con descuento, en dos minutos.</h2>
+          <p className="auth__lead">
+            Emitís la receta, el paciente recibe su código por mail y WhatsApp, y ves el cierre de
+            comisiones del mes sin planillas.
+          </p>
+          <div className="auth__stats">
+            <div>
+              <div className="auth__stat-num">30 días</div>
+              <div className="auth__stat-label">de vigencia por receta</div>
+            </div>
+            <div>
+              <div className="auth__stat-num">Mail + WhatsApp</div>
+              <div className="auth__stat-label">entrega al paciente</div>
+            </div>
+          </div>
+        </div>
+
+        <p className="auth__note">
+          Acceso exclusivo para nutricionistas validados por el administrador.
+        </p>
       </aside>
 
       {/* Panel derecho: formulario */}
       <main className="auth__panel">
         <form className="auth__card" onSubmit={onSubmit}>
-          <h1 className="auth__title">Bienvenido</h1>
-          <p className="auth__subtitle">Ingresá con tu cuenta</p>
+          <h1 className="auth__title">Bienvenida de nuevo</h1>
+          <p className="auth__subtitle">Ingresá con tu email profesional.</p>
 
           <label className="field">
             <span>Usuario o email</span>
@@ -73,8 +97,8 @@ export function Login() {
             {submitting ? "Ingresando…" : "Ingresar"}
           </button>
 
-          <p className="registro__foot muted">
-            ¿Sos nutricionista nuevo? <Link to="/registro">Registrate</Link>
+          <p className="auth__foot">
+            ¿Sos nutricionista y todavía no tenés cuenta? <Link to="/registro">Solicitar acceso</Link>
           </p>
         </form>
       </main>

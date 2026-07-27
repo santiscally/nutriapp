@@ -5,13 +5,14 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { EstadisticasCharts } from "../components/dashboard/EstadisticasCharts";
 import { RecetaDetalle } from "../components/receta/RecetaDetalle";
 import { EstadoBadge } from "../components/ui/EstadoBadge";
 import { Icon } from "../components/ui/Icon";
 import { TableSkeleton, TilesSkeleton } from "../components/ui/Skeleton";
 import { useFetch } from "../hooks/useFetch";
 import { fecha, money } from "../lib/format";
-import type { DashboardResumen } from "../types/dashboard";
+import type { DashboardResumen, Estadisticas } from "../types/dashboard";
 import type { RecetaResponse } from "../types/receta";
 
 const totalReceta = (r: RecetaResponse) => {
@@ -26,11 +27,36 @@ export function Dashboard() {
     [],
   );
   const { data, loading, error } = useFetch(fetcher);
+  const statsFetcher = useCallback(
+    (signal: AbortSignal) =>
+      api.get<Estadisticas>("/dashboard/estadisticas", { meses: 6 }, signal),
+    [],
+  );
+  const { data: stats } = useFetch(statsFetcher);
   const [detalleId, setDetalleId] = useState<string | null>(null);
 
   return (
     <section>
-      <h1 className="page-title">Hola, {me?.nombre} 👋</h1>
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Hola, {me?.nombre} 👋</h1>
+          <p className="muted">
+            {data
+              ? `Tenés ${data.recetasPendientes} receta${data.recetasPendientes === 1 ? "" : "s"} pendiente${data.recetasPendientes === 1 ? "" : "s"}.`
+              : "Tu resumen de hoy."}
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+          <Link className="btn btn--ghost" to="/pacientes">
+            <Icon name="users" size={17} />
+            Nuevo paciente
+          </Link>
+          <Link className="btn btn--ghost" to="/cierre-mensual">
+            <Icon name="trending-up" size={17} />
+            Ver cierre
+          </Link>
+        </div>
+      </div>
 
       {loading && (
         <>
@@ -73,7 +99,18 @@ export function Dashboard() {
                 <span className="tile__value">{money(data.comisionMesActual)}</span>
               </span>
             </div>
+            <div className="card tile">
+              <span className="tile__icon tile__icon--green">
+                <Icon name="trending-up" />
+              </span>
+              <span className="tile__body">
+                <span className="tile__label">Ventas generadas (mes)</span>
+                <span className="tile__value">{money(data.ventasGeneradasMesActual)}</span>
+              </span>
+            </div>
           </div>
+
+          {stats && <EstadisticasCharts stats={stats} />}
 
           <div className="section-head">
             <h2 className="section-title">Últimas recetas</h2>

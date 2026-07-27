@@ -1,61 +1,85 @@
-// Layout autenticado: Sidebar (navegación) + Topbar (usuario + logout) + <Outlet/> para las páginas.
+// Layout autenticado (rediseño 2026-07-26): top NavBar (marca + navegación + CTA + usuario) +
+// contenido centrado (<Outlet/>) + Footer. Reemplaza el sidebar/topbar anterior.
 
-import { NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { Icon, type IconName } from "../ui/Icon";
+import { Icon } from "../ui/Icon";
+import { Footer } from "./Footer";
 
-const NAV: { to: string; label: string; icon: IconName }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: "grid" },
-  { to: "/recetas/nueva", label: "Emitir receta", icon: "file-plus" },
-  { to: "/recetas", label: "Recetas", icon: "clipboard" },
-  { to: "/pacientes", label: "Pacientes", icon: "users" },
+const NAV: { to: string; label: string; end?: boolean }[] = [
+  { to: "/dashboard", label: "Panel" },
+  { to: "/recetas", label: "Recetas", end: true },
+  { to: "/pacientes", label: "Pacientes" },
+  { to: "/cierre-mensual", label: "Cierre mensual" },
 ];
 
 const initials = (nombre?: string, apellido?: string) =>
   `${nombre?.[0] ?? ""}${apellido?.[0] ?? ""}`.toUpperCase() || "·";
 
+const roleLabel = (roles?: string[]) =>
+  roles?.includes("ADMIN") ? "Administrador" : "Nutricionista";
+
 export function AppLayout() {
   const { me, logout } = useAuth();
 
   return (
-    <div className="layout">
-      <aside className="sidebar">
-        <div className="sidebar__brand">
-          <Icon name="leaf" />
-          NutriApp
-        </div>
-        <nav className="sidebar__nav">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/recetas"}
-              className={({ isActive }) =>
-                "sidebar__link" + (isActive ? " sidebar__link--active" : "")
-              }
-            >
-              <Icon name={item.icon} />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+    <div className="app-shell">
+      <header className="navbar">
+        <div className="navbar__inner">
+          <Link to="/dashboard" className="navbar__brand">
+            <span className="navbar__brand-badge">
+              <Icon name="leaf" />
+            </span>
+            NutriApp
+          </Link>
 
-      <div className="main">
-        <header className="topbar">
-          <div className="topbar__user">
-            <span className="avatar">{initials(me?.nombre, me?.apellido)}</span>
-            {me ? `${me.nombre} ${me.apellido}` : ""}
+          <nav className="navbar__nav">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  "navbar__link" + (isActive ? " navbar__link--active" : "")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="navbar__right">
+            <Link to="/recetas/nueva" className="navbar__cta">
+              <Icon name="plus" size={17} />
+              Nueva receta
+            </Link>
+            <div className="navbar__divider" />
+            <div className="navbar__user">
+              <span className="avatar">{initials(me?.nombre, me?.apellido)}</span>
+              <span className="navbar__user-meta">
+                <span className="navbar__user-name">
+                  {me ? `${me.nombre} ${me.apellido}` : ""}
+                </span>
+                <span className="navbar__user-role">{roleLabel(me?.roles)}</span>
+              </span>
+            </div>
+            <button
+              className="navbar__logout"
+              onClick={logout}
+              title="Salir"
+              aria-label="Salir"
+            >
+              <Icon name="logout" size={17} />
+            </button>
           </div>
-          <button className="btn btn--ghost" onClick={logout}>
-            <Icon name="logout" />
-            Salir
-          </button>
-        </header>
-        <main className="content">
-          <Outlet />
-        </main>
-      </div>
+        </div>
+      </header>
+
+      <main className="content">
+        <Outlet />
+      </main>
+
+      <Footer />
     </div>
   );
 }

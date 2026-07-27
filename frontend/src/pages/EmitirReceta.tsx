@@ -88,7 +88,14 @@ export function EmitirReceta() {
 
   return (
     <section className="emitir">
-      <h1 className="page-title">Emitir receta</h1>
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h1 className="page-title" style={{ marginBottom: "0.35rem" }}>
+          Emitir receta
+        </h1>
+        <p className="muted">
+          Elegí el paciente y los productos; el código de descuento se genera al emitir.
+        </p>
+      </div>
 
       <div className="emitir__grid">
         {/* ---- Columna izquierda: selección ---- */}

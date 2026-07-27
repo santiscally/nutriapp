@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import { RequireAuth } from "./components/layout/RequireAuth";
 import { ToastProvider } from "./components/ui/Toast";
+import { CierreMensual } from "./pages/CierreMensual";
 import { Dashboard } from "./pages/Dashboard";
 import { EmitirReceta } from "./pages/EmitirReceta";
 import { Login } from "./pages/Login";
@@ -32,6 +33,7 @@ export default function App() {
             <Route path="/recetas/nueva" element={<EmitirReceta />} />
             <Route path="/recetas" element={<Recetas />} />
             <Route path="/pacientes" element={<Pacientes />} />
+            <Route path="/cierre-mensual" element={<CierreMensual />} />
           </Route>
 
           {/* Fallback */}

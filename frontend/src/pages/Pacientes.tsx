@@ -20,6 +20,9 @@ const PAGE_SIZE = 10;
 // null = form cerrado; { paciente: null } = alta; { paciente } = edición.
 type FormState = { paciente: Paciente | null } | null;
 
+const initials = (nombre?: string, apellido?: string) =>
+  `${nombre?.[0] ?? ""}${apellido?.[0] ?? ""}`.toUpperCase() || "·";
+
 export function Pacientes() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
@@ -60,7 +63,14 @@ export function Pacientes() {
   return (
     <section>
       <div className="page-head">
-        <h1 className="page-title">Pacientes</h1>
+        <div>
+          <h1 className="page-title">Pacientes</h1>
+          <p className="muted">
+            {data
+              ? `${data.totalElements} paciente${data.totalElements === 1 ? "" : "s"}`
+              : "Tu cartera de pacientes"}
+          </p>
+        </div>
         <button className="btn btn--primary" onClick={() => setForm({ paciente: null })}>
           <Icon name="plus" />
           Nuevo paciente
@@ -109,7 +119,12 @@ export function Pacientes() {
               {data.content.map((p) => (
                 <tr key={p.id}>
                   <td>
-                    {p.nombre} {p.apellido}
+                    <span style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
+                      <span className="avatar">{initials(p.nombre, p.apellido)}</span>
+                      <span style={{ fontWeight: 700 }}>
+                        {p.nombre} {p.apellido}
+                      </span>
+                    </span>
                   </td>
                   <td>{p.email}</td>
                   <td className="mono">{p.whatsapp}</td>
@@ -121,7 +136,7 @@ export function Pacientes() {
                     >
                       Editar
                     </button>
-                    <button className="btn btn--sm btn--ghost" onClick={() => onDelete(p)}>
+                    <button className="btn btn--sm btn--danger" onClick={() => onDelete(p)}>
                       Eliminar
                     </button>
                   </td>
