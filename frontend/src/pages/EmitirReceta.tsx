@@ -2,13 +2,15 @@
 // derecha = resumen sticky tipo carrito (items + descuento + total + emitir).
 // El modelo soporta N items; la UI arranca en 1 pero permite agregar/quitar varios.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ApiRequestError } from "../api/client";
+import { getConfiguracion } from "../api/configuracion";
 import { emitirReceta } from "../api/recetas";
 import { PacientePicker } from "../components/receta/PacientePicker";
 import { ProductoBuscador } from "../components/receta/ProductoBuscador";
 import { RecetaExito } from "../components/receta/RecetaExito";
 import { Icon } from "../components/ui/Icon";
+import { useFetch } from "../hooks/useFetch";
 import { money } from "../lib/format";
 import type { Paciente } from "../types/paciente";
 import type { Producto } from "../types/producto";
@@ -20,15 +22,17 @@ interface ItemDraft {
   indicaciones: string;
 }
 
-const DESCUENTO_DEFAULT = 30;
-
 export function EmitirReceta() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [items, setItems] = useState<ItemDraft[]>([]);
-  const [descuentoPct, setDescuentoPct] = useState(DESCUENTO_DEFAULT);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecetaResponse | null>(null);
+
+  // Descuento fijo global: lo define el admin, el nutricionista no lo edita.
+  const configFetcher = useCallback((s: AbortSignal) => getConfiguracion(s), []);
+  const { data: config } = useFetch(configFetcher);
+  const descuentoPct = config?.descuentoPct ?? 0;
 
   const selectedIds = useMemo(() => new Set(items.map((i) => i.producto.id)), [items]);
 
@@ -66,7 +70,6 @@ export function EmitirReceta() {
           cantidad: i.cantidad,
           indicaciones: i.indicaciones.trim() || undefined,
         })),
-        descuentoPct,
       });
       setResult(receta);
     } catch (err) {
@@ -79,7 +82,6 @@ export function EmitirReceta() {
   function reset() {
     setPaciente(null);
     setItems([]);
-    setDescuentoPct(DESCUENTO_DEFAULT);
     setError(null);
     setResult(null);
   }
@@ -186,19 +188,6 @@ export function EmitirReceta() {
                 ))}
               </ul>
             )}
-
-            <label className="field field--inline resumen-card__desc">
-              <span>Descuento (%)</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={descuentoPct}
-                onChange={(e) =>
-                  setDescuentoPct(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
-                }
-              />
-            </label>
 
             <div className="resumen">
               <div>

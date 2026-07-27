@@ -14,7 +14,7 @@ export interface RecetaItemInput {
 export interface RecetaCreateRequest {
   pacienteId: string;
   items: RecetaItemInput[];
-  descuentoPct?: number; // opcional: default del parámetro de config del back
+  // El % de descuento NO viaja: es fijo global, lo define el admin (GET /configuracion).
 }
 
 // --- Response ---

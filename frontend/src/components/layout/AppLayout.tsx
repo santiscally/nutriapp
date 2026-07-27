@@ -21,6 +21,8 @@ const roleLabel = (roles?: string[]) =>
 
 export function AppLayout() {
   const { me, logout } = useAuth();
+  const isAdmin = me?.roles.includes("ADMIN") ?? false;
+  const nav = isAdmin ? [...NAV, { to: "/configuracion", label: "Configuración" }] : NAV;
 
   return (
     <div className="app-shell">
@@ -34,7 +36,7 @@ export function AppLayout() {
           </Link>
 
           <nav className="navbar__nav">
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
