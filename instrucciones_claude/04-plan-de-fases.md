@@ -16,6 +16,43 @@ jul 17 ──── jul 21 │ jul 22 ──────────────
 
 ---
 
+## ⭐ Prioridad #1 — Rediseño de UI (recibido 2026-07-26)
+
+El usuario trajo un **rediseño completo de la SPA** hecho con Claude design. Mockups en
+`instrucciones_claude/Diseño gestor recetas nutricionista/` (`.dc.html`, uno por pantalla:
+Login, Registro, NavBar, Footer, Dashboard, EmitirReceta, Pacientes, Recetas, RecetaEmitida, CierreMensual).
+**Es la prioridad #1**: manda sobre el resto del backlog de Fase 1 en adelante.
+
+**Sistema de diseño (extraído de los mockups):**
+- Paleta: primario `#0f8a66` (hover `#0b6e51`), verde oscuro `#16302c`, menta `#e4f3ec` / acento `#57d3a6`,
+  fondo `#f4f6f3`, borde `#e6e6df`, texto `#16302c` / muted `#6c7b78` / sutil `#8b9793`.
+- Formas: radios 10–12px, sombras suaves (`0 2px 8px rgba(15,138,102,.24)` en CTAs), inputs con focus-ring verde.
+- Tipografía: **Comic Neue** (redondeada, amigable). ⚠️ Confirmar con el usuario que es intencional (estética Comic Sans).
+- **Cambio estructural:** de **sidebar** (layout actual de Fran) a **top navbar** (Panel / Recetas / Pacientes /
+  Cierre mensual + CTA "Nueva receta" + avatar con nombre/matrícula + botón salir).
+- Login: split-screen (panel verde oscuro con value-prop a la izquierda + formulario a la derecha).
+
+**⚠️ Coordinación / propiedad (a resolver con el usuario antes de implementar):**
+`frontend/` es **propiedad de Fran** y su SPA + el contrato están **congelados durante sus vacaciones** (vuelve ~12-08).
+Un rediseño total desde el Claude de Santi entra en conflicto con la regla de propiedad y arriesga un **merge grande**
+a la vuelta de Fran (Fran ya construyó las 6 pantallas con un refresh visual propio: sidebar + paleta cálida + íconos).
+**Decisión pendiente del usuario:** quién implementa (Santi ahora / esperar a Fran / juntos) y si se autoriza tocar
+`frontend/`. Hasta esa decisión: **solo planificado, `frontend/` intacto.**
+
+**Desglose tentativo (cuando se apruebe implementación):**
+| # | Tarea |
+|---|---|
+| R.1 | Tokens del sistema de diseño (CSS vars: paleta, radios, sombras, fuente) + reset global + carga de Comic Neue |
+| R.2 | Layout: reemplazar Sidebar/Topbar por **top NavBar** + Footer (nav activo, avatar, CTA "Nueva receta") |
+| R.3 | Login + Registro (split-screen; pantalla "pendiente de aprobación") |
+| R.4 | Dashboard (tiles pendientes/aplicadas/comisión + tabla últimas recetas) |
+| R.5 | Emitir Receta (2 columnas: picker paciente + buscador productos + resumen sticky) y pantalla "Receta emitida" (código grande) |
+| R.6 | Pacientes (lista+búsqueda+alta/edición) y Recetas (lista+filtros+detalle) |
+| R.7 | Cierre mensual |
+> Nota: los mockups son estáticos (`.dc.html` + `support.js` es el runtime del design tool, no React). Implementar =
+> **portar el lenguaje visual a la SPA React de Fran** (`frontend/src/`), reutilizando su `api/client.ts`/`useFetch`/rutas.
+> No cambia el contrato back↔front (mismos endpoints/DTOs); es capa de presentación.
+
 ## Fase 0 — Cimientos + sprint pre-vacaciones de Fran (vie 17 → mar 21 jul)
 
 **Objetivo:** al final del martes 21, el stack levanta con `docker compose up`, el backend expone los
@@ -70,6 +107,29 @@ APLICADA + $$$ en dashboard. Sirve para validar UX y cerrar las preguntas abiert
 | 2.4 | WhatsApp live: WABA + número + template aprobado por Meta (⚠️ la aprobación tarda — **iniciar el trámite en Fase 1**); fallback `wa.me` si se demora |
 | 2.5 | Switch a la tienda TBC real + prueba end-to-end real (receta → mail/wa → compra de prueba → APLICADA) |
 | 2.6 | Fran (desde el 12): pulido de las pantallas con data real, admin integraciones, F.6 si quedó pendiente |
+
+### Resiliencia / fallbacks manuales ante caída de terceros (pedido de Gon, 2026-07-23)
+
+Requisito del cliente: que la plataforma **degrade con gracia y mensajes muy explícitos** cuando una API de
+terceros no responde, y que haya **acciones manuales** para recuperar lo que quedó pendiente. Todo esto es
+**construible y testeable en stub desde ya** (degrada con mensaje claro; al pasar a `live` drena lo acumulado) —
+se difirió a Fase 2 por decisión del usuario, junto con los clientes HTTP reales.
+
+> **Aclaración semántica (no confundir):** la receta **siempre** se emite y queda en estado `PENDIENTE` — ese es su
+> estado normal (= todavía no convertida en compra pagada), **no** es una falla. Lo que "se cae" ante TiendaNube
+> caído es la **sincronización del cupón** (`cupon_sync_estado=PENDIENTE`). El "re-mandar todas las pendientes" es
+> **reintentar el registro del cupón** de las que no sincronizaron — NO reenviar notificaciones (esas ya las reintenta
+> solo el `NotificacionDispatcher` cada 30s).
+
+| # | Tarea | Detalle |
+|---|---|---|
+| 2.7 | **Visibilidad + mensajes explícitos** | `GET /admin/integraciones/estado` (por proveedor: `modo` stub/live, `disponible`, `pendientes` [cupones sin sync / notifs QUEUED], `ultimoError`, `ultimaSync`). En la emisión, devolver un **mensaje humano** de degradación ("El cupón quedó pendiente: TiendaNube no está disponible, se reintentará solo") además del enum `cuponSyncEstado`. Consolidar los 503 de `IntegrationUnavailableException` con texto claro por proveedor. |
+| 2.8 | **Cupones: reconciliación + resync manual** | `CuponSyncJob` (`@Scheduled`): reintenta `createCoupon` para recetas con `cupon_sync_estado=PENDIENTE`/`ERROR` cuya receta siga `PENDIENTE`. `POST /admin/tiendanube/resync-cupones` (admin): dispara la reconciliación manual y devuelve `{intentados, sincronizados, pendientes}`. En stub sigue degradando con mensaje explícito. **Resync = solo cupones** (confirmado con el cliente). |
+| 2.9 | **Productos Contabilium: sync manual + persistente** | El catálogo **ya vive en la DB y se usa siempre** desde ahí (no depende de la API en runtime) — esa parte está hecha. Falta: `POST /admin/contabilium/sync-productos` (manual, admin) + `ProductoSyncService` (conciliación por SKU, `last_synced_at`). En stub → 503 explícito "Contabilium no conectada"; en live (2.2) hace el full-scan nightly + on-demand. |
+
+Notas de implementación cuando se encare: las 3 son endpoints/jobs de **admin** (`admin:manage`); nuevos, no tocan
+shapes existentes del contrato congelado. Escribible en 1.6 (scaffold de jobs/endpoints degradando en stub) y se
+enciende en 2.1/2.2 al conectar los clientes HTTP reales.
 
 ## Fase 3 — Pulido + hardening + deploy (lun 24 ago → vie 11 sep)
 

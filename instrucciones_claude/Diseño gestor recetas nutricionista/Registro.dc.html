@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#f4f6f3; color:#16302c; font-family:"Comic Neue","Comic Sans MS","Comic Sans",ui-rounded,cursive; -webkit-font-smoothing:antialiased; }
+    a { color:#0f8a66; } a:hover { color:#0b6e51; }
+    * { box-sizing:border-box; }
+    input, button, select { font:inherit; }
+  </style>
+</helmet>
+<div style="min-height:100vh;display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))">
+  <div style="background:#16302c;padding:56px 60px;display:flex;flex-direction:column;justify-content:space-between;color:#fff">
+    <div style="display:flex;align-items:center;gap:11px">
+      <span style="width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.1);display:grid;place-items:center">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#57d3a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6"></path></svg>
+      </span>
+      <span style="font-size:20px;font-weight:700">NutriApp</span>
+    </div>
+    <div style="max-width:420px">
+      <h2 style="margin:0;font-size:32px;font-weight:700;line-height:1.25;letter-spacing:-0.02em">Cada cuenta se valida a mano.</h2>
+      <p style="margin:18px 0 0;font-size:16px;line-height:1.6;color:#a9c2bc">Verificamos tu matrícula con el colegio profesional antes de habilitarte. Suele tardar entre 24 y 48 horas hábiles.</p>
+      <ul style="list-style:none;margin:34px 0 0;padding:0;display:flex;flex-direction:column;gap:14px">
+        <li style="display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:#cfe0db"><span style="color:#57d3a6;font-weight:700">1.</span>Completás tus datos y número de matrícula.</li>
+        <li style="display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:#cfe0db"><span style="color:#57d3a6;font-weight:700">2.</span>El administrador verifica y aprueba la cuenta.</li>
+        <li style="display:flex;gap:11px;align-items:flex-start;font-size:14.5px;color:#cfe0db"><span style="color:#57d3a6;font-weight:700">3.</span>Recibís un mail y ya podés emitir recetas.</li>
+      </ul>
+    </div>
+    <p style="margin:0;font-size:12.5px;color:#7d968f">Tus datos se usan solo para la validación profesional.</p>
+  </div>
+
+  <div style="display:grid;place-items:center;padding:48px 28px">
+    <div style="width:100%;max-width:440px">
+      <h1 style="margin:0;font-size:28px;font-weight:700;letter-spacing:-0.02em">Solicitar acceso</h1>
+      <p style="margin:8px 0 28px;font-size:15px;color:#6c7b78">Todos los campos son obligatorios.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Nombre
+          <input type="text" placeholder="Lucía" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Apellido
+          <input type="text" placeholder="Méndez" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78;grid-column:1/-1">Email profesional
+          <input type="email" placeholder="lucia.mendez@consultorio.com" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Matrícula nacional
+          <input type="text" placeholder="MN 12.483" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Provincia
+          <select style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+            <option>Buenos Aires</option>
+            <option>CABA</option>
+            <option>Córdoba</option>
+            <option>Santa Fe</option>
+            <option>Mendoza</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Contraseña
+          <input type="password" placeholder="••••••••" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Repetir contraseña
+          <input type="password" placeholder="••••••••" style="padding:12px 14px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fff;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+        </label>
+      </div>
+
+      <label style="display:flex;gap:10px;align-items:flex-start;margin:20px 0 22px;font-size:13.5px;color:#6c7b78;line-height:1.5">
+        <input type="checkbox" style="margin-top:2px;width:16px;height:16px;accent-color:#0f8a66;flex:none">
+        <span>Declaro que la matrícula informada es propia y acepto los <a href="#" style="font-weight:600;text-decoration:none">términos de uso</a> de la plataforma.</span>
+      </label>
+
+      <button style="display:flex;align-items:center;justify-content:center;width:100%;padding:14px 20px;border:none;border-radius:12px;background:#0f8a66;color:#fff;font-size:15.5px;font-weight:700;box-shadow:0 2px 8px rgba(15,138,102,.24);cursor:pointer" style-hover="background:#0b6e51">Enviar solicitud</button>
+
+      <p style="margin:24px 0 0;text-align:center;font-size:14px;color:#6c7b78">¿Ya tenés cuenta? <a href="Login.dc.html" style="font-weight:700;text-decoration:none">Ingresar</a></p>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

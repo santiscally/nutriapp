@@ -14,7 +14,17 @@
 
 ## Santi / backend / infra / db / auth
 
-**Fase actual:** Fase 1 — Backend completo con stubs (21 jul – 8 ago, Santi solo). **Núcleo de Fase 1 cerrado y verificado e2e (2026-07-22, smoke 17/17).**
+**Fase actual:** Fase 1 — Backend completo con stubs (21 jul – 8 ago, Santi solo). **Núcleo + webhook (1.4) + clientes HTTP reales (1.6) cerrados; suite 56/56.**
+
+**⚠️ Prioridad #1 — rediseño de UI COMPLETO (2026-07-27, R.1–R.7):** todas las pantallas alineadas al mockup
+(`instrucciones_claude/Diseño gestor recetas nutricionista/`). Usuario autorizó implementarlo **sobre main** (Comic Neue).
+**Pendiente único:** verificación visual e2e con el stack corriendo. Se commitea todo a main. **Hecho y verificado (build+lint OK):** tokens del
+sistema (`index.css`), **shell sidebar→top navbar + footer** (`AppLayout`+`Footer`), tiles reestilados, **página nueva
+`/cierre-mensual`** (endpoint real), Dashboard con header/acciones/4º tile + **gráficos reales** (barras recetas/mes +
+tendencia comisión) contra el **nuevo `GET /dashboard/estadisticas`** (backend, suite 58/58), y **Login / Registro /
+RecetaEmitida** alineadas al mockup (split-screen). **Falta:** verificación visual e2e + fine-tuning opcional de
+Emitir/Recetas/Pacientes (ya heredan tokens+navbar; consistentes). Detalle R.1–R.7 en `04-plan-de-fases.md`.
+**Ojo Fran:** el layout y los tokens cambiaron; NO toqué tu sección de este ESTADO (regla de propiedad).
 
 **En qué estoy ahora:**
 - **Fase 1 núcleo hecha y verificada** contra el stack real. Todo lo que Fran flaggeó en 500 anda:
@@ -23,16 +33,24 @@
   `DELETE /pacientes/{id}` → 409 si hay PENDIENTES, `RecetaVencimientoJob` (cron diario + catch-up al startup),
   `GET /dashboard/cierre-mensual`, y **registro + admin vía Keycloak Admin API** (`POST /registro` público crea
   usuario deshabilitado + PENDIENTE; `GET/POST /admin/nutricionistas` aprobar/rechazar habilita/deshabilita en KC).
+- **Webhook TiendaNube (1.4) hecho** (`modules/webhook/`): `POST /webhooks/tiendanube` (HMAC hex tiempo-constante +
+  `webhook_events` idempotente + 200 inmediato), procesamiento async (`getOrder` fuera de tx → matcheo cupón → **APLICADA**
+  + comisión), polling de respaldo (24h), y **simulador de dev** (`POST /api/v1/dev/tiendanube/orden-pagada`, `@Profile("dev")`)
+  para llegar a APLICADA en stub → habilita la demo con Gon. En stub degrada sin romper (evento queda para reintento).
+- **Clientes HTTP reales (1.6) hechos** (`integrations/*/Http*|Smtp*|CloudApi*`): Contabilium (token 24h + throttle 15/10s),
+  TiendaNube (UA + backoff 429, 4 métodos), SMTP mail, WhatsApp Cloud API. Se registran solo con `mode=live`; testeados con
+  WireMock (`wiremock-standalone` test dep). **Conectar de verdad es Fase 2** (credenciales de Gon).
 - Integraciones externas siguen en `mode=stub` (degradan sin romper). Keycloak Admin es always-live (nuestro IdP).
 - Backend local en **:8088**, Keycloak :8081, Postgres :5432. Login dev `nutri@nutriapp.dev` / `test1234` (y `admin@nutriapp.dev`).
-- **Review pasado** (code + security): fixes aplicados (dispatcher I/O fuera de tx, anular cancela notifs, N+1 en lista,
-  compensación de registro, timeouts+cache de Keycloak) + **suite de tests unitarios** (22, `mvn test`). Hardening de
-  Fase 3 (service-account KC, rate limiting `/registro`) documentado en DIARIO — no bloquea.
+- **Review pasado** (code + security): fixes aplicados + **suite de tests unitarios (38, `mvn test`)** + smokes e2e
+  (`smoke-fase1.sh` 17/17, `smoke-webhook.sh` 13/13). Hardening de Fase 3 (service-account KC, rate limiting `/registro`
+  **y `/webhooks`**) documentado en DIARIO — no bloquea.
 
-**Próximo paso (resto de Fase 1 + Fase 2, no bloquea a Fran):**
-- Webhook TiendaNube (HMAC + idempotencia + polling de respaldo) y **clientes HTTP reales** de las 4 integraciones
-  (TiendaNube, Contabilium, mail, WhatsApp) — necesitan credenciales de Gon (Fase 2).
-- Suite de tests formal (unit + Testcontainers): hoy hay smoke e2e (`scripts/smoke-fase1.sh`), falta la cobertura.
+**Próximo paso:**
+- **Rediseño de UI (prioridad #1)** — en espera de la decisión de coordinación con Fran (arriba). Sistema de diseño ya
+  extraído (verde `#0f8a66`/`#16302c`, Comic Neue, top navbar). Ver `04-plan-de-fases.md` §"Rediseño de UI".
+- **1.7** Suite formal (integration Testcontainers del flujo emisión→webhook→APLICADA→cierre); hoy hay unit + smoke e2e.
+- **1.8** CI GitHub Actions (backend + tsc/lint/build front).
 
 **Bloqueado por el otro:** nada.
 

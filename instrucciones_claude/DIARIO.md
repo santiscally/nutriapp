@@ -32,6 +32,143 @@
 
 ## Entradas
 
+## 2026-07-27 — Santi — frontend (rediseño: fine-tuning de Recetas / Pacientes / EmitirReceta — cierra R.1–R.7)
+**Qué:** Últimos ajustes de las pantallas de listado/emisión (ya heredaban navbar+tokens):
+- **Recetas:** `page-head` con subtítulo **real** (`{totalElements} recetas emitidas`) + CTA "Emitir receta". **No** puse los
+  chips de contador por estado del mockup ("Pendientes · 12", etc.) → serían fabricados: el backend pagina, no da totales por estado.
+- **Pacientes:** `page-head` con subtítulo real + **avatar con iniciales** en la fila + botón "Eliminar" en rojo (`btn--danger`).
+  **No** agregué la columna "Recetas" por paciente del mockup → el API de paciente no la trae.
+- **EmitirReceta:** subtítulo bajo el título; el layout 2-col + resumen sticky ya estaba bien.
+**⚠️ Discrepancia (NO la toqué — es decisión de Gon, pregunta abierta #1):** `EmitirReceta` arranca con descuento **30%**
+pero el backend `RECETA_DESCUENTO_DEFAULT_PCT` = **15%**. El front manda el % explícito → el efectivo hoy es 30. A cerrar con Gon.
+**Verificación:** build+lint verdes. **Rediseño completo (R.1–R.7).** Pendiente transversal: verificación visual e2e con el stack corriendo.
+**Refs:** `frontend/src/pages/{Recetas,Pacientes,EmitirReceta}.tsx`.
+
+## 2026-07-26 — Santi — frontend (rediseño: pulido de Login / Registro / RecetaEmitida al mockup)
+**Qué:** Alineé las 3 pantallas de auth/éxito al mockup, reusando el split-screen del sistema (`.auth` retargeteado
+al panel `#16302c` + botón verde).
+- **Login:** split-screen con panel de valor (headline + 2 stats). ⚠️ Usé stats **reales**: "30 días de vigencia" y
+  "Mail + WhatsApp" — **NO** puse el "30% de descuento" del mockup porque el default real es 15% (TBD con Gon), no
+  inventamos números. Sin link "olvidé mi contraseña" (no hay flujo → no fabricar UI muerta).
+- **Registro:** split-screen con panel de 3 pasos de validación; form con los **campos reales** — incluye **teléfono**
+  (el mockup lo omitía pero el backend lo exige, E.164) + confirmar contraseña + checkbox de términos (client-side).
+  **No** agregué "Provincia" (el backend no la persiste → campo muerto). Contrato `POST /registro` intacto.
+- **RecetaEmitida (`RecetaExito`):** check-circle mint, subtítulo mail+WhatsApp, caja de código con descuento+vigencia,
+  **total para el paciente**, y nota de notificaciones honesta (sin los timestamps "09:41" fabricados del mockup).
+**Verificación:** `npm run build` + `npm run lint` verdes.
+**Pendiente:** verificación visual e2e; Emitir/Recetas/Pacientes ya heredan navbar+tokens (consistentes) → fine-tuning opcional.
+**Refs:** `frontend/src/pages/{Login,Registro}.tsx`, `components/receta/RecetaExito.tsx`, `index.css` (bloque `.auth`).
+
+## 2026-07-26 — Santi — backend+frontend (estadísticas del dashboard: endpoint real + gráficos)
+**Qué:** Nuevo endpoint **`GET /api/v1/dashboard/estadisticas?meses=6`** (`dashboard:read`) → serie mensual real
+(cronológica, el último es el mes en curso): `{meses:[{year,month,recetasEmitidas,recetasAplicadas,ventasGeneradas,
+comisionTotal}]}`. `meses` acotado a [1,24], default 6. **Reusa las queries por ventana del cierre** (`countEmitidasEntre`/
+`countAplicadasEntre`/`sumVentasEntre`/`sumComisionEntre`) en un loop mes a mes (N≤24, escala MVP) → sin SQL nuevo y
+unit-testeable con Mockito. `DashboardService.estadisticas()` + `EstadisticasResponse` DTO + endpoint. **+2 tests
+(DashboardServiceTest 6). Suite 58/58, BUILD SUCCESS.**
+**Frontend:** el gráfico de barras "Recetas por mes" + la tarjeta "Comisión del mes" (devengado, **delta % vs mes
+anterior**, ticket promedio) que el mockup traía con **data fabricada** ahora salen de este endpoint real
+(`components/dashboard/EstadisticasCharts.tsx`, barras en CSS puro). Wired en `Dashboard.tsx` (2º fetch). build+lint OK.
+**Por qué:** cerrar los widgets de estadística del rediseño con datos reales sin violar la regla de oro (nada mockeado).
+NO se agregaron objetivo mensual ni proyección al cierre — no tienen base de datos; el delta/ticket se derivan de la serie.
+**Contrato:** `05-api-endpoints.md` §Dashboard actualizado (+ map de Fran).
+**Refs:** `modules/dashboard/{service/DashboardService,controller/DashboardController,dto/EstadisticasResponse}.java`,
+`DashboardServiceTest`, `frontend/src/components/dashboard/EstadisticasCharts.tsx`, `pages/Dashboard.tsx`, `types/dashboard.ts`, `index.css`.
+
+## 2026-07-26 — Santi — frontend (rediseño de UI: shell + tokens + Cierre Mensual — build+lint OK; ⚠️ toqué `frontend/`)
+**Qué:** Empecé a implementar el rediseño en `frontend/` (Fran). **Autorizado explícitamente por el usuario**
+("ahora, sobre main directo"; tipografía **Comic Neue**). Este chunk reestila TODAS las pantallas de una
+(tokens + shell) y agrega la de Cierre Mensual. `npm run build` (tsc -b + vite) y `npm run lint` (oxlint) **verdes**.
+- **Tokens** (`src/index.css`): paleta alineada al mockup — primario `#0f8a66` / hover `#0b6e51`, oscuro `#16302c`,
+  bg `#f4f6f3`, borde `#e6e6df`, muted `#6c7b78`, subtle `#a3aeaa`; **Comic Neue** cargada en `index.html`.
+- **Layout: sidebar/topbar → top NavBar + Footer.** `AppLayout.tsx` reescrito (marca + Panel/Recetas/Pacientes/
+  Cierre mensual + CTA "Nueva receta" + avatar con nombre/rol + botón salir); `components/layout/Footer.tsx` nuevo.
+  Contenido centrado `max-width:1280px`. Tiles reestilados (ícono arriba, número grande).
+- **Página nueva `CierreMensual`** (`/cierre-mensual` + entrada de nav + link en footer) contra el endpoint real
+  `GET /dashboard/cierre-mensual?year=&month=` con selector de los últimos 12 meses (conversión calculada local).
+- **Dashboard**: header con saludo + subtítulo real (pendientes) + acciones (Nuevo paciente / Ver cierre) + 4º tile
+  "Ventas generadas" (dato real `ventasGeneradasMesActual`).
+**Regla de oro respetada:** los mockups traen MUCHA data decorativa fabricada (bar chart de 6 meses, proyección,
+objetivo mensual, ticket promedio, "MN 12.483", "v1.4.2 · sinc 09:41"). **NO se hardcodeó nada de eso** — solo se
+bindeó a endpoints reales; los widgets sin dato real se omitieron (no inventamos números).
+**Problemas:** ninguno (build+lint verdes). **Falta:** verificación **visual e2e** contra el stack corriendo
+(keycloak+backend+vite) — no la corrí en esta sesión.
+**Impacto para Fran (⚠️ importante a la vuelta):** el layout cambió de **sidebar a top navbar**; hay **ruta/página
+nueva `/cierre-mensual`**; los tokens de `index.css` cambiaron (paleta/tipografía). El **contrato back↔front NO
+cambió** (mismos endpoints/DTOs). **NO edité tu sección de `ESTADO.md`** (regla de propiedad) — revisá y actualizala vos.
+**Pendiente del rediseño (fino):** ajustes de copy/detalle en Login, Registro, RecetaEmitida, EmitirReceta, Recetas,
+Pacientes (ya heredan tokens + navbar). Ver desglose R.1–R.7 en `04-plan-de-fases.md`.
+**Refs:** `frontend/index.html`, `src/index.css`, `src/components/layout/{AppLayout,Footer}.tsx`,
+`src/pages/{CierreMensual,Dashboard}.tsx`, `src/App.tsx`.
+
+## 2026-07-26 — Santi — planificación (rediseño completo de UI recibido → prioridad #1; ⚠️ coordinación con Fran)
+**Qué:** El usuario (Santi) trajo un **rediseño completo de la SPA** hecho con Claude design en
+`instrucciones_claude/Diseño gestor recetas nutricionista/` (mockups `.dc.html` de todas las pantallas:
+Login, Registro, NavBar, Footer, Dashboard, EmitirReceta, Pacientes, Recetas, RecetaEmitida, CierreMensual).
+Se registró como **prioridad #1** en `04-plan-de-fases.md` (nueva sección al inicio de Fase 1).
+**Sistema de diseño (extraído de los mockups):** verde cálido primario `#0f8a66` (hover `#0b6e51`), verde
+oscuro `#16302c`, menta `#e4f3ec`/`#57d3a6`, fondo `#f4f6f3`, borde `#e6e6df`, texto muted `#6c7b78`; radios
+10–12px, sombras suaves; **tipografía Comic Neue**. Cambio estructural: de **sidebar** (lo actual de Fran) a
+**top navbar** (Panel / Recetas / Pacientes / Cierre mensual + CTA "Nueva receta" + avatar/logout).
+**⚠️ Coordinación (sin resolver aún):** `frontend/` es **propiedad de Fran** y el contrato/estado de la SPA
+está **congelado durante sus vacaciones** (vuelve ~12-08). Implementar el rediseño desde el Claude de Santi
+choca con la regla de propiedad y arriesga un merge grande a la vuelta de Fran. **Pendiente: decisión del
+usuario** sobre quién y cuándo lo implementa (ver pregunta abierta al usuario). Por ahora solo se registró en
+el plan; **no se tocó `frontend/`**.
+**Refs:** `04-plan-de-fases.md` §"Rediseño de UI (prioridad #1)"; carpeta `instrucciones_claude/Diseño gestor recetas nutricionista/`.
+
+## 2026-07-26 — Santi — backend/integraciones (Fase 1.6: clientes HTTP reales de las 4 integraciones + WireMock; suite 56/56)
+**Qué:** Implementados los 4 clientes reales (se conectan recién en Fase 2; hoy el bean se registra solo con `mode=live`):
+- **`HttpContabiliumClient`**: OAuth2 `client_credentials` (Email→client_id, API key→client_secret), **token manager**
+  (cache ~24h, margen 30min, reintento único ante 401) + **throttle 15 req/10s** (`Throttle`, ventana deslizante) para
+  no gatillar el bloqueo por IP de AR. Métodos `obtenerInfo()` + `buscarConceptos(filtro,page)` (envelope PascalCase
+  `{Items,TotalPage,TotalItems}`, para 2.9). Red caída → `IntegrationUnavailable` (degrada como el stub).
+- **`HttpTiendaNubeClient`**: los 4 métodos del port (createCoupon/deleteCoupon/getOrder/getPaidOrdersSince). `User-Agent`
+  **obligatorio** + Bearer; **backoff ante 429** (lee `x-rate-limit-reset`, reintenta) con `Sleeper` inyectable; 5xx/red →
+  `IntegrationUnavailable`. Mapea `order.coupon[]`/`total`/`payment_status`/`paid_at` (parseo tolerante).
+- **`SmtpMailSender`**: JavaMailSender (STARTTLS 587), texto plano por ahora (HTML+CID logo → 2.3). Fallo de envío →
+  excepción normal (el dispatcher lo cuenta como intento).
+- **`CloudApiWhatsAppSender`**: Meta Cloud API `POST /{phone}/messages` tipo **texto**, `to` sin `+`. 5xx/red →
+  `IntegrationUnavailable`; 4xx propaga. ⚠️ business-initiated fuera de ventana 24h exige **template** aprobado (2.4):
+  el port `send(to,body)` deberá pasar params estructurados cuando el template esté — se revisa ahí.
+- **Wiring:** `IntegrationsConfig` ahora instancia el `Http*`/`Smtp*`/`CloudApi*` en `live` (antes tiraba error "no implementado").
+- **Config:** props nuevas `tiendanube.base-url` (default demo/prod misma URL), `whatsapp.base-url` (Graph v21.0),
+  `mail.from-address`/`from-name` (movidas desde el bloque top-level `mail.from`, que era config muerta). `.env.example` +
+  `docker-compose.yml` actualizados.
+**Tests:** WireMock (dep nueva `wiremock-standalone:3.9.2`, test scope): `HttpContabiliumClientTest` (4: token cache/401-retry/
+parseo), `HttpTiendaNubeClientTest` (6: coupon/order/lista/429-retry/5xx/UA), `CloudApiWhatsAppSenderTest` (3) + `SmtpMailSenderTest`
+(Mockito, 2) + `ThrottleTest` (3, reloj/sleeper simulados, sin dormir de verdad). **Suite total 56/56, BUILD SUCCESS** (JDK21 en Docker).
+**Problemas:** ninguno. Nota: cambió el shape de los records `IntegrationsProperties.{TiendaNube,Mail,WhatsApp}` (nuevos campos)
+→ se actualizó el constructor en `TiendaNubeWebhookServiceTest`.
+**Pendiente (Fase 2):** conectar de verdad (credenciales de Gon), validar contra tienda demo el shape de `order.coupon[]`/`paid_at`
+y params `filtro`/`page` de Contabilium; template de WhatsApp; SES DNS. **Falta de Fase 1:** 1.7 (integration Testcontainers), 1.8 (CI).
+**Refs:** `integrations/{contabilium,tiendanube,mail,whatsapp}/Http*|Smtp*|CloudApi*`, `integrations/support/{Throttle,Sleeper}.java`,
+`integrations/IntegrationsConfig.java`, `IntegrationsProperties.java`, `application.yml`, `pom.xml`, tests en `src/test/.../integrations/**`.
+
+## 2026-07-23 — Santi — planificación (requisito de Gon: resiliencia / fallbacks manuales ante caída de terceros → diferido a Fase 2)
+**Qué:** Gon pidió que la plataforma degrade con mensajes **muy explícitos** cuando una API de terceros no responde, y que haya **acciones manuales** para recuperar lo pendiente. Se registró como tareas **2.7/2.8/2.9** en `04-plan-de-fases.md` (no se implementó ahora — decisión del usuario: solo dejarlo planificado, se hace en Fase 2 con los clientes HTTP reales).
+**Requisitos (resumen):**
+- **Visibilidad + mensajes** (2.7): `GET /admin/integraciones/estado` (modo/disponible/pendientes/últimoError/últimaSync por proveedor) + mensaje humano de degradación en la emisión + 503 explícitos por proveedor.
+- **Cupones** (2.8): `CuponSyncJob` + `POST /admin/tiendanube/resync-cupones` (reintenta los `cupon_sync_estado=PENDIENTE`). **Resync = solo cupones** (confirmado con el cliente; las notificaciones ya las reintenta el dispatcher solo).
+- **Productos** (2.9): el catálogo YA persiste en DB y se usa siempre desde ahí (hecho). Falta `POST /admin/contabilium/sync-productos` manual + `ProductoSyncService`.
+**Aclaración clave (para no re-discutir):** receta `PENDIENTE` es su estado NORMAL (= no convertida aún), NO una falla; lo que degrada ante TiendaNube caído es el **cupón** (`cupon_sync_estado`). "Re-mandar pendientes" = reintentar el registro del cupón.
+**Impacto:** todo es stub-testable (degrada con mensaje; enciende al pasar a live). Escribible parcialmente en 1.6 (scaffold) + 2.1/2.2. Son endpoints/jobs de admin (`admin:manage`), no tocan shapes del contrato congelado.
+**Refs:** `04-plan-de-fases.md` §"Resiliencia / fallbacks manuales" (tareas 2.7–2.9).
+
+## 2026-07-23 — Santi — backend/integraciones (Fase 1.4: webhook TiendaNube — HMAC + idempotencia + procesamiento + polling; verificado e2e 13/13)
+**Qué:** Nuevo módulo `modules/webhook/`. Cierra el flujo receta PENDIENTE → **APLICADA** por compra pagada.
+- **`POST /api/v1/webhooks/tiendanube`** (público, la firma ES la auth): recibe el body **crudo** (`byte[]`, el HMAC se calcula sobre los bytes exactos), verifica `x-linkedstore-hmac-sha256` (HMAC-SHA256 hex, comparación tiempo-constante), persiste `webhook_events` idempotente (UNIQUE origen+evento+recurso, + catch de la carrera) y responde **200** inmediato. Firma inválida/ausente → **401** (`INVALID_SIGNATURE`).
+- **Procesamiento async** (`WebhookProcessor` @Scheduled + `TiendaNubeWebhookService`): drena eventos sin procesar; para `order/paid` lee la orden (`TiendaNubeClient.getOrder`, I/O **fuera de tx**, patrón del dispatcher) y matchea el cupón → receta por `codigo` (global) → APLICADA + snapshot de orden + comisión. Degrada como notificaciones: en stub `getOrder` tira `IntegrationUnavailable` → el evento **queda sin procesar y se reintenta** (no consume nada). Poison (error no transitorio) → se marca procesado con motivo (no loop infinito).
+- **Polling de respaldo** (`TiendaNubePollingJob` @Scheduled, ventana 24h): en live barre órdenes pagadas y reusa `aplicarOrden` (idempotente); en stub no-op.
+- **Puerto TiendaNube** extendido: `getOrder(id)` + `getPaidOrdersSince(since)` + records `Order`/`OrderCoupon`. Stub degrada.
+- **Simulador de dev** (`POST /api/v1/dev/tiendanube/orden-pagada`, `@Profile("dev")` — NUNCA en prod): fabrica una orden pagada con el cupón de una receta y la pasa por el **mismo** `aplicarOrden`. Es lo que habilita la **demo con Gon en stub** (emitir → simular compra → ver APLICADA + $$$). No ensucia el contrato del webhook real.
+- **Config:** `nutriapp.integrations.tiendanube.webhook-secret` (dev default `dev-webhook-secret`; **prod fail-closed**: vacío en `application-prod.yml` → 401 si no se setea el env) + bloque `nutriapp.webhooks` (intervalos/batch/ventana).
+- **Tests:** `HmacVerifierTest` (6) + `TiendaNubeWebhookServiceTest` (10). **Suite total 38/38.** Smoke e2e nuevo `scripts/smoke-webhook.sh` **13/13** (HMAC válida/inválida/ausente/cuerpo-alterado, idempotencia, sim→APLICADA con conversión+comisión, guard anular-APLICADA→409). Fase 1 smoke sigue **17/17** (sin regresión).
+**Problemas:** el sim endpoint tiraba 500 (`LazyInitializationException` sobre `receta.items` con `open-in-view=false`) → resuelto anotando el método `@Transactional`.
+**Pendiente (Fase 2, con credenciales de Gon):** `HttpTiendaNubeClient` real (createCoupon/getOrder/getPaidOrdersSince) + **confirmar contra la tienda demo que el HMAC viene en hex** (asumido) y el shape de `order.coupon[]`. **Hardening (Fase 3):** rate-limiting del endpoint público (como `/registro`).
+**Impacto para Fran (a la vuelta):** el detalle de receta ya puede venir **APLICADA con `conversion`** poblada (ordenNumero/ordenTotal/paidAt/comisionPct/comisionMonto) — tu UI ya lo maneja. Para probar conversión en dev sin TiendaNube: `POST /api/v1/dev/tiendanube/orden-pagada {"recetaCodigo":"RX-..."}`.
+**Refs:** `backend/src/main/java/com/nutriapp/modules/webhook/**`, `integrations/tiendanube/{TiendaNubeClient,StubTiendaNubeClient}.java`, `integrations/IntegrationsProperties.java`, `modules/receta/repository/RecetaRepository.java`, `common/error/GlobalExceptionHandler.java`, `application.yml`, `application-prod.yml`, `scripts/smoke-webhook.sh`.
+
 ## 2026-07-22 — Santi — backend (code+security review de Fase 1: fixes aplicados + suite de tests + TODOs de hardening)
 **Qué:** Pasé code-reviewer y security-reviewer sobre la Fase 1. 0 CRITICAL. Apliqué los fixes de mayor valor y agregué tests. Todo re-verificado: **22/22 unit + 17/17 e2e**.
 **Fixes aplicados:**

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#f4f6f3; color:#16302c; font-family:"Comic Neue","Comic Sans MS","Comic Sans",ui-rounded,cursive; -webkit-font-smoothing:antialiased; }
+    a { color:#0f8a66; } a:hover { color:#0b6e51; }
+    * { box-sizing:border-box; }
+    input, select, button, textarea { font:inherit; }
+  </style>
+</helmet>
+<dc-import name="NavBar" active="recetas" hint-size="100%,72px"></dc-import>
+<main style="max-width:1080px;margin:0 auto;padding:40px 28px 8px">
+  <h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-0.02em">Emitir receta</h1>
+  <p style="margin:6px 0 30px;font-size:15px;color:#6c7b78">El paciente recibe el código por mail y WhatsApp. Vence a los 30 días.</p>
+
+  <div style="display:flex;align-items:center;gap:0;margin-bottom:26px;flex-wrap:wrap">
+    <button onClick="{{ goStep1 }}" style="{{ tab1 }}">
+      <span style="{{ dot1 }}">1</span>
+      <span style="font-size:14.5px;font-weight:700">Paciente</span>
+    </button>
+    <div style="width:34px;height:2px;background:#e6e6df"></div>
+    <button onClick="{{ goStep2 }}" style="{{ tab2 }}">
+      <span style="{{ dot2 }}">2</span>
+      <span style="font-size:14.5px;font-weight:700">Productos</span>
+    </button>
+    <div style="width:34px;height:2px;background:#e6e6df"></div>
+    <button onClick="{{ goStep3 }}" style="{{ tab3 }}">
+      <span style="{{ dot3 }}">3</span>
+      <span style="font-size:14.5px;font-weight:700">Confirmar</span>
+    </button>
+  </div>
+
+  <sc-if value="{{ isStep1 }}" hint-placeholder-val="{{ true }}">
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:20px;padding:30px 32px">
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">¿Para quién es la receta?</h2>
+      <p style="margin:0 0 22px;font-size:14.5px;color:#6c7b78">Buscá por nombre, apellido o email. Si es nuevo, cargalo primero en Pacientes.</p>
+      <div style="position:relative;max-width:520px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a3aeaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:15px;top:15px"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" placeholder="Buscar paciente…" value="{{ query }}" onChange="{{ onQuery }}" style="width:100%;padding:13px 15px 13px 44px;border:1px solid #e6e6df;border-radius:12px;font-size:15px;background:#fbfbf8;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+      </div>
+      <ul style="list-style:none;margin:14px 0 0;padding:0;max-width:520px;border:1px solid #e6e6df;border-radius:14px;overflow:hidden">
+        <sc-for list="{{ patients }}" as="p" hint-placeholder-count="3">
+          <li onClick="{{ p.select }}" style="{{ p.rowStyle }}">
+            <span style="{{ p.avatarStyle }}">{{ p.initials }}</span>
+            <span style="display:flex;flex-direction:column;flex:1">
+              <span style="font-size:15px;font-weight:700">{{ p.name }}</span>
+              <span style="font-size:13px;color:#8b9793">{{ p.contact }}</span>
+            </span>
+            <sc-if value="{{ p.isSelected }}" hint-placeholder-val="{{ false }}">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#e4f3ec;color:#0b6e51">Seleccionado</span>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ul>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:30px;padding-top:24px;border-top:1px solid #f0f0e9">
+        <a href="Pacientes.dc.html" style="font-size:14px;font-weight:600;color:#6c7b78;text-decoration:none" style-hover="color:#0f8a66">+ Cargar un paciente nuevo</a>
+        <div style="display:flex;gap:10px">
+          <a href="Dashboard.dc.html" style="display:inline-flex;align-items:center;padding:12px 18px;border-radius:11px;border:1px solid #e6e6df;background:#fff;color:#6c7b78;font-weight:600;font-size:14.5px;text-decoration:none" style-hover="background:#fbfbf8;color:#16302c">Cancelar</a>
+          <button onClick="{{ goStep2 }}" style="display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border:none;border-radius:11px;background:#0f8a66;color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 2px 8px rgba(15,138,102,.24);cursor:pointer" style-hover="background:#0b6e51">Continuar a productos →</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStep2 }}" hint-placeholder-val="{{ false }}">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;align-items:start">
+      <div style="background:#fff;border:1px solid #e6e6df;border-radius:20px;padding:28px 30px">
+        <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Catálogo</h2>
+        <p style="margin:0 0 20px;font-size:14.5px;color:#6c7b78">Agregá los productos que le recomendás a {{ patientFirstName }}.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+          <sc-for list="{{ categories }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.select }}" style="{{ c.style }}">{{ c.label }}</button>
+          </sc-for>
+        </div>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ catalog }}" as="prod" hint-placeholder-count="5">
+            <li style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid #e6e6df;border-radius:14px;background:#fbfbf8">
+              <span style="display:flex;flex-direction:column;flex:1;min-width:0">
+                <span style="font-size:14.5px;font-weight:700">{{ prod.name }}</span>
+                <span style="font-size:12.5px;color:#8b9793">{{ prod.meta }}</span>
+              </span>
+              <span style="font-size:14.5px;font-variant-numeric:tabular-nums;white-space:nowrap">{{ prod.price }}</span>
+              <button onClick="{{ prod.add }}" style="width:34px;height:34px;flex:none;border-radius:10px;border:1px solid #cfe6db;background:#fff;color:#0b6e51;font-size:19px;font-weight:700;line-height:1;cursor:pointer" style-hover="background:#e4f3ec">+</button>
+            </li>
+          </sc-for>
+        </ul>
+      </div>
+
+      <aside style="background:#fff;border:1px solid #e6e6df;border-radius:20px;padding:26px 28px;position:sticky;top:92px">
+        <h2 style="margin:0 0 18px;font-size:18px;font-weight:700">Receta en curso</h2>
+        <div style="display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:12px;background:#f7fbf9;border:1px solid #e0efe8;margin-bottom:18px">
+          <span style="width:32px;height:32px;border-radius:50%;background:#e4f3ec;color:#0b6e51;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none">{{ patientInitials }}</span>
+          <span style="display:flex;flex-direction:column;min-width:0">
+            <span style="font-size:14px;font-weight:700">{{ patientName }}</span>
+            <span style="font-size:12px;color:#8b9793;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ patientEmail }}</span>
+          </span>
+        </div>
+        <sc-if value="{{ isEmpty }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:0;padding:22px 0;text-align:center;font-size:14px;color:#a3aeaa">Todavía no agregaste productos.</p>
+        </sc-if>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ cart }}" as="item" hint-placeholder-count="2">
+            <li style="display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid #f0f0e9">
+              <span style="display:flex;flex-direction:column;flex:1;min-width:0">
+                <span style="font-size:14px;font-weight:700">{{ item.name }}</span>
+                <span style="font-size:12.5px;color:#8b9793">{{ item.lineTotal }}</span>
+              </span>
+              <span style="display:flex;align-items:center;gap:6px;flex:none">
+                <button onClick="{{ item.dec }}" style="width:28px;height:28px;border-radius:8px;border:1px solid #e6e6df;background:#fff;color:#6c7b78;font-size:16px;line-height:1;cursor:pointer" style-hover="background:#f4f6f3">−</button>
+                <span style="min-width:18px;text-align:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums">{{ item.qty }}</span>
+                <button onClick="{{ item.inc }}" style="width:28px;height:28px;border-radius:8px;border:1px solid #e6e6df;background:#fff;color:#6c7b78;font-size:16px;line-height:1;cursor:pointer" style-hover="background:#f4f6f3">+</button>
+              </span>
+            </li>
+          </sc-for>
+        </ul>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:18px;padding-top:16px;border-top:1px solid #e6e6df">
+          <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#6c7b78">Subtotal</span><span style="font-variant-numeric:tabular-nums">{{ subtotal }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#6c7b78">Descuento ({{ discount }}%)</span><span style="color:#0b6e51;font-variant-numeric:tabular-nums">−{{ discountAmount }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:17px;font-weight:700;padding-top:9px;border-top:1px solid #f0f0e9"><span>Total</span><span style="font-variant-numeric:tabular-nums">{{ total }}</span></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:22px">
+          <button onClick="{{ goStep1 }}" style="flex:1;padding:12px 16px;border-radius:11px;border:1px solid #e6e6df;background:#fff;color:#6c7b78;font-weight:600;font-size:14.5px;cursor:pointer" style-hover="background:#f4f6f3;color:#16302c">← Atrás</button>
+          <button onClick="{{ goStep3 }}" style="flex:1.4;padding:12px 16px;border:none;border-radius:11px;background:#0f8a66;color:#fff;font-weight:700;font-size:14.5px;box-shadow:0 2px 8px rgba(15,138,102,.24);cursor:pointer" style-hover="background:#0b6e51">Revisar →</button>
+        </div>
+      </aside>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isStep3 }}" hint-placeholder-val="{{ false }}">
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:20px;padding:30px 32px;max-width:680px">
+      <h2 style="margin:0 0 4px;font-size:20px;font-weight:700">Revisá antes de emitir</h2>
+      <p style="margin:0 0 24px;font-size:14.5px;color:#6c7b78">Una vez emitida, la receta solo puede anularse — no editarse.</p>
+
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-radius:14px;background:#f7fbf9;border:1px solid #e0efe8;margin-bottom:22px">
+        <span style="width:40px;height:40px;border-radius:50%;background:#e4f3ec;color:#0b6e51;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none">{{ patientInitials }}</span>
+        <span style="display:flex;flex-direction:column;flex:1;min-width:0">
+          <span style="font-size:15px;font-weight:700">{{ patientName }}</span>
+          <span style="font-size:13px;color:#8b9793">{{ patientContact }}</span>
+        </span>
+        <button onClick="{{ goStep1 }}" style="padding:8px 14px;border-radius:10px;border:1px solid #e6e6df;background:#fff;color:#16302c;font-size:13.5px;font-weight:600;cursor:pointer" style-hover="background:#f4f6f3">Cambiar</button>
+      </div>
+
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:700;color:#6c7b78">Productos</div>
+        <button onClick="{{ goStep2 }}" style="padding:0;border:none;background:none;color:#0b6e51;font-size:13.5px;font-weight:700;cursor:pointer" style-hover="text-decoration:underline">Editar</button>
+      </div>
+      <ul style="list-style:none;margin:0;padding:0">
+        <sc-for list="{{ cart }}" as="item" hint-placeholder-count="2">
+          <li style="display:flex;justify-content:space-between;gap:14px;padding:11px 0;border-bottom:1px solid #f0f0e9;font-size:14.5px">
+            <span>{{ item.name }} <span style="color:#8b9793">× {{ item.qty }}</span></span>
+            <span style="font-variant-numeric:tabular-nums">{{ item.lineTotal }}</span>
+          </li>
+        </sc-for>
+      </ul>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0 4px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Descuento a aplicar
+          <select value="{{ discount }}" onChange="{{ onDiscount }}" style="padding:11px 13px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#fbfbf8;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+            <option value="20">20%</option>
+            <option value="30">30% (por defecto)</option>
+            <option value="40">40%</option>
+          </select>
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78">Vigencia
+          <input type="text" value="30 días · vence 25/08/2026" readonly style="padding:11px 13px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#f4f6f3;color:#6c7b78">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;color:#6c7b78;grid-column:1/-1">Nota para el paciente <span style="color:#a3aeaa">(opcional)</span>
+          <textarea rows="2" placeholder="Tomar el suplemento después del desayuno…" style="padding:11px 13px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#fbfbf8;color:#16302c;resize:vertical" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)"></textarea>
+        </label>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:22px;padding-top:18px;border-top:1px solid #e6e6df">
+        <div style="display:flex;justify-content:space-between;font-size:14.5px"><span style="color:#6c7b78">Subtotal</span><span style="font-variant-numeric:tabular-nums">{{ subtotal }}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:14.5px"><span style="color:#6c7b78">Descuento ({{ discount }}%)</span><span style="color:#0b6e51;font-variant-numeric:tabular-nums">−{{ discountAmount }}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:20px;font-weight:700;padding-top:11px;border-top:1px solid #f0f0e9"><span>Total para el paciente</span><span style="font-variant-numeric:tabular-nums">{{ total }}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13.5px;color:#8b9793"><span>Tu comisión estimada (15%)</span><span style="font-variant-numeric:tabular-nums">{{ commission }}</span></div>
+      </div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:26px">
+        <button onClick="{{ goStep2 }}" style="padding:12px 18px;border-radius:11px;border:1px solid #e6e6df;background:#fff;color:#6c7b78;font-weight:600;font-size:14.5px;cursor:pointer" style-hover="background:#f4f6f3;color:#16302c">← Atrás</button>
+        <a href="RecetaEmitida.dc.html" style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;border-radius:11px;background:#0f8a66;color:#fff;font-weight:700;font-size:14.5px;text-decoration:none;box-shadow:0 2px 8px rgba(15,138,102,.24)" style-hover="background:#0b6e51">Emitir receta</a>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="display:flex;gap:12px;align-items:flex-start;margin-top:20px;padding:16px 20px;background:#e4f1f8;border:1px solid #cfe3ee;border-radius:14px">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f7f9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+    <p style="margin:0;font-size:14px;line-height:1.55;color:#2b6a83">El descuento por defecto es del 30% sobre el precio de lista del catálogo y la receta vence a los 30 días de emitida.</p>
+  </div>
+</main>
+<dc-import name="Footer" hint-size="100%,260px"></dc-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1080,&quot;height&quot;:900}}">
+const PATIENTS = [
+  { id: 1, name: "Camila Ruiz", initials: "CR", email: "camila.ruiz@gmail.com", phone: "+54 9 11 5512-7788" },
+  { id: 2, name: "Camilo Guzmán", initials: "CG", email: "c.guzman@outlook.com", phone: "+54 9 351 442-1190" },
+  { id: 3, name: "Micaela Camerlinckx", initials: "MC", email: "mica.cam@gmail.com", phone: "+54 9 341 209-5533" },
+];
+const PRODUCTS = [
+  { id: 1, name: "Proteína Whey 1kg — Vainilla", cat: "Proteínas", meta: "TBC Nutrition · 30 porciones", price: 27000 },
+  { id: 2, name: "Omega 3 · 60 cápsulas", cat: "Suplementos", meta: "TBC Nutrition · 1000mg", price: 5285 },
+  { id: 3, name: "Creatina monohidrato 300g", cat: "Proteínas", meta: "TBC Nutrition · micronizada", price: 19800 },
+  { id: 4, name: "Colágeno hidrolizado + Vit C", cat: "Suplementos", meta: "TBC Nutrition · 300g", price: 14500 },
+  { id: 5, name: "Barra proteica · caja x12", cat: "Snacks", meta: "TBC Nutrition · chocolate", price: 11400 },
+  { id: 6, name: "Magnesio + B6 · 90 comp.", cat: "Suplementos", meta: "TBC Nutrition", price: 8900 },
+];
+const CATS = ["Todos", "Proteínas", "Suplementos", "Snacks"];
+const money = (n) => "$" + Math.round(n).toLocaleString("es-AR");
+
+const TAB = "display:flex;align-items:center;gap:11px;padding:12px 18px;border-radius:13px;cursor:pointer;";
+const DOT = "width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;";
+
+class Component extends DCLogic {
+  state = { step: 1, patientId: 1, query: "cam", cat: "Todos", discount: 30, cart: [{ id: 1, qty: 1 }, { id: 2, qty: 2 }] };
+
+  tab(n) {
+    const on = this.state.step === n;
+    return {
+      tab: TAB + (on ? "background:#fff;border:1px solid #cfe6db;color:#16302c" : "background:#fff;border:1px solid #e6e6df;color:#6c7b78"),
+      dot: DOT + (on ? "background:#0f8a66;color:#fff" : "background:#eef2ee;color:#6c7b78"),
+    };
+  }
+
+  setQty(id, delta) {
+    this.setState((s) => {
+      const cart = s.cart.map((c) => (c.id === id ? { ...c, qty: c.qty + delta } : c)).filter((c) => c.qty > 0);
+      return { cart };
+    });
+  }
+
+  add(id) {
+    this.setState((s) => {
+      const has = s.cart.find((c) => c.id === id);
+      return { cart: has ? s.cart.map((c) => (c.id === id ? { ...c, qty: c.qty + 1 } : c)) : [...s.cart, { id, qty: 1 }] };
+    });
+  }
+
+  renderVals() {
+    const { step, patientId, query, cat, discount, cart } = this.state;
+    const patient = PATIENTS.find((p) => p.id === patientId) || PATIENTS[0];
+    const q = query.trim().toLowerCase();
+    const t1 = this.tab(1), t2 = this.tab(2), t3 = this.tab(3);
+    const lines = cart.map((c) => {
+      const p = PRODUCTS.find((x) => x.id === c.id);
+      return { ...c, name: p.name, lineTotal: money(p.price * c.qty), inc: () => this.setQty(c.id, 1), dec: () => this.setQty(c.id, -1) };
+    });
+    const subtotal = cart.reduce((a, c) => a + PRODUCTS.find((x) => x.id === c.id).price * c.qty, 0);
+    const disc = (subtotal * discount) / 100;
+    const total = subtotal - disc;
+
+    return {
+      isStep1: step === 1, isStep2: step === 2, isStep3: step === 3,
+      tab1: t1.tab, dot1: t1.dot, tab2: t2.tab, dot2: t2.dot, tab3: t3.tab, dot3: t3.dot,
+      goStep1: () => this.setState({ step: 1 }),
+      goStep2: () => this.setState({ step: 2 }),
+      goStep3: () => this.setState({ step: 3 }),
+      query,
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      patients: PATIENTS.filter((p) => !q || p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)).map((p) => {
+        const sel = p.id === patientId;
+        return {
+          ...p, contact: p.email + " · " + p.phone, isSelected: sel,
+          select: () => this.setState({ patientId: p.id }),
+          rowStyle: "display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #f0f0e9;cursor:pointer;" + (sel ? "background:#f7fbf9" : "background:#fff"),
+          avatarStyle: "width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:700;flex:none;" + (sel ? "background:#e4f3ec;color:#0b6e51" : "background:#eef2ee;color:#4b5f5b"),
+        };
+      }),
+      patientName: patient.name, patientFirstName: patient.name.split(" ")[0],
+      patientInitials: patient.initials, patientEmail: patient.email,
+      patientContact: patient.email + " · " + patient.phone,
+      categories: CATS.map((c) => ({
+        label: c, select: () => this.setState({ cat: c }),
+        style: "padding:8px 15px;border-radius:999px;font-size:13.5px;cursor:pointer;" + (c === cat ? "background:#16302c;color:#fff;border:1px solid #16302c;font-weight:700" : "background:#fff;border:1px solid #e6e6df;color:#6c7b78;font-weight:600"),
+      })),
+      catalog: PRODUCTS.filter((p) => cat === "Todos" || p.cat === cat).map((p) => ({ ...p, price: money(p.price), add: () => this.add(p.id) })),
+      cart: lines, isEmpty: lines.length === 0,
+      subtotal: money(subtotal), discount, discountAmount: money(disc), total: money(total),
+      commission: money(total * 0.15),
+      onDiscount: (e) => this.setState({ discount: Number(e.target.value) }),
+    };
+  }
+}
+</script>
+</body>
+</html>

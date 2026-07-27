@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#f4f6f3; color:#16302c; font-family:"Comic Neue","Comic Sans MS","Comic Sans",ui-rounded,cursive; -webkit-font-smoothing:antialiased; }
+    a { color:#0f8a66; } a:hover { color:#0b6e51; }
+    * { box-sizing:border-box; }
+    select, button { font:inherit; }
+  </style>
+</helmet>
+<dc-import name="NavBar" active="cierre" hint-size="100%,72px"></dc-import>
+<main style="max-width:1280px;margin:0 auto;padding:40px 28px 8px">
+  <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:26px">
+    <div>
+      <h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-0.02em">Cierre mensual</h1>
+      <p style="margin:6px 0 0;font-size:15px;color:#6c7b78">Comisiones por recetas aplicadas. El mes cierra el último día hábil.</p>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <select style="padding:11px 14px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#fff;color:#16302c">
+        <option>Julio 2026 · en curso</option>
+        <option>Junio 2026</option>
+        <option>Mayo 2026</option>
+      </select>
+      <button style="padding:12px 18px;border-radius:11px;border:1px solid #e6e6df;background:#fff;color:#16302c;font-weight:600;font-size:14.5px" style-hover="background:#fbfbf8">Descargar detalle</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:18px">
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;padding:22px 24px">
+      <div style="font-size:13.5px;color:#6c7b78">Recetas aplicadas</div>
+      <div style="font-size:32px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:6px">28</div>
+      <div style="font-size:13px;color:#8b9793;margin-top:4px">de 40 emitidas · 70% de conversión</div>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;padding:22px 24px">
+      <div style="font-size:13.5px;color:#6c7b78">Facturado en tienda</div>
+      <div style="font-size:32px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:6px">$1.229.000</div>
+      <div style="font-size:13px;color:#8b9793;margin-top:4px">Ticket promedio $21.900</div>
+    </div>
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;padding:22px 24px">
+      <div style="font-size:13.5px;color:#6c7b78">Comisión (15%)</div>
+      <div style="font-size:32px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;margin-top:6px">$184.320</div>
+      <div style="font-size:13px;color:#0b6e51;font-weight:700;margin-top:4px">+18% vs junio</div>
+    </div>
+    <div style="background:#16302c;border:1px solid #16302c;border-radius:18px;padding:22px 24px;color:#fff">
+      <div style="font-size:13.5px;color:#a9c2bc">Estado del cierre</div>
+      <div style="font-size:24px;font-weight:700;line-height:1.2;margin-top:8px">Abierto</div>
+      <div style="font-size:13px;color:#a9c2bc;margin-top:6px">Se liquida el 05/08/2026</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px">
+    <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;overflow:hidden">
+      <div style="padding:20px 24px;border-bottom:1px solid #e6e6df">
+        <h2 style="margin:0;font-size:17px;font-weight:700">Recetas que suman al cierre</h2>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Código</th>
+            <th style="text-align:left;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Paciente</th>
+            <th style="text-align:right;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Compra</th>
+            <th style="text-align:right;padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Comisión</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f0f0e9">
+            <td style="padding:14px 24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-2B77QA</td>
+            <td style="padding:14px 24px;font-size:14.5px">Martín Sosa</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-variant-numeric:tabular-nums">$32.900</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">$4.935</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0f0e9">
+            <td style="padding:14px 24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-91XKR2</td>
+            <td style="padding:14px 24px;font-size:14.5px">Valentina Ortiz</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-variant-numeric:tabular-nums">$12.250</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">$1.838</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0f0e9">
+            <td style="padding:14px 24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-4TT56N</td>
+            <td style="padding:14px 24px;font-size:14.5px">Rocío Benítez</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-variant-numeric:tabular-nums">$44.100</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">$6.615</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f0f0e9">
+            <td style="padding:14px 24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-6QW22H</td>
+            <td style="padding:14px 24px;font-size:14.5px">Federico Ayala</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-variant-numeric:tabular-nums">$18.400</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">$2.760</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 24px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-1ZZ84C</td>
+            <td style="padding:14px 24px;font-size:14.5px">Micaela Camerlinckx</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-variant-numeric:tabular-nums">$27.600</td>
+            <td style="padding:14px 24px;font-size:14.5px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums">$4.140</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:#fbfbf8;border-top:1px solid #e6e6df">
+        <span style="font-size:14px;color:#6c7b78">28 recetas aplicadas en julio</span>
+        <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">$184.320</span>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;padding:24px 26px">
+        <h2 style="margin:0 0 20px;font-size:17px;font-weight:700">Historial de cierres</h2>
+        <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px">
+          <li style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid #f0f0e9">
+            <span style="display:flex;flex-direction:column"><span style="font-size:14.5px;font-weight:700">Junio 2026</span><span style="font-size:12.5px;color:#8b9793">34 recetas · liquidado 05/07</span></span>
+            <span style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">$156.200</span>
+          </li>
+          <li style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:14px;border-bottom:1px solid #f0f0e9">
+            <span style="display:flex;flex-direction:column"><span style="font-size:14.5px;font-weight:700">Mayo 2026</span><span style="font-size:12.5px;color:#8b9793">30 recetas · liquidado 05/06</span></span>
+            <span style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">$141.900</span>
+          </li>
+          <li style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <span style="display:flex;flex-direction:column"><span style="font-size:14.5px;font-weight:700">Abril 2026</span><span style="font-size:12.5px;color:#8b9793">21 recetas · liquidado 06/05</span></span>
+            <span style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">$98.400</span>
+          </li>
+        </ul>
+      </div>
+      <div style="background:#e4f1f8;border:1px solid #cfe3ee;border-radius:18px;padding:20px 24px;display:flex;gap:12px;align-items:flex-start">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2f7f9e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <p style="margin:0;font-size:14px;line-height:1.55;color:#2b6a83">Solo suman las recetas con compra confirmada en la tienda. Las pendientes pasan al mes siguiente si el paciente compra antes del vencimiento.</p>
+      </div>
+    </div>
+  </div>
+</main>
+<dc-import name="Footer" hint-size="100%,260px"></dc-import>
+</x-dc>
+</body>
+</html>

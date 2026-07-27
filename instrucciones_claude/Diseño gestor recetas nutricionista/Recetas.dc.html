@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#f4f6f3; color:#16302c; font-family:"Comic Neue","Comic Sans MS","Comic Sans",ui-rounded,cursive; -webkit-font-smoothing:antialiased; }
+    a { color:#0f8a66; } a:hover { color:#0b6e51; }
+    * { box-sizing:border-box; }
+    input, select { font:inherit; }
+  </style>
+</helmet>
+<dc-import name="NavBar" active="recetas" hint-size="100%,72px"></dc-import>
+<main style="max-width:1280px;margin:0 auto;padding:40px 28px 8px">
+  <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:26px">
+    <div>
+      <h1 style="margin:0;font-size:30px;font-weight:700;letter-spacing:-0.02em">Recetas</h1>
+      <p style="margin:6px 0 0;font-size:15px;color:#6c7b78">64 recetas emitidas · 12 pendientes de compra</p>
+    </div>
+    <a href="EmitirReceta.dc.html" style="display:inline-flex;align-items:center;gap:8px;background:#0f8a66;color:#fff;text-decoration:none;font-weight:700;font-size:14.5px;padding:12px 20px;border-radius:11px;box-shadow:0 2px 8px rgba(15,138,102,.24)" style-hover="background:#0b6e51">Emitir receta</a>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e6e6df;border-radius:16px;padding:16px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:18px">
+    <div style="position:relative;flex:1 1 260px">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#a3aeaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:14px;top:13px"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" placeholder="Buscar por código o paciente…" style="width:100%;padding:11px 14px 11px 40px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#fbfbf8;color:#16302c" style-focus="outline:none;border-color:#0f8a66;box-shadow:0 0 0 3px rgba(15,138,102,.14)">
+    </div>
+    <select style="padding:11px 14px;border:1px solid #e6e6df;border-radius:11px;font-size:14.5px;background:#fbfbf8;color:#16302c;min-width:170px">
+      <option>Estado (todos)</option>
+      <option>Pendiente</option>
+      <option>Aplicada</option>
+      <option>Vencida</option>
+      <option>Anulada</option>
+    </select>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#8b9793">Desde
+      <input type="date" style="padding:10px 12px;border:1px solid #e6e6df;border-radius:11px;font-size:14px;background:#fbfbf8;color:#16302c">
+    </label>
+    <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:#8b9793">Hasta
+      <input type="date" style="padding:10px 12px;border:1px solid #e6e6df;border-radius:11px;font-size:14px;background:#fbfbf8;color:#16302c">
+    </label>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+    <span style="padding:8px 15px;border-radius:999px;background:#16302c;color:#fff;font-size:13.5px;font-weight:700">Todas · 64</span>
+    <span style="padding:8px 15px;border-radius:999px;background:#fff;border:1px solid #e6e6df;color:#6c7b78;font-size:13.5px;font-weight:600">Pendientes · 12</span>
+    <span style="padding:8px 15px;border-radius:999px;background:#fff;border:1px solid #e6e6df;color:#6c7b78;font-size:13.5px;font-weight:600">Aplicadas · 41</span>
+    <span style="padding:8px 15px;border-radius:999px;background:#fff;border:1px solid #e6e6df;color:#6c7b78;font-size:13.5px;font-weight:600">Vencidas · 9</span>
+    <span style="padding:8px 15px;border-radius:999px;background:#fff;border:1px solid #e6e6df;color:#6c7b78;font-size:13.5px;font-weight:600">Anuladas · 2</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:18px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;align-items:start">
+      <div style="background:#fff;border:1px solid #e6e6df;border-radius:18px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:13px 20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Código</th>
+              <th style="text-align:left;padding:13px 20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Paciente</th>
+              <th style="text-align:left;padding:13px 20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Estado</th>
+              <th style="text-align:left;padding:13px 20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa;background:#fbfbf8;border-bottom:1px solid #e6e6df">Vence</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid #f0f0e9;background:#f7fbf9;cursor:pointer">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-8F41KD</td>
+              <td style="padding:15px 20px;font-size:14.5px">Camila Ruiz</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#fdf1dc;color:#b9741a"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Pendiente</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">22/08/2026</td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0e9;cursor:pointer" style-hover="background:#fbfbf8">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-2B77QA</td>
+              <td style="padding:15px 20px;font-size:14.5px">Martín Sosa</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#e4f3ec;color:#0b6e51"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Aplicada</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">20/08/2026</td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0e9;cursor:pointer" style-hover="background:#fbfbf8">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-91XKR2</td>
+              <td style="padding:15px 20px;font-size:14.5px">Valentina Ortiz</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#e4f3ec;color:#0b6e51"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Aplicada</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">18/08/2026</td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0e9;cursor:pointer" style-hover="background:#fbfbf8">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-5DD03M</td>
+              <td style="padding:15px 20px;font-size:14.5px">Julián Ferreyra</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#eceae4;color:#7c766a"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Vencida</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">14/07/2026</td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0e9;cursor:pointer" style-hover="background:#fbfbf8">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-77PLZ8</td>
+              <td style="padding:15px 20px;font-size:14.5px">Rocío Benítez</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#fce5e5;color:#b83b3b"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Anulada</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">12/07/2026</td>
+            </tr>
+            <tr style="cursor:pointer" style-hover="background:#fbfbf8">
+              <td style="padding:15px 20px;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:13.5px">RX-3KM19P</td>
+              <td style="padding:15px 20px;font-size:14.5px">Federico Ayala</td>
+              <td style="padding:15px 20px"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#fdf1dc;color:#b9741a"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Pendiente</span></td>
+              <td style="padding:15px 20px;font-size:14px;color:#6c7b78">29/07/2026</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 20px;border-top:1px solid #e6e6df;background:#fbfbf8">
+          <button style="padding:8px 14px;border-radius:10px;border:1px solid #e6e6df;background:#fff;color:#a3aeaa;font-size:13.5px;font-weight:600;cursor:default">← Anterior</button>
+          <span style="font-size:13.5px;color:#8b9793">Página 1 de 7 · 64 recetas</span>
+          <button style="padding:8px 14px;border-radius:10px;border:1px solid #e6e6df;background:#fff;color:#16302c;font-size:13.5px;font-weight:600" style-hover="background:#f4f6f3">Siguiente →</button>
+        </div>
+      </div>
+
+      <aside style="background:#fff;border:1px solid #e6e6df;border-radius:18px;padding:26px 26px 24px;position:sticky;top:92px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div>
+            <div style="font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:20px;font-weight:700">RX-8F41KD</div>
+            <div style="font-size:14px;color:#6c7b78;margin-top:4px">Camila Ruiz · camila.ruiz@gmail.com</div>
+          </div>
+          <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:#fdf1dc;color:#b9741a;flex:none"><span style="width:6px;height:6px;border-radius:50%;background:currentColor"></span>Pendiente</span>
+        </div>
+
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin:22px 0;padding:16px 0;border-top:1px solid #f0f0e9;border-bottom:1px solid #f0f0e9">
+          <div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa">Emitida</div><div style="font-size:14.5px;margin-top:4px">23/07/2026</div></div>
+          <div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa">Vence</div><div style="font-size:14.5px;margin-top:4px">22/08/2026</div></div>
+          <div><div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#a3aeaa">Descuento</div><div style="font-size:14.5px;margin-top:4px">30%</div></div>
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#6c7b78;margin-bottom:10px">Productos</div>
+        <ul style="list-style:none;margin:0;padding:0">
+          <li style="display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #f0f0e9;font-size:14px"><span>Proteína Whey 1kg — Vainilla <span style="color:#8b9793">× 1</span></span><span style="font-variant-numeric:tabular-nums">$18.900</span></li>
+          <li style="display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #f0f0e9;font-size:14px"><span>Omega 3 · 60 cáps. <span style="color:#8b9793">× 2</span></span><span style="font-variant-numeric:tabular-nums">$7.400</span></li>
+          <li style="display:flex;justify-content:space-between;gap:14px;padding:12px 0 0;font-size:16px;font-weight:700"><span>Total</span><span style="font-variant-numeric:tabular-nums">$18.410</span></li>
+        </ul>
+
+        <div style="font-size:13px;font-weight:700;color:#6c7b78;margin:22px 0 10px">Notificaciones</div>
+        <ul style="list-style:none;margin:0;padding:0">
+          <li style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f0f0e9;font-size:13.5px"><span style="color:#6c7b78">Mail</span><span>23/07 09:41</span><span style="color:#0b6e51;font-weight:700">Enviado</span></li>
+          <li style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;font-size:13.5px"><span style="color:#6c7b78">WhatsApp</span><span>23/07 09:41</span><span style="color:#0b6e51;font-weight:700">Enviado</span></li>
+        </ul>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:24px;padding-top:18px;border-top:1px solid #f0f0e9">
+          <button style="padding:10px 16px;border-radius:11px;border:1px solid #f0c2c2;background:#fff;color:#b83b3b;font-size:14px;font-weight:600" style-hover="background:#fdf3f3">Anular</button>
+          <button style="padding:10px 16px;border-radius:11px;border:1px solid #e6e6df;background:#fff;color:#16302c;font-size:14px;font-weight:600" style-hover="background:#f4f6f3">Reenviar código</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+<dc-import name="Footer" hint-size="100%,260px"></dc-import>
+</x-dc>
+</body>
+</html>

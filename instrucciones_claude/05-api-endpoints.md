@@ -26,8 +26,19 @@ Solicitud de alta de nutricionista. Crea `nutricionistas` en `PENDIENTE` + usuar
 ```
 
 ### POST /webhooks/tiendanube
-Recibe webhooks (payload `{store_id, event, id}`). Verifica HMAC (`x-linkedstore-hmac-sha256`), persiste en
-`webhook_events`, responde `200` inmediato; el procesamiento es async. Sin auth JWT (la firma ES la auth).
+Recibe webhooks (payload `{store_id, event, id}`). Verifica HMAC (`x-linkedstore-hmac-sha256` = HMAC-SHA256 **hex**
+del body crudo con el secreto de la app; comparación tiempo-constante), persiste en `webhook_events` (idempotente por
+origen+evento+recurso), responde `200` inmediato; el procesamiento es async (lee la orden en TiendaNube → si su cupón
+matchea una receta PENDIENTE la pasa a **APLICADA** + comisión). Sin auth JWT (la firma ES la auth). Firma inválida/ausente → **401**.
+
+### POST /dev/tiendanube/orden-pagada — SÓLO perfil dev
+Simulador de conversión para la demo/tests en stub (en stub no llega webhook real). Fabrica una orden pagada con el
+cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
+```json
+// Request (sólo recetaCodigo es obligatorio)
+{ "recetaCodigo": "RX-7K2M4X", "ordenNumero": 306, "ordenTiendanubeId": 770077, "ordenTotal": 31500.00 }
+// 200 → { "recetaCodigo": "...", "ordenTiendanubeId": 770077, "ordenNumero": 306, "ordenTotal": 31500.00, "recetasAplicadas": 1 }
+```
 
 ---
 
@@ -120,6 +131,19 @@ Primera pantalla post-login.
                   "comisionMonto": 3150.00, "paidAt": "..." } ] }
 ```
 
+### GET /dashboard/estadisticas?meses=6
+Serie mensual para los gráficos del dashboard (barras de recetas por mes + tendencia de comisión).
+`meses` opcional (default 6, acotado a [1, 24]). Orden **cronológico ascendente** — el último es el mes en curso.
+Todo dato real; el front deriva ticket promedio (`ventas/aplicadas`) y el delta vs mes anterior.
+```json
+{ "meses": [
+    { "year": 2026, "month": 2, "recetasEmitidas": 18, "recetasAplicadas": 11,
+      "ventasGeneradas": 210000.00, "comisionTotal": 21000.00 },
+    { "year": 2026, "month": 7, "recetasEmitidas": 40, "recetasAplicadas": 28,
+      "ventasGeneradas": 612900.00, "comisionTotal": 91935.00 }
+] }
+```
+
 ## Admin — `admin:manage`
 
 | Método | Path | Notas |
@@ -138,7 +162,8 @@ Primera pantalla post-login.
 |---|---|
 | Login | Keycloak ROPC (`nutriapp-frontend`) + `GET /me` |
 | Registro (pública) | `POST /registro` |
-| Dashboard | `GET /dashboard/resumen` (+ `GET /dashboard/cierre-mensual` para el detalle del mes) |
+| Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
+| Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |
 | Pacientes | CRUD `/pacientes` |
 | Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` + `POST /recetas` |
 | Recetas | `GET /recetas` + detalle + anular/reenviar |
