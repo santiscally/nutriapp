@@ -1,7 +1,9 @@
 package com.nutriapp.modules.producto.repository;
 
 import com.nutriapp.modules.producto.entity.Producto;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,6 +40,13 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
                           @Param("principioActivo") String principioActivo,
                           @Param("presentacion") String presentacion,
                           Pageable pageable);
+
+    /** Conciliación del catálogo por SKU (clave natural TiendaNube ↔ Contabilium) — sync 2.9. */
+    Optional<Producto> findBySkuAndDeletedAtIsNull(String sku);
+
+    /** Última sincronización del catálogo (para el estado de integraciones, 2.7). */
+    @Query("SELECT MAX(p.lastSyncedAt) FROM Producto p WHERE p.deletedAt IS NULL")
+    Instant maxLastSyncedAt();
 
     @Query("SELECT DISTINCT p.marca FROM Producto p WHERE p.deletedAt IS NULL AND p.marca IS NOT NULL ORDER BY p.marca")
     List<String> distinctMarcas();

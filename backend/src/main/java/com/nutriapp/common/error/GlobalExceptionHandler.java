@@ -41,7 +41,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IntegrationUnavailableException.class)
     public ResponseEntity<ApiError> handleIntegrationUnavailable(
             IntegrationUnavailableException ex, HttpServletRequest req) {
-        return build(HttpStatus.SERVICE_UNAVAILABLE, "INTEGRATION_UNAVAILABLE", ex.getMessage(), req);
+        log.info("Integración {} no disponible en {}", ex.getProveedor(), req.getRequestURI());
+        return build(HttpStatus.SERVICE_UNAVAILABLE, "INTEGRATION_UNAVAILABLE", ex.mensajeUsuario(), req);
     }
 
     /** Keycloak (nuestro server de identidad) inaccesible o con error: 503 con mensaje claro. */

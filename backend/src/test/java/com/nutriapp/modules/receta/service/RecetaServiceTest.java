@@ -50,6 +50,7 @@ class RecetaServiceTest {
     @Mock NotificacionService notificacionService;
     @Mock CodigoGenerator codigoGenerator;
     @Mock TiendaNubeClient tiendaNubeClient;
+    @Mock CuponSyncService cuponSyncService;
     @Mock RecetaProperties props;
     @Mock ConfiguracionService configuracionService;
 

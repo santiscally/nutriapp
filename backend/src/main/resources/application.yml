@@ -84,6 +84,10 @@ nutriapp:
     max-items: ${RECETA_MAX_ITEMS:1}
     # Cron del job de vencimiento (diario 03:00 AR). Catch-up adicional al arrancar.
     vencimiento-cron: ${RECETA_VENCIMIENTO_CRON:0 0 3 * * *}
+  cupones:
+    # Resync de cupones pendientes de sync (2.8). En stub es no-op (todo sigue PENDIENTE);
+    # al pasar TiendaNube a live drena lo acumulado. Reintento cada 5 min por defecto.
+    sync-interval-ms: ${CUPON_SYNC_INTERVAL_MS:300000}
   notificaciones:
     # Poller que drena la cola. En stub degrada y la notificación sigue QUEUED.
     dispatch-interval-ms: ${NOTIF_DISPATCH_INTERVAL_MS:30000}

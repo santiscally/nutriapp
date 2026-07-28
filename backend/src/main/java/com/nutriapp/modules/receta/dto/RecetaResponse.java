@@ -19,6 +19,8 @@ public record RecetaResponse(
         Instant emitidaAt,
         LocalDate venceAt,
         String cuponSyncEstado,
+        /** Mensaje humano de degradación del cupón (2.7). null cuando sincronizó bien. */
+        String cuponSyncMensaje,
         List<NotificacionResponse> notificaciones,
         Conversion conversion
 ) {

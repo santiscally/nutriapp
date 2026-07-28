@@ -17,7 +17,6 @@ import com.nutriapp.modules.producto.repository.ProductoRepository;
 import com.nutriapp.modules.receta.RecetaProperties;
 import com.nutriapp.modules.receta.dto.RecetaCreateRequest;
 import com.nutriapp.modules.receta.dto.RecetaResponse;
-import com.nutriapp.modules.receta.entity.CuponSyncEstado;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.entity.RecetaItem;
@@ -53,6 +52,7 @@ public class RecetaService {
     private final NotificacionService notificacionService;
     private final CodigoGenerator codigoGenerator;
     private final TiendaNubeClient tiendaNubeClient;
+    private final CuponSyncService cuponSyncService;
     private final RecetaProperties props;
     private final ConfiguracionService configuracionService;
 
@@ -107,7 +107,7 @@ public class RecetaService {
             receta.addItem(item);
         }
 
-        registrarCupon(receta);
+        cuponSyncService.registrar(receta);
 
         Receta saved = repo.save(receta);
         // Encolar sólo inserta filas de notificación (misma tx, respeta la FK a recetas). El
@@ -161,29 +161,6 @@ public class RecetaService {
         notificacionService.reencolar(receta, paciente);
         log.info("Notificaciones de receta {} reencoladas", receta.getCodigo());
         return toResponseDetalle(receta);
-    }
-
-    /** Intenta crear el cupón en TiendaNube; degrada a PENDIENTE si la integración está en stub/caída. */
-    private void registrarCupon(Receta receta) {
-        List<Long> variantIds = receta.getItems().stream()
-                .map(i -> productoRepository.findById(i.getProductoId()).orElse(null))
-                .filter(p -> p != null && p.getTiendanubeVariantId() != null)
-                .map(Producto::getTiendanubeVariantId)
-                .toList();
-        try {
-            TiendaNubeClient.Coupon coupon = tiendaNubeClient.createCoupon(new TiendaNubeClient.CouponRequest(
-                    receta.getCodigo(),
-                    receta.getDescuentoPct(),
-                    LocalDate.now(AR),
-                    receta.getVenceAt(),
-                    variantIds));
-            receta.setCuponTiendanubeId(coupon.id());
-            receta.setCuponSyncEstado(CuponSyncEstado.SINCRONIZADO);
-        } catch (IntegrationUnavailableException ex) {
-            receta.setCuponSyncEstado(CuponSyncEstado.PENDIENTE);
-            receta.setCuponSyncError(ex.getMessage());
-            log.info("Cupón de receta {} queda PENDIENTE de sync: {}", receta.getCodigo(), ex.getMessage());
-        }
     }
 
     private String generarCodigoUnico() {
@@ -254,6 +231,7 @@ public class RecetaService {
                 receta.getEmitidaAt(),
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),
+                receta.getCuponSyncEstado().mensajeDegradacion(),
                 conNotificaciones ? notificacionService.forReceta(receta.getId()) : null,
                 conversion);
     }

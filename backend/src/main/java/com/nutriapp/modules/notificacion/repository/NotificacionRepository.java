@@ -1,5 +1,6 @@
 package com.nutriapp.modules.notificacion.repository;
 
+import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.entity.EstadoNotificacion;
 import com.nutriapp.modules.notificacion.entity.Notificacion;
 import java.util.List;
@@ -15,4 +16,7 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, UUID
     /** Lote a drenar por el dispatcher: QUEUED con reintentos por debajo del tope. */
     List<Notificacion> findByEstadoAndIntentosLessThanAndDeletedAtIsNullOrderByCreatedAtAsc(
             EstadoNotificacion estado, int maxIntentos, Pageable pageable);
+
+    /** Pendientes por canal para el estado de integraciones (2.7): notifs QUEUED de mail/WhatsApp. */
+    long countByEstadoAndCanalAndDeletedAtIsNull(EstadoNotificacion estado, CanalNotificacion canal);
 }

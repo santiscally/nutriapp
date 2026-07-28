@@ -30,6 +30,30 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Job de vencimiento: recetas PENDIENTES cuya vigencia ya pasó (global, todos los nutris). */
     List<Receta> findByEstadoAndVenceAtBeforeAndDeletedAtIsNull(EstadoReceta estado, java.time.LocalDate fecha);
 
+    /**
+     * Resync de cupones (2.8): recetas todavía PENDIENTES cuyo cupón no llegó a sincronizarse
+     * (quedó PENDIENTE o falló con ERROR). Sólo tiene sentido reintentar mientras la receta siga
+     * PENDIENTE — una APLICADA/VENCIDA/ANULADA ya no necesita cupón. Global (todos los nutris).
+     */
+    @Query("""
+            SELECT r FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND r.estado = com.nutriapp.modules.receta.entity.EstadoReceta.PENDIENTE
+              AND r.cuponSyncEstado IN (com.nutriapp.modules.receta.entity.CuponSyncEstado.PENDIENTE,
+                                        com.nutriapp.modules.receta.entity.CuponSyncEstado.ERROR)
+            ORDER BY r.emitidaAt ASC
+            """)
+    List<Receta> findResyncables(Pageable pageable);
+
+    @Query("""
+            SELECT COUNT(r) FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND r.estado = com.nutriapp.modules.receta.entity.EstadoReceta.PENDIENTE
+              AND r.cuponSyncEstado IN (com.nutriapp.modules.receta.entity.CuponSyncEstado.PENDIENTE,
+                                        com.nutriapp.modules.receta.entity.CuponSyncEstado.ERROR)
+            """)
+    long countResyncables();
+
     /** Listado del nutricionista con filtro opcional por estado. */
     @Query("""
             SELECT r FROM Receta r
