@@ -2,9 +2,12 @@ package com.nutriapp.integrations.contabilium;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.support.Throttle;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
@@ -49,6 +52,13 @@ public class HttpContabiliumClient implements ContabiliumClient {
     private final IntegrationsProperties.Contabilium props;
     private final RestClient http;
     private final Throttle throttle;
+    /**
+     * Mapper propio para deserializar el cuerpo desde {@code byte[]}. Contabilium (backend .NET)
+     * declara el charset del Content-Type como Windows-1252 pero manda bytes UTF-8 → si dejamos que
+     * el converter de RestClient decodifique con ese charset, los nombres con Ñ/acentos salen mojibake
+     * (ej. "AÑOS" → "AÃ'OS"). Parsear el byte-stream con Jackson fuerza la autodetección UTF-8 (spec JSON).
+     */
+    private final ObjectMapper mapper = new ObjectMapper();
 
     private volatile String cachedToken;
     private volatile Instant tokenExpiry = Instant.EPOCH;
@@ -94,18 +104,26 @@ public class HttpContabiliumClient implements ContabiliumClient {
 
     private <T> T authedGet(Function<UriBuilder, URI> uriFn, Class<T> type) {
         try {
-            return withTokenRetry(() -> {
+            // Traemos el cuerpo como byte[] y lo parseamos nosotros en UTF-8 (ver comentario de `mapper`).
+            byte[] raw = withTokenRetry(() -> {
                 throttle.acquire();
                 return http.get()
                         .uri(uriFn)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token())
                         .retrieve()
-                        .body(type);
+                        .body(byte[].class);
             });
+            if (raw == null || raw.length == 0) {
+                return null;
+            }
+            return mapper.readValue(raw, type);
         } catch (ResourceAccessException ex) {
             // Timeout / conexión rechazada: proveedor caído → degradar como el stub.
             log.warn("[contabilium] sin conexión: {}", ex.getMessage());
             throw new IntegrationUnavailableException("contabilium");
+        } catch (IOException ex) {
+            // Cuerpo ilegible/inesperado: es un bug de contrato, no "caído" → que se vea (no lo enmascaramos como 503).
+            throw new UncheckedIOException("Contabilium: respuesta no parseable", ex);
         }
     }
 
