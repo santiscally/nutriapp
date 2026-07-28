@@ -1,0 +1,6 @@
+# Default-deny: NUNCA commitear material de clave/cert, sea cual sea la extensión
+# (.pem/.key/.crt/.p12/.pfx/.cer/... o un keyfile sin extensión). Sólo se versionan
+# este .gitignore y el README.
+*
+!.gitignore
+!README.md

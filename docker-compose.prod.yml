@@ -1,0 +1,71 @@
+# ============================================================
+# NutriApp — override de PRODUCCIÓN. Se aplica SOBRE docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Cambios vs dev:
+#   - nginx (nuevo): único servicio público (80/443), TLS termination + reverse proxy.
+#   - backend: perfil `prod`, secretos fail-closed (sin default de dev).
+#   - keycloak: modo producción bajo path /auth, detrás del proxy TLS.
+#   - db/keycloak/backend siguen bindeados a 127.0.0.1 (loopback, no públicos); el único
+#     puerto expuesto a la red es el de nginx.
+#
+# Requisitos antes de `up` (ver DEPLOY.md):
+#   1. certs reales en nginx/certs/ (o `bash scripts/gen-selfsigned-cert.sh` para staging).
+#   2. SPA compilada:  cd frontend && npm run build  (genera frontend/dist, que nginx sirve).
+#   3. .env con los secretos de prod (KEYCLOAK_ADMIN_CLIENT_SECRET regenerado, dominio, etc.).
+# ============================================================
+
+services:
+  db:
+    environment:
+      # Fail-closed: sin esto, el override heredaría el default de dev (nutriapp_dev) del compose
+      # base para la DB de la app Y la de Keycloak. El compose ABORTA si no está seteado en prod.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?regenerar POSTGRES_PASSWORD para prod, nunca reusar el default de dev}
+
+  keycloak:
+    # Modo producción (no start-dev). Sin --optimized: la imagen stock no viene pre-buildeada,
+    # así que `start` corre el build en el arranque (unos segundos extra, sin imagen custom).
+    # --import-realm hace el bootstrap del realm en el primer arranque (idempotente si ya existe).
+    command: ["start", "--import-realm"]
+    environment:
+      # Origen público (scheme + host), SIN path. El /auth lo agrega KC_HTTP_RELATIVE_PATH.
+      # Ej: https://app.midominio.com  → Keycloak queda en https://app.midominio.com/auth
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME (origen público, ej. https://app.midominio.com)}
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
+      KC_HEALTH_ENABLED: "true"
+      # Fail-closed: el superusuario de bootstrap del realm master. Sin esto, el override
+      # heredaría admin/admin del compose base → toma de control del auth server. El compose
+      # ABORTA si no están seteados en prod.
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:?setear un usuario admin de bootstrap propio para prod (no 'admin')}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?regenerar el password del superusuario master, nunca 'admin'}
+
+  backend:
+    image: nutriapp/backend:prod
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      # JWK interno (Keycloak ahora bajo /auth). El issuer público (opcional) valida `iss`
+      # si se setea; si queda vacío, se valida sólo la firma vía JWK. Ver application-prod.yml.
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/auth/realms/nutriapp/protocol/openid-connect/certs}
+      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-}
+      KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080/auth}
+      # SPA servida same-origin por nginx → CORS normalmente innecesario; setear sólo si hace falta.
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-}
+      # Fail-closed: sin default de dev. El compose ABORTA si no está seteado en prod.
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?regenerar el secret del client nutriapp-backend en el realm de prod y setearlo}
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nutriapp-nginx
+    restart: unless-stopped
+    depends_on: [backend, keycloak]
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      # SPA compilada (frontend/dist). Override con FRONTEND_DIST si se buildea en otro path.
+      - ${FRONTEND_DIST:-./frontend/dist}:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks: [nutriapp-net]

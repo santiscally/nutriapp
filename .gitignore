@@ -29,3 +29,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Backups de DB (scripts/backup-db.sh) — datos, no van al repo
+backups/
