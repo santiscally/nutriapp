@@ -14,7 +14,16 @@
 
 ## Santi / backend / infra / db / auth
 
-**Fase actual:** Fase 1 — Backend completo con stubs. **✅ COMPLETA (1.1–1.8), 2026-07-27.** Núcleo + webhook (1.4) + clientes HTTP reales (1.6) + estadísticas + config de negocio por admin + **integración Testcontainers (1.7)** + **CI (1.8)**. `mvn verify` = 61 unit + 1 IT, BUILD SUCCESS.
+**Fase actual:** Fase 1 — Backend completo con stubs. **✅ COMPLETA (1.1–1.8), 2026-07-27.** Núcleo + webhook (1.4) + clientes HTTP reales (1.6) + estadísticas + config de negocio por admin + **integración Testcontainers (1.7)** + **CI (1.8)**. Arrancada Fase 2: **resiliencia 2.7–2.9 en stub (2026-07-27)**. `mvn verify` = **72 unit + 1 IT, BUILD SUCCESS**.
+
+**Resiliencia 2.7–2.9 (scaffold en stub, 2026-07-27):** 3 endpoints admin nuevos + jobs que degradan con mensaje explícito
+y se encienden al pasar a `live` en Fase 2. **2.7:** `GET /admin/integraciones/estado` (por proveedor: modo/disponible/
+pendientes/últimoError/últimaSync) + `RecetaResponse.cuponSyncMensaje` (nullable, aditivo) + 503 con texto por proveedor.
+**2.8:** `CuponSyncService.registrar()` (extraído de `emitir`, compartido) + `CuponSyncJob` (@Scheduled) + `POST /admin/tiendanube/resync-cupones`.
+**2.9:** `ProductoSyncService` (conciliación por SKU + `last_synced_at`) + `POST /admin/contabilium/sync-productos` (stub → 503).
+`IntegrationHealthRegistry` in-memory para disponible/últimoError. +11 tests. Sin migración. **Front: panel `/integraciones`
+(solo admin) HECHO** — card por proveedor con badges modo/disponible/pendientes + botones reintentar-cupones / sincronizar-catálogo
+(build+lint OK). Detalle en DIARIO.
 
 **1.7/1.8 (2026-07-27):** `RecetaFlowIT` (Testcontainers Postgres, flujo emisión→webhook→APLICADA→cierre) vía failsafe (`mvn verify`; `mvn test` sigue sin Docker). CI `.github/workflows/ci.yml` (backend `sh mvnw verify` + frontend tsc/lint/build, push/PR a main). `.gitattributes` nuevo (EOL LF para scripts, cierra el pendiente de Fran).
 
@@ -53,8 +62,9 @@ Emitir/Recetas/Pacientes (ya heredan tokens+navbar; consistentes). Detalle R.1�
 **Próximo paso (Fase 1 CERRADA — lo que sigue es Fase 2 / pendientes menores):**
 - **Verificación visual e2e del rediseño** (único pendiente del rediseño; no bloquea): levantar stack y revisar en vivo.
 - **Fase 2 — integraciones reales** (necesita a Gon: credenciales + tienda demo TiendaNube + proveedor mail/WhatsApp).
-  Incluye tareas de resiliencia 2.7–2.9 ya planificadas.
-- **Hardening Fase 3:** rate-limiting `/registro` y `/webhooks`, service-account KC (documentado, no bloquea).
+  Resiliencia 2.7–2.9 **ya hecha en stub** (backend + panel front `/integraciones`) — al conectar los clientes reales
+  drena lo acumulado sin tocar código.
+- **Hardening Fase 3 EN CURSO:** ✅ rate-limiting `/registro` y `/webhooks` (token bucket por IP, 429+Retry-After, `mvn verify` 84 unit+1 IT). ✅ **Keycloak Admin por service-account** (`client_credentials` de `nutriapp-backend`, roles `realm-management` `manage-users`+`view-users`+`view-realm` — sale el superuser del master; verificado registro→aprobar en vivo). Sigue: `docker-compose.prod.yml`+nginx TLS, regenerar secret del client para prod.
 
 **Bloqueado por el otro:** nada.
 

@@ -32,6 +32,122 @@
 
 ## Entradas
 
+## 2026-07-27 — Santi — backend/auth/seguridad (Fase 3 hardening: Keycloak Admin por service-account, sale el superusuario master)
+**Qué:** El `KeycloakAdminClient` dejó de usar el **superusuario del realm master** (`admin/admin`, password grant contra
+`admin-cli`) y pasó a **client_credentials** del service-account del client confidencial `nutriapp-backend`, scopeado sólo a
+los roles `realm-management` **`manage-users`** + **`view-users`** + **`view-realm`** del realm `nutriapp`. Cierra el TODO de la review del 22-07.
+**Set mínimo (verificado empíricamente):** `manage-users` crea/edita/borra usuarios; `view-realm` es **necesario** para leer y
+mapear el rol realm `NUTRICIONISTA` (`GET /roles/{name}` da 403 sin él). **NO** hizo falta `manage-realm`. `view-users` incluido por prolijidad.
+**Por qué:** el token del master admin puede administrar TODOS los realms y usuarios — privilegio excesivo si el backend se
+compromete. Ahora el alcance es sólo administrar usuarios del realm nutriapp.
+- **Código:** `KeycloakAdminProperties` cambia `adminRealm/adminClientId/adminUsername/adminPassword` → `clientId/clientSecret`.
+  `KeycloakAdminClient.adminToken()` usa `grant_type=client_credentials` contra `/realms/nutriapp/...` (antes `/realms/master`).
+  Sin cambios en la lógica de crear/habilitar usuarios.
+- **Realm JSON:** `nutriapp-backend` ya tenía `serviceAccountsEnabled:true`; le agregué el user `service-account-nutriapp-backend`
+  con `clientRoles: { realm-management: [manage-users, view-users] }` (para setups nuevos / CI / prod).
+- **Config:** `application.yml` bloque keycloak → `client-id` (default `nutriapp-backend`) + `client-secret` (default el secret
+  de dev del realm; **`application-prod.yml` lo deja vacío → fail-closed**, hay que regenerar el secret del client en prod).
+  `docker-compose.yml` backend: `KEYCLOAK_ADMIN_USERNAME/PASSWORD` → `KEYCLOAK_ADMIN_CLIENT_ID/SECRET`. `.env.example` idem.
+  Ojo: `KEYCLOAK_ADMIN/PASSWORD` (bootstrap del **contenedor** Keycloak) se quedan — son cosas distintas.
+- **Stack corriendo (no destructivo):** el realm ya estaba importado sin estos roles → los asigné en vivo con
+  `kcadm add-roles -r nutriapp --uusername service-account-nutriapp-backend --cclientid realm-management --rolename manage-users --rolename view-users`.
+  En un `down -v && up` el realm se re-importa ya con los roles.
+**Verificación:** backend compila (`mvn -o compile` OK), realm JSON válido. **Verificado en vivo contra el stack:** `POST /registro`
+→ **201** (el service-account crea el usuario deshabilitado + asigna NUTRICIONISTA), `POST /admin/nutricionistas/{id}/aprobar`
+→ **200 APROBADA** (setEnabled). El backend ya NO recibe el user/pass del master (`docker-compose` sólo le pasa client-id/secret).
+**Impacto para Fran:** ninguno en el contrato. El flujo registro→aprobar es idéntico; sólo cambió cómo el backend se autentica
+contra Keycloak.
+**Refs:** `integrations/keycloak/{KeycloakAdminClient,KeycloakAdminProperties}.java`, `keycloak/realms/nutriapp-realm.json`,
+`application.yml`, `application-prod.yml`, `docker-compose.yml`, `.env.example`.
+
+## 2026-07-27 — Santi — backend/seguridad (Fase 3 hardening: rate-limiting por IP en `/registro` y `/webhooks`)
+**Qué:** Primer ítem de Fase 3. Rate limit por IP en los dos endpoints públicos (mitiga hammering de `/registro`
+contra Keycloak y del webhook público). Cierra el TODO documentado en la review del 22-07.
+- **Implementación sin dependencia externa** (deps mínimas del proyecto; el plan decía "Bucket4j o similar"): token bucket
+  propio en `common/ratelimit/`. `TokenBucket` (tiempo por parámetro → determinístico), `RateLimiterService` (`ConcurrentHashMap`
+  por `bucket|ip`, reloj inyectable, `@Scheduled evictIdle` que libera buckets llenos/inactivos para acotar memoria),
+  `RateLimitFilter` (`OncePerRequestFilter`, solo POST — los preflight OPTIONS/GET pasan; IP por primer hop de `X-Forwarded-For`
+  o remote addr), `RateLimitConfig` (`FilterRegistrationBean` scopeado a `/api/v1/registro` + `/api/v1/webhooks/*`).
+- **429 con `ApiError` uniforme** (code `RATE_LIMITED`) + header `Retry-After`. El filtro se ordena **después** de Spring
+  Security (order 0 > -100) a propósito: así el 429 lleva los headers CORS y el SPA puede leer el mensaje en `/registro`.
+- **Config** (`nutriapp.rate-limit`, todo por env): `enabled` (default true), `registro` 10/60s, `webhooks` 120/60s,
+  `evict-interval-ms` 10min. **Apagado en los IT** (`PostgresITBase` setea `enabled=false`) para no enmascarar fallos.
+**Tests:** `TokenBucketTest` (3), `RateLimiterServiceTest` (5), `RateLimitFilterTest` (4, con `MockHttpServletRequest/Response`:
+429 + Retry-After + cuerpo JSON, IPs independientes, OPTIONS no consume, primer hop de XFF). **`mvn verify` = 84 unit + 1 IT, BUILD SUCCESS.**
+**TODO de escalado (documentado, no bloquea):** es **single-instance** (en memoria). Si se escala a N instancias, mover a un
+store compartido (Redis / Bucket4j distribuido) — la interfaz `RateLimiterService.tryAcquire` queda igual.
+**Impacto para Fran:** ninguno en el contrato. Si al testear registro ves un **429** (`RATE_LIMITED`), es el rate limit
+(10/min por IP) — el `api/client.ts` ya lo surfacea como cualquier `ApiError.message`. Subir el límite por env si molesta en dev.
+**Refs:** `backend/src/main/java/com/nutriapp/common/ratelimit/**`, `application.yml` (`nutriapp.rate-limit`), `PostgresITBase`, tests en `src/test/.../common/ratelimit/**`.
+
+## 2026-07-27 — Santi — frontend (fix de alineación: `display:flex` en un `<td>` rompía la última columna; ⚠️ toqué `frontend/`)
+**Qué:** Fixes de alineación reportados por el usuario (tablas y panel de integraciones se veían "raros").
+- **Bug raíz (tablas):** `.table__actions` tenía **`display:flex` sobre un `<td>`**, lo que saca a esa celda del layout de
+  tabla → la última columna (acciones Editar/Eliminar) quedaba desalineada del resto de las filas. **Fix:** la celda vuelve a
+  ser table-cell (`text-align:right; white-space:nowrap`), botones inline separados con `.btn + .btn { margin-left }`. Además
+  agregué **`vertical-align: middle`** a `.table th, .table td` para alinear avatar/texto/botones en la misma línea de la fila.
+  Aplica a Pacientes y Recetas (misma clase).
+- **Panel de integraciones:** las cards tenían distinta altura de contenido (unas con botón, otras no) → botones a distinta
+  altura. **Fix:** `.integraciones-grid .card` pasa a columna flex y el botón de acción (`.integracion__action`) se ancla abajo
+  con `margin-top:auto` + `align-self:flex-start` → los botones quedan alineados entre cards.
+**Gotcha para Fran (recordar):** **nunca poner `display:flex/grid` directo sobre un `<td>`/`<th>`** — rompe el layout de la
+tabla. Si hace falta flex en una celda, envolver el contenido en un `<div>` interno.
+**Verificación:** `npm run build` + `npm run lint` verdes. No pude verificar visualmente (extensión de Chrome declinada); queda
+confirmación del usuario al recargar.
+**Refs:** `frontend/src/index.css` (`.table*`, `.integraciones-grid`, `.integracion__action`), `pages/Integraciones.tsx`.
+
+## 2026-07-27 — Santi — frontend (panel admin de integraciones — UI de resiliencia 2.7–2.9; ⚠️ toqué `frontend/`)
+**Qué:** Construí el **panel de integraciones** en la SPA (área de Fran) que consume los 3 endpoints admin de 2.7–2.9.
+**Autorizado explícitamente por el usuario** (cubrimos a Fran durante sus vacaciones; mismo criterio que el rediseño).
+- Nueva página **`pages/Integraciones.tsx`** (`/integraciones`, solo ADMIN → si no, `Navigate` a dashboard): una card por
+  proveedor con badges **modo** (stub/live) · **disponible** (Disponible/No disponible/Sin datos) · **pendientes** (contador),
+  fila de última sync y último error (con timestamp en `title`), y botones de acción **por proveedor**: "Reintentar cupones"
+  (tiendanube → `resyncCupones`) y "Sincronizar catálogo" (contabilium → `syncProductos`). Tras cada acción, toast con el
+  resultado + recarga del estado. El **503 de Contabilium en stub** se surfacea tal cual (mensaje por proveedor) vía toast de error.
+- `api/integraciones.ts` + `types/integraciones.ts` (espejo de los DTOs del back). Wiring: ruta en `App.tsx` + entrada de nav
+  **solo-admin** en `AppLayout.tsx` (junto a "Configuración"). Bloque CSS nuevo en `index.css` (`.integraciones-grid`,
+  `.integracion__*`, badges `--ok/--off/--wait`) — extiende el sistema de diseño existente, no inventa look nuevo.
+**Regla de oro respetada:** todo sale de endpoints reales (nada fabricado). Verificado contra el stack: como todo está en
+`mode=stub`, el panel muestra tiendanube con 3 cupones pendientes, mail/whatsapp con notifs QUEUED + último error, y "Sincronizar
+catálogo" devuelve el 503 explícito.
+**Verificación:** `npm run build` (tsc -b + vite) y `npm run lint` (oxlint) **verdes**. HMR del dev server tomó los archivos.
+**Impacto para Fran (a la vuelta):** hay **página + ruta + nav nuevos** (`/integraciones`, solo admin) y un bloque CSS nuevo.
+Contrato back↔front intacto salvo el aditivo ya avisado (`RecetaResponse.cuponSyncMensaje`). **NO edité tu sección de `ESTADO.md`.**
+**Refs:** `frontend/src/pages/Integraciones.tsx`, `api/integraciones.ts`, `types/integraciones.ts`, `App.tsx`, `components/layout/AppLayout.tsx`, `index.css`.
+
+## 2026-07-27 — Santi — backend/integraciones (Resiliencia 2.7–2.9: visibilidad + resync cupones + sync productos, en stub)
+**Qué:** Implementado el **scaffold de resiliencia** que pidió Gon (degradar con gracia + acciones manuales de
+recuperación). Todo degrada explícitamente en stub y se enciende al pasar los proveedores a `live` (Fase 2), sin tocar
+más código de negocio.
+- **2.7 — Visibilidad + mensajes.** `IntegrationHealthRegistry` (in-memory, por proveedor: último éxito/error) cableado
+  en los puntos de interacción reales (cupón sync, sync productos, dispatcher de notifs). Nuevo `GET /api/v1/admin/integraciones/estado`
+  (`admin:manage`) → por proveedor `{modo, disponible, pendientes, ultimoError, ultimoErrorAt, ultimaSync}`. `disponible`
+  = false en stub, null en live-sin-interacción, true/false según último resultado. `pendientes` **de la DB**: cupones sin
+  sync (tiendanube), notifs QUEUED (mail/whatsapp), 0 (contabilium). **`RecetaResponse.cuponSyncMensaje`** (nullable, aditivo):
+  mensaje humano de degradación del cupón. 503 de `IntegrationUnavailableException` ahora con **texto por proveedor** (`mensajeUsuario()`).
+- **2.8 — Cupones resync.** Extraje el registro de cupón a **`CuponSyncService.registrar()`** (compartido con `RecetaService.emitir`
+  — refactor, sin cambio de comportamiento). `resync()` reintenta los `cupon_sync_estado=PENDIENTE/ERROR` cuya receta siga
+  PENDIENTE (batch 100, error no-transitorio → ERROR y sigue). `CuponSyncJob` (`@Scheduled`, `nutriapp.cupones.sync-interval-ms`
+  = 5min) + **`POST /api/v1/admin/tiendanube/resync-cupones`** → `{intentados, sincronizados, pendientes}`. En stub todo sigue PENDIENTE.
+- **2.9 — Productos sync.** **`ProductoSyncService`** (conciliación por SKU + `last_synced_at`; NO `@Transactional` a nivel método:
+  cada save/find en su tx corta → no retiene conexión Hikari durante el I/O HTTP, lección GIA) + **`POST /api/v1/admin/contabilium/sync-productos`**
+  → `{revisados, creados, actualizados, sinCambios, syncedAt}`. **En stub el `buscarConceptos` tira 503 explícito** "Contabilium no conectada".
+**Decisiones:** (1) Los DTOs de resultado viven en su **dominio** (`receta/dto/ResyncCuponesResponse`, `producto/dto/SyncProductosResponse`),
+no en `admin/dto` — el controller admin depende del dominio, no al revés. (2) El registry es **efímero** (se resetea al reiniciar):
+lo durable (pendientes, catálogo) sale de la DB; `ultimaSync` de contabilium usa `MAX(productos.last_synced_at)` para sobrevivir reinicios.
+(3) `ProductoSyncService` no toca `publicado` (mapeo de `estado` del ERP → Fase 2 contra cuenta real). **Sin migración** (las columnas
+`cupon_sync_*` y `last_synced_at` ya existían).
+**Tests:** `CuponSyncServiceTest` (5), `ProductoSyncServiceTest` (4), `IntegracionesEstadoServiceTest` (2). Actualicé `RecetaServiceTest`
+(mock nuevo `CuponSyncService`). **`mvn verify` = 72 unit + 1 IT (RecetaFlowIT), BUILD SUCCESS** (JDK21 en contenedor). El IT confirmó que
+la emisión→webhook→APLICADA sigue pasando por el `CuponSyncService` refactorizado.
+**Impacto para Fran (a la vuelta):** 3 endpoints admin nuevos para un **panel de integraciones** (pregunta abierta: ¿lo querés en el front?).
+`RecetaResponse` ganó `cuponSyncMensaje` (nullable) → agregalo al type espejo cuando toques recetas; hoy no rompe nada.
+**Pendiente Fase 2:** encender contra las cuentas reales de Gon (drena lo acumulado) + panel admin en el front.
+**Refs:** `integrations/health/IntegrationHealthRegistry`, `modules/admin/{controller/AdminIntegracionesController,service/IntegracionesEstadoService,dto/Integracion*}`,
+`modules/receta/service/{CuponSyncService,CuponSyncJob}`, `modules/receta/dto/ResyncCuponesResponse`, `modules/producto/service/ProductoSyncService`,
+`modules/producto/dto/SyncProductosResponse`, `RecetaService`+`RecetaResponse`+`CuponSyncEstado`, `NotificacionDispatcher`, `IntegrationUnavailableException`,
+`GlobalExceptionHandler`, `application.yml`, `05-api-endpoints.md`, tests.
+
 ## 2026-07-27 — Santi — tests+infra (Fase 1.7 integración Testcontainers + 1.8 CI GitHub Actions — cierra Fase 1)
 **Qué:** Cerré las dos tareas que faltaban de Fase 1.
 - **1.7 — Test de integración end-to-end (Testcontainers).** `PostgresITBase` (levanta la app real contra Postgres 16 de

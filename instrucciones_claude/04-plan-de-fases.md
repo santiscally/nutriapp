@@ -123,17 +123,26 @@ se difirió a Fase 2 por decisión del usuario, junto con los clientes HTTP real
 
 | # | Tarea | Detalle |
 |---|---|---|
-| 2.7 | **Visibilidad + mensajes explícitos** | `GET /admin/integraciones/estado` (por proveedor: `modo` stub/live, `disponible`, `pendientes` [cupones sin sync / notifs QUEUED], `ultimoError`, `ultimaSync`). En la emisión, devolver un **mensaje humano** de degradación ("El cupón quedó pendiente: TiendaNube no está disponible, se reintentará solo") además del enum `cuponSyncEstado`. Consolidar los 503 de `IntegrationUnavailableException` con texto claro por proveedor. |
-| 2.8 | **Cupones: reconciliación + resync manual** | `CuponSyncJob` (`@Scheduled`): reintenta `createCoupon` para recetas con `cupon_sync_estado=PENDIENTE`/`ERROR` cuya receta siga `PENDIENTE`. `POST /admin/tiendanube/resync-cupones` (admin): dispara la reconciliación manual y devuelve `{intentados, sincronizados, pendientes}`. En stub sigue degradando con mensaje explícito. **Resync = solo cupones** (confirmado con el cliente). |
-| 2.9 | **Productos Contabilium: sync manual + persistente** | El catálogo **ya vive en la DB y se usa siempre** desde ahí (no depende de la API en runtime) — esa parte está hecha. Falta: `POST /admin/contabilium/sync-productos` (manual, admin) + `ProductoSyncService` (conciliación por SKU, `last_synced_at`). En stub → 503 explícito "Contabilium no conectada"; en live (2.2) hace el full-scan nightly + on-demand. |
+| 2.7 | ✅ **Visibilidad + mensajes explícitos** (scaffold hecho, 2026-07-27) | `GET /admin/integraciones/estado` (por proveedor: `modo` stub/live, `disponible`, `pendientes` [cupones sin sync / notifs QUEUED], `ultimoError`, `ultimaSync`). En la emisión, devolver un **mensaje humano** de degradación ("El cupón quedó pendiente: TiendaNube no está disponible, se reintentará solo") además del enum `cuponSyncEstado`. Consolidar los 503 de `IntegrationUnavailableException` con texto claro por proveedor. |
+| 2.8 | ✅ **Cupones: reconciliación + resync manual** (scaffold hecho, 2026-07-27) | `CuponSyncJob` (`@Scheduled`): reintenta `createCoupon` para recetas con `cupon_sync_estado=PENDIENTE`/`ERROR` cuya receta siga `PENDIENTE`. `POST /admin/tiendanube/resync-cupones` (admin): dispara la reconciliación manual y devuelve `{intentados, sincronizados, pendientes}`. En stub sigue degradando con mensaje explícito. **Resync = solo cupones** (confirmado con el cliente). |
+| 2.9 | ✅ **Productos Contabilium: sync manual + persistente** (scaffold hecho, 2026-07-27) | El catálogo **ya vive en la DB y se usa siempre** desde ahí (no depende de la API en runtime) — esa parte está hecha. Falta: `POST /admin/contabilium/sync-productos` (manual, admin) + `ProductoSyncService` (conciliación por SKU, `last_synced_at`). En stub → 503 explícito "Contabilium no conectada"; en live (2.2) hace el full-scan nightly + on-demand. |
 
 Notas de implementación cuando se encare: las 3 son endpoints/jobs de **admin** (`admin:manage`); nuevos, no tocan
 shapes existentes del contrato congelado. Escribible en 1.6 (scaffold de jobs/endpoints degradando en stub) y se
 enciende en 2.1/2.2 al conectar los clientes HTTP reales.
 
+> **Estado (2026-07-27):** el **scaffold de las 3 está implementado y verde en stub** (`mvn verify`: 72 unit + IT).
+> Endpoints/jobs vivos, degradan con mensaje explícito; al pasar TiendaNube/Contabilium a `live` (2.1/2.2) drenan lo
+> acumulado sin tocar más código. Único añadido al contrato: `RecetaResponse.cuponSyncMensaje` (nullable, aditivo).
+> **Front: panel admin `/integraciones` HECHO** (2026-07-27, cubriendo a Fran) consumiendo los 3 endpoints.
+> Pendiente de Fase 2: encenderlos contra las cuentas reales de Gon.
+
 ## Fase 3 — Pulido + hardening + deploy (lun 24 ago → vie 11 sep)
 
-- `docker-compose.prod.yml` + nginx TLS + rate limit + headers (port de imedba), backup/restore scripts.
+- ✅ **Rate-limiting por IP en `/registro` y `/webhooks`** (backend, hecho 2026-07-27 — token bucket propio, 429 + `Retry-After`, config `nutriapp.rate-limit`). Single-instance; escalado a store compartido documentado.
+- ✅ **Keycloak Admin por service-account** (hecho 2026-07-27) — `client_credentials` del client `nutriapp-backend` scopeado a `realm-management` `manage-users`/`view-users`; sale el superusuario del realm master. Secret fail-closed en prod.
+- `docker-compose.prod.yml` + nginx TLS + (rate limit de red) + headers (port de imedba), backup/restore scripts.
+- Regenerar el secret del client `nutriapp-backend` para el realm de prod (hoy placeholder de dev).
 - Hosting del cliente (a definir con Gon — presupuesto: infra a cargo del cliente) + dominio + certificados.
 - E2E completo en staging, corrección de bugs, revisión de seguridad (webhook HMAC, scoping, secretos).
 - Puesta en producción + soporte post-entrega (presupuesto §5).

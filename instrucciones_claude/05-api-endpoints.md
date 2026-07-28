@@ -160,8 +160,18 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | GET | `/admin/nutricionistas?estado=&q=&page=` | bandeja de validación |
 | POST | `/admin/nutricionistas/{id}/aprobar` | habilita el usuario Keycloak; 409 si no está PENDIENTE |
 | POST | `/admin/nutricionistas/{id}/rechazar` | body `{ "motivo": "..." }` |
-| GET | `/admin/integraciones/estado` | por proveedor: `{mode, ok, pendientes, lastSyncAt, lastError}` |
-| POST | `/admin/integraciones/productos/sync` | fuerza sync de catálogo (en stub → 409 "no conectada") |
+
+### Admin — resiliencia de integraciones (2.7–2.9)
+
+| Método | Path | Notas |
+|---|---|---|
+| GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (4 proveedores: contabilium/tiendanube/mail/whatsapp). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail·whatsapp) / 0 (contabilium) |
+| POST | `/admin/tiendanube/resync-cupones` | reintenta el registro de cupones de recetas PENDIENTES sin sync → `{ "intentados":n, "sincronizados":n, "pendientes":n }`. En stub siguen pendientes |
+| POST | `/admin/contabilium/sync-productos` | fuerza la sync del catálogo por SKU → `{ "revisados":n, "creados":n, "actualizados":n, "sinCambios":n, "syncedAt":ts }`. **En stub → 503 "Contabilium no conectada"** |
+
+> Nota: además, `RecetaResponse` (emisión y detalle) incluye ahora **`cuponSyncMensaje`** (string nullable):
+> mensaje humano de degradación del cupón cuando quedó `PENDIENTE`/`ERROR`; `null` cuando sincronizó bien.
+> Los 503 de integración caída ahora traen texto claro por proveedor (código `INTEGRATION_UNAVAILABLE`).
 
 ---
 
@@ -178,4 +188,4 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | Recetas | `GET /recetas` + detalle + anular/reenviar |
 | Configuración (admin) | `GET /configuracion` + `PUT /admin/configuracion` |
 | Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar |
-| Admin Integraciones | `GET /admin/integraciones/estado` + sync (Fase 2, baja prioridad) |
+| Admin Integraciones (`/integraciones`) | `GET /admin/integraciones/estado` + `POST /admin/tiendanube/resync-cupones` + `POST /admin/contabilium/sync-productos` (panel de resiliencia, solo admin; página hecha, degrada en stub) |
