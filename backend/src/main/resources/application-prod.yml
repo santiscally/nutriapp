@@ -29,6 +29,11 @@ management:
       show-details: never
 
 nutriapp:
+  keycloak:
+    # Sin default en prod: hay que regenerar el secret del client nutriapp-backend y setear el env.
+    # Vacío → el service-account no obtiene token y las ops de admin fallan 503 (fail-closed), nunca
+    # cae al secret de dev. NUNCA reusar el placeholder `*-dev-secret-change-me` en prod.
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:}
   integrations:
     tiendanube:
       # Sin default de dev en prod: si no se setea el env, el HMAC no verifica y el webhook

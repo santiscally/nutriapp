@@ -73,8 +73,9 @@ services:
       # --- Keycloak Admin API (registro/aprobación de nutricionistas) ---
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-nutriapp}
-      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # Admin API por service-account (client_credentials) del client confidencial nutriapp-backend.
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-nutriapp-backend}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-nutriapp-backend-dev-secret-change-me}
       # --- Integraciones (stub|live) ---
       CONTABILIUM_MODE: ${CONTABILIUM_MODE:-stub}
       CONTABILIUM_CLIENT_ID: ${CONTABILIUM_CLIENT_ID:-}

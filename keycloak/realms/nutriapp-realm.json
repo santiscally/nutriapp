@@ -232,6 +232,14 @@
       "emailVerified": true,
       "credentials": [{ "type": "password", "value": "test1234", "temporary": false }],
       "realmRoles": ["NUTRICIONISTA"]
+    },
+    {
+      "username": "service-account-nutriapp-backend",
+      "enabled": true,
+      "serviceAccountClientId": "nutriapp-backend",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "view-realm"]
+      }
     }
   ]
 }

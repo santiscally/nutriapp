@@ -114,12 +114,14 @@ nutriapp:
   keycloak:
     # Admin REST API: crear usuarios al registrar y habilitarlos al aprobar.
     # En Docker el backend ve Keycloak por la red interna (http://keycloak:8080).
+    # Auth por service-account (client_credentials) del client confidencial nutriapp-backend,
+    # scopeado sólo a realm-management manage-users/view-users (hardening Fase 3): NO el master.
     base-url: ${KEYCLOAK_BASE_URL:http://localhost:8081}
     realm: ${KEYCLOAK_REALM:nutriapp}
-    admin-realm: ${KEYCLOAK_ADMIN_REALM:master}
-    admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
-    admin-username: ${KEYCLOAK_ADMIN_USERNAME:admin}
-    admin-password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:nutriapp-backend}
+    # Dev: el secret del realm importado. Prod: regenerar el secret del client y setear el env
+    # (application-prod.yml lo deja vacío → fail-closed si no se configura).
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:nutriapp-backend-dev-secret-change-me}
     nutricionista-role: ${KEYCLOAK_NUTRICIONISTA_ROLE:NUTRICIONISTA}
   integrations:
     contabilium:

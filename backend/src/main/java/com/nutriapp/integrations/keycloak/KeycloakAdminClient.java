@@ -17,17 +17,17 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 /**
- * Cliente de la Admin REST API de Keycloak. Se autentica con las credenciales de admin del
- * realm master (client {@code admin-cli}, password grant) y opera sobre el realm {@code nutriapp}.
+ * Cliente de la Admin REST API de Keycloak. Se autentica con <b>client_credentials</b> del
+ * service-account de un client confidencial del realm {@code nutriapp} (por defecto
+ * {@code nutriapp-backend}), scopeado sólo a {@code realm-management}
+ * ({@code manage-users}/{@code view-users}). Opera sobre el realm {@code nutriapp}.
  *
- * Registro de nutricionista: crea el usuario DESHABILITADO y le asigna el rol compuesto
+ * <p>Registro de nutricionista: crea el usuario DESHABILITADO y le asigna el rol compuesto
  * {@code NUTRICIONISTA} (que arrastra los client roles del token). Al aprobar, se habilita.
  *
- * HARDENING Fase 3 (ver DIARIO 2026-07-22): reemplazar el superusuario master por un
- * service-account confidencial scopeado sólo a los client roles de {@code realm-management}
- * ({@code manage-users}/{@code view-users}) del realm nutriapp, con grant client_credentials.
- * Hoy usa el admin del master (default de dev, override por env) — privilegio excesivo si el
- * backend se compromete.
+ * <p>Hardening Fase 3 (DIARIO 2026-07-22, hecho 2026-07-27): antes usaba el superusuario del
+ * realm master (password grant admin/admin) — privilegio excesivo si el backend se compromete.
+ * Ahora el service-account sólo puede administrar usuarios del realm nutriapp.
  */
 @Slf4j
 @Component
@@ -100,13 +100,12 @@ public class KeycloakAdminClient {
             return cachedToken;
         }
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("grant_type", "password");
-        form.add("client_id", props.adminClientId());
-        form.add("username", props.adminUsername());
-        form.add("password", props.adminPassword());
+        form.add("grant_type", "client_credentials");
+        form.add("client_id", props.clientId());
+        form.add("client_secret", props.clientSecret());
         try {
             Map<?, ?> resp = http.post()
-                    .uri("/realms/{realm}/protocol/openid-connect/token", props.adminRealm())
+                    .uri("/realms/{realm}/protocol/openid-connect/token", props.realm())
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(form)
                     .retrieve()
