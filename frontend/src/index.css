@@ -679,6 +679,7 @@ select {
   text-align: left;
   padding: 0.7rem 0.9rem;
   border-bottom: 1px solid var(--border);
+  vertical-align: middle; /* alinea avatar/texto/botones en la misma línea de la fila */
 }
 .table th {
   font-size: 0.75rem;
@@ -689,7 +690,11 @@ select {
 }
 .table tbody tr:last-child td { border-bottom: none; }
 .table tbody tr:hover { background: #f8fafc; }
-.table__actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+/* Celda de acciones: se mantiene como table-cell (NO flex, que la sacaría del layout de
+   la tabla y desalinea la última columna). Botones inline, alineados a la derecha. */
+.table__actions { text-align: right; white-space: nowrap; }
+.table__actions .btn { vertical-align: middle; }
+.table__actions .btn + .btn { margin-left: 0.4rem; }
 
 .pager {
   display: flex;
@@ -1121,3 +1126,51 @@ select:focus {
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 .modal__backdrop { animation: backdrop-in 0.15s ease; }
 .modal__card { animation: modal-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: var(--shadow-lg); }
+
+/* ---- Panel de integraciones (admin · resiliencia 2.7–2.9) ---- */
+.integraciones-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  align-items: stretch; /* todas las cards de una fila con la misma altura */
+}
+/* Card como columna flex: el botón de acción se ancla abajo (margin-top:auto) para que
+   quede alineado entre cards aunque el contenido de arriba tenga distinto alto. */
+.integraciones-grid .card {
+  display: flex;
+  flex-direction: column;
+}
+.integracion__action {
+  margin-top: auto;
+  align-self: flex-start; /* el botón no se estira a lo ancho de la card */
+}
+.integracion__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.integracion__name { font-weight: 700; }
+.integracion__badges { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.integracion__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.4rem 0 1rem;
+  font-size: 0.88rem;
+}
+.integracion__meta-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.integracion__meta-row > span:last-child {
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.badge--ok { background: var(--primary-soft); color: var(--primary-dark); }
+.badge--off { background: var(--danger-soft); color: #b83b3b; }
+.badge--wait { background: var(--amber-soft); color: #b9741a; }

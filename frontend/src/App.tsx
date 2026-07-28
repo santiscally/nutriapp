@@ -7,6 +7,7 @@ import { CierreMensual } from "./pages/CierreMensual";
 import { Configuracion } from "./pages/Configuracion";
 import { Dashboard } from "./pages/Dashboard";
 import { EmitirReceta } from "./pages/EmitirReceta";
+import { Integraciones } from "./pages/Integraciones";
 import { Login } from "./pages/Login";
 import { Pacientes } from "./pages/Pacientes";
 import { Recetas } from "./pages/Recetas";
@@ -36,6 +37,7 @@ export default function App() {
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/cierre-mensual" element={<CierreMensual />} />
             <Route path="/configuracion" element={<Configuracion />} />
+            <Route path="/integraciones" element={<Integraciones />} />
           </Route>
 
           {/* Fallback */}

@@ -22,7 +22,9 @@ const roleLabel = (roles?: string[]) =>
 export function AppLayout() {
   const { me, logout } = useAuth();
   const isAdmin = me?.roles.includes("ADMIN") ?? false;
-  const nav = isAdmin ? [...NAV, { to: "/configuracion", label: "Configuración" }] : NAV;
+  const nav = isAdmin
+    ? [...NAV, { to: "/configuracion", label: "Configuración" }, { to: "/integraciones", label: "Integraciones" }]
+    : NAV;
 
   return (
     <div className="app-shell">
