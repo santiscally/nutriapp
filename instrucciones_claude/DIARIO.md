@@ -32,6 +32,46 @@
 
 ## Entradas
 
+## 2026-07-28 — Santi — infra (Fase 3 deploy: docker-compose.prod.yml + nginx TLS + backup/restore)
+**Qué:** Scaffold de despliegue prod (penúltimo ítem de Fase 3, línea 144 del plan). nginx termina TLS y es el
+**único** servicio público (80/443); db/keycloak/backend quedan en loopback + red interna.
+- **`nginx/conf.d/nutriapp.conf`:** reverse proxy single-domain path-based (`/`→SPA `frontend/dist`, `/api/`→backend,
+  `/auth/`→Keycloak) + TLS moderno (TLSv1.2/1.3) + **security headers** (HSTS, X-Frame-Options DENY, nosniff,
+  Referrer-Policy, Permissions-Policy, **CSP** same-origin) + **rate-limit de red** (`limit_req_zone` por IP, 20r/s
+  burst 40) + gzip. `server_name _` → portable a cualquier dominio sin editar. Expone SÓLO `= /actuator/health`
+  (el resto de actuator no sale). El `/api/v1` es prefijo de los `@RequestMapping`, no context-path → `location /api/` los cubre.
+- **`docker-compose.prod.yml`** (override sobre el dev): backend `SPRING_PROFILES_ACTIVE=prod` + **secretos fail-closed**
+  (`KEYCLOAK_ADMIN_CLIENT_SECRET` con `:?` → el compose aborta si falta; nunca cae al secret de dev); Keycloak modo prod
+  (`start --import-realm`, sin `--optimized` porque la imagen stock no viene pre-buildeada) bajo `/auth`
+  (`KC_HTTP_RELATIVE_PATH`, `KC_PROXY_HEADERS=xforwarded`, `KC_HOSTNAME` por env); servicio **nginx** nuevo (monta
+  conf + certs + `frontend/dist` read-only). JWK interno movido a `.../auth/realms/...`.
+- **TLS = bring-your-own-cert** (decisión del usuario; Let's Encrypt queda para cuando Gon confirme hosting/dominio,
+  pregunta abierta #8). `nginx/certs/` git-ignora todo pem (sólo versiona `.gitignore`+README). `scripts/gen-selfsigned-cert.sh`
+  genera placeholder para staging.
+- **Backup/restore:** `scripts/backup-db.sh` (pg_dump -Fc de nutriapp+keycloak → `backups/` git-ignored) + `scripts/restore-db.sh`
+  (pg_restore --clean, DESTRUCTIVO, exige `--yes`).
+- **`DEPLOY.md`** (runbook nuevo): certs → build SPA (VITE_* al dominio prod) → regenerar secret del client → `.env` prod →
+  `up`. `.env.example` ganó bloque PRODUCCIÓN.
+**Verificación:** YAML de ambos compose parsea (python yaml) + `bash -n` de los 3 scripts OK. **NO** corrí `docker compose config`/boot:
+requiere Docker (Desktop caído) + envs de los `:?`, y la config de hostname de Keycloak sólo se valida de verdad contra un dominio
+real + stack corriendo → queda como paso de deploy documentado. Ofrecido smoke local con self-signed + dominio dummy si se quiere.
+**Review de seguridad (security-reviewer) + fixes aplicados:** 2 CRITICAL, 1 HIGH, 4 MEDIUM, varios LOW — todos corregidos:
+- **C1 (fail-open de secretos):** el override no forzaba `POSTGRES_PASSWORD`/`KEYCLOAK_ADMIN`/`KEYCLOAK_ADMIN_PASSWORD` → heredaban
+  los débiles del base (`nutriapp_dev`, `admin`/`admin`). Ahora los tres con `:?` (aborta si faltan) + callouts en `.env.example`/`DEPLOY.md`.
+- **C2 (spoofing de X-Forwarded-For):** nginx ponía `$proxy_add_x_forwarded_for` (appendea el XFF del cliente) y la app confía en el
+  primer hop → un cliente podía falsear su IP y evadir el rate-limiter. Fix: `X-Forwarded-For $remote_addr` (sobrescribe) en los 3 locations + `X-Real-IP`.
+- **H1 (consola admin de KC pública):** `location /auth/` exponía `/auth/admin` y `/auth/realms/master`. Fix: `location ~ ^/auth/(admin|realms/master) { return 404; }` (la app usa la Admin API interna, no la consola).
+- **M1 (CSP rompía las fuentes):** el SPA carga Comic Neue de Google Fonts; la CSP no lo permitía. Fix: allowlist `fonts.googleapis.com`/`fonts.gstatic.com` en style-src/font-src (script-src sigue estricto — tokens en localStorage).
+- **M2:** documentados los `VITE_API_BASE_URL`/`VITE_KEYCLOAK_URL` de build para prod (deben igualar el origen público o la CSP bloquea los fetch).
+- **M3:** `nginx/certs/.gitignore` pasó a default-deny (`*` + `!.gitignore` + `!README.md`) — ya no depende de la extensión del cert.
+- **M4:** backup/restore con cifrado GPG opt-in (`BACKUP_GPG_RECIPIENT`); restore autodetecta `.gpg`.
+- **LOW:** `server_tokens off`, `limit_req` también en `/actuator/health`. (Quedan como nota: OCSP stapling y pinnear `server_name` requieren cert/dominio real.)
+**Pendiente Fase 3 (queda 1 real + ops):** regenerar el secret del client en el realm de prod (ops, necesita KC de prod corriendo)
++ Let's Encrypt/renovación al confirmar hosting. Después: puesta en producción (presupuesto §5).
+**Impacto para Fran:** ninguno en el contrato ni en tu código. En prod tu SPA se sirve estática desde `frontend/dist` (tu
+`npm run build`) detrás de nginx, misma-origen a `/api` y `/auth`. Los `VITE_*` se hornean apuntando al dominio prod (ver DEPLOY.md §2).
+**Refs:** `docker-compose.prod.yml`, `nginx/conf.d/nutriapp.conf`, `nginx/certs/{.gitignore,README.md}`, `scripts/{gen-selfsigned-cert,backup-db,restore-db}.sh`, `DEPLOY.md`, `.env.example`, `.gitignore`.
+
 ## 2026-07-27 — Santi — backend/auth/seguridad (Fase 3 hardening: Keycloak Admin por service-account, sale el superusuario master)
 **Qué:** El `KeycloakAdminClient` dejó de usar el **superusuario del realm master** (`admin/admin`, password grant contra
 `admin-cli`) y pasó a **client_credentials** del service-account del client confidencial `nutriapp-backend`, scopeado sólo a

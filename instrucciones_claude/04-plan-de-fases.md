@@ -141,8 +141,8 @@ enciende en 2.1/2.2 al conectar los clientes HTTP reales.
 
 - ✅ **Rate-limiting por IP en `/registro` y `/webhooks`** (backend, hecho 2026-07-27 — token bucket propio, 429 + `Retry-After`, config `nutriapp.rate-limit`). Single-instance; escalado a store compartido documentado.
 - ✅ **Keycloak Admin por service-account** (hecho 2026-07-27) — `client_credentials` del client `nutriapp-backend` scopeado a `realm-management` `manage-users`/`view-users`; sale el superusuario del realm master. Secret fail-closed en prod.
-- `docker-compose.prod.yml` + nginx TLS + (rate limit de red) + headers (port de imedba), backup/restore scripts.
-- Regenerar el secret del client `nutriapp-backend` para el realm de prod (hoy placeholder de dev).
+- ✅ **`docker-compose.prod.yml` + nginx TLS + rate limit de red + security headers + backup/restore scripts** (hecho 2026-07-28) — nginx único servicio público (80/443), reverse proxy single-domain (`/`→SPA, `/api/`→backend, `/auth/`→Keycloak), **bring-your-own-cert** (Let's Encrypt diferido hasta confirmar hosting), secretos fail-closed, `scripts/{gen-selfsigned-cert,backup-db,restore-db}.sh`, runbook `DEPLOY.md`. Boot real = paso de deploy (necesita Docker + dominio).
+- Regenerar el secret del client `nutriapp-backend` para el realm de prod (hoy placeholder de dev) — **ops, al desplegar** (necesita el Keycloak de prod corriendo).
 - Hosting del cliente (a definir con Gon — presupuesto: infra a cargo del cliente) + dominio + certificados.
 - E2E completo en staging, corrección de bugs, revisión de seguridad (webhook HMAC, scoping, secretos).
 - Puesta en producción + soporte post-entrega (presupuesto §5).
