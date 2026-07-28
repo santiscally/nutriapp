@@ -32,6 +32,32 @@
 
 ## Entradas
 
+## 2026-07-28 — Santi — integraciones (Contabilium conectado LIVE contra prod: probe read-only + fix de charset UTF-8)
+**Qué:** Primer contacto real con Contabilium (arranque de Fase 2), **read-only** contra la cuenta de **prod** del
+cliente (razón social real: J&L NEO PHARMA SAS). Credenciales del `.env` validadas: token OK, `conceptos/search`
+devuelve **2266 items / 50 páginas**. Params `filtro`/`page` (que la docu no dejaba 100% claros) **CONFIRMADOS**.
+- **Bug encontrado y arreglado — charset.** `HttpContabiliumClient` leía el cuerpo con `.body(type)` (RestClient),
+  que aplica el charset del Content-Type de Contabilium (Windows-1252, backend .NET) sobre bytes que en realidad son
+  UTF-8 → los nombres con Ñ/acentos salían mojibake ("AÑOS" → "AÃ'OS"). **Fix:** traer el cuerpo como `byte[]` y
+  parsear con un `ObjectMapper` propio (Jackson autodetecta UTF-8 en byte-stream por spec JSON, bypasea el charset
+  declarado). Verificado post-fix: "102 AÑOS PLUS..." sale con la Ñ correcta. Sólo toqué `authedGet` (el path del token es ASCII).
+- **Probe read-only (`@Profile("dev")`).** Nuevo `GET /api/v1/dev/contabilium/probe` (`ContabiliumProbeController`,
+  mismo patrón que el simulador de webhook): valida credenciales (`obtenerInfo`) + trae página 1 (`buscarConceptos`) y
+  devuelve el shape **SIN escribir en DB** — primera-contacto controlada (2 requests) antes de dejar que el sync escriba
+  2266 filas. Nunca existe en prod (bean no anotado fuera de dev). No expone secretos, sólo datos del catálogo.
+- **Shape validado:** id/tipo/nombre/codigo(SKU)/estado/precio/precioFinal/stock, todos poblados con datos reales.
+**Cómo quedó corriendo:** backend recreado con `CONTABILIUM_MODE=live` (**override transitorio de compose — NO toqué `.env`**;
+un `up` plano vuelve a stub). db/keycloak intactos. **NO hay job scheduled de Contabilium** (sólo el endpoint manual) →
+live-by-default no golpea prod solo.
+**Pendiente (gate del harness):** el **full-sync** (`POST /admin/contabilium/sync-productos`, 2266 productos) lo bloqueó el
+clasificador de auto-mode (acción de escritura que dispara ~50 llamadas a prod) en Bash **y** PowerShell → hay que dispararlo
+**manualmente** (comando abajo). Una vez corrido, el catálogo queda **persistido en DB** (sobrevive reinicios y modo).
+**Ojo (a decidir con Gon):** el sync **ignora `estado` Activo/Inactivo** de Contabilium (no lo mapea a `publicado`) → los 2266
+entran `publicado=true` (visibles al emisor), incluidos placeholders (precioFinal 1.0, stock 0). Mapear estado→publicado +
+filtrar placeholders es refinamiento de Fase 2. **TiendaNube sigue en stub** (se conecta después, como acordamos).
+**Comando del sync (correr con backend en live):** `Invoke-RestMethod -Method Post -Uri http://localhost:8088/api/v1/admin/contabilium/sync-productos -Headers @{Authorization="Bearer $tok"}` (token admin por ROPC).
+**Refs:** `integrations/contabilium/HttpContabiliumClient.java` (fix charset), `modules/producto/controller/ContabiliumProbeController.java` (nuevo).
+
 ## 2026-07-28 — Santi — infra (Fase 3 deploy: docker-compose.prod.yml + nginx TLS + backup/restore)
 **Qué:** Scaffold de despliegue prod (penúltimo ítem de Fase 3, línea 144 del plan). nginx termina TLS y es el
 **único** servicio público (80/443); db/keycloak/backend quedan en loopback + red interna.

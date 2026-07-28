@@ -64,6 +64,11 @@ Emitir/Recetas/Pacientes (ya heredan tokens+navbar; consistentes). Detalle R.1�
 - **Fase 2 — integraciones reales** (necesita a Gon: credenciales + tienda demo TiendaNube + proveedor mail/WhatsApp).
   Resiliencia 2.7–2.9 **ya hecha en stub** (backend + panel front `/integraciones`) — al conectar los clientes reales
   drena lo acumulado sin tocar código.
+- **✅ Contabilium CONECTADO LIVE contra prod (2026-07-28):** credenciales del `.env` validadas (J&L NEO PHARMA SAS,
+  2266 productos / 50 páginas). **Fix de charset UTF-8** en `HttpContabiliumClient` (venían mojibake los nombres con Ñ).
+  Probe read-only dev nuevo (`GET /dev/contabilium/probe`). **Full-sync pendiente de disparo manual** (`POST /admin/contabilium/sync-productos`
+  — lo gatea el clasificador de auto-mode). Backend corriendo con `CONTABILIUM_MODE=live` **transitorio** (no persistido en `.env`).
+  **TiendaNube sigue en stub.** Detalle en DIARIO.
 - **Hardening Fase 3 EN CURSO:** ✅ rate-limiting `/registro` y `/webhooks` (token bucket por IP, 429+Retry-After, `mvn verify` 84 unit+1 IT). ✅ **Keycloak Admin por service-account** (`client_credentials` de `nutriapp-backend`, roles `realm-management` `manage-users`+`view-users`+`view-realm` — sale el superuser del master; verificado registro→aprobar en vivo). ✅ **`docker-compose.prod.yml` + nginx TLS + backup/restore (2026-07-28):** nginx único servicio público (80/443), reverse proxy single-domain (`/`→SPA, `/api/`→backend, `/auth/`→Keycloak) + security headers + rate-limit de red + CSP; **bring-your-own-cert** (`nginx/certs/`, git-ignored) + `scripts/gen-selfsigned-cert.sh`; Keycloak modo prod bajo `/auth`; secretos fail-closed; `scripts/{backup,restore}-db.sh`; runbook `DEPLOY.md`. YAML validado; boot real = paso de deploy (Docker + dominio). **Sigue (ops + al confirmar hosting con Gon):** regenerar el secret del client en el realm de prod + Let's Encrypt/renovación. Todo committeado local (branch main, 15+ commits adelante de origin, **sin push**).
 
 **Bloqueado por el otro:** nada.
