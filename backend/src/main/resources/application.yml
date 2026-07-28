@@ -100,6 +100,17 @@ nutriapp:
     # Polling de respaldo de órdenes pagadas (en stub no-op). Ventana en horas hacia atrás.
     polling-interval-ms: ${WEBHOOK_POLLING_INTERVAL_MS:300000}
     polling-window-hours: ${WEBHOOK_POLLING_WINDOW_HOURS:24}
+  rate-limit:
+    # Límite por IP en los endpoints públicos (mitiga abuso/hammering de /registro contra Keycloak y
+    # del webhook público). En memoria, single-instance; si se escala, mover a un store compartido.
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    evict-interval-ms: ${RATE_LIMIT_EVICT_INTERVAL_MS:600000}
+    registro:
+      capacity: ${RATE_LIMIT_REGISTRO_CAPACITY:10}
+      window-seconds: ${RATE_LIMIT_REGISTRO_WINDOW_SECONDS:60}
+    webhooks:
+      capacity: ${RATE_LIMIT_WEBHOOKS_CAPACITY:120}
+      window-seconds: ${RATE_LIMIT_WEBHOOKS_WINDOW_SECONDS:60}
   keycloak:
     # Admin REST API: crear usuarios al registrar y habilitarlos al aprobar.
     # En Docker el backend ve Keycloak por la red interna (http://keycloak:8080).

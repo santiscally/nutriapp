@@ -33,5 +33,7 @@ public abstract class PostgresITBase {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+        // El rate limit no aporta a estos flujos y podría enmascarar fallos si un IT hace ráfagas.
+        registry.add("nutriapp.rate-limit.enabled", () -> "false");
     }
 }
