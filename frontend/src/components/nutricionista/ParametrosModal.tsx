@@ -163,63 +163,56 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
   return (
     <Modal title={`${nutri.nombre} ${nutri.apellido}`} onClose={onClose} ancho>
       <form className="ficha" onSubmit={onGuardar}>
+        {/* Estado arriba de todo: es lo primero que se pregunta el admin al abrir la ficha. */}
+        <div className="ficha__estado">
+          {nutri.activo ? (
+            <span className="badge badge--ok">Acceso activo</span>
+          ) : (
+            <span className="badge badge--off">Sin acceso</span>
+          )}
+          <span className="muted">{nutri.email}</span>
+          <span className="muted">·</span>
+          <span className="muted">solicitó el {fecha(nutri.createdAt)}</span>
+          {nutri.tieneMatricula && (
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost ficha__estado-btn"
+              onClick={() =>
+                abrirMatricula(nutri.id).catch(() => toast.error("No se pudo abrir el archivo."))
+              }
+            >
+              Ver matrícula
+            </button>
+          )}
+        </div>
+
         <dl className="ficha__datos">
           <div>
-            <dt>Email</dt>
-            <dd>{nutri.email}</dd>
-          </div>
-          <div>
-            <dt>Acceso</dt>
-            <dd>
-              {nutri.activo ? (
-                <span className="badge badge--ok">Activo</span>
-              ) : (
-                <span className="badge badge--off">Sin acceso</span>
-              )}
-            </dd>
-          </div>
-          <div>
             <dt>Teléfono</dt>
-            <dd>{nutri.telefono || <span className="muted">—</span>}</dd>
+            <dd>{nutri.telefono || "—"}</dd>
           </div>
           <div>
             <dt>Matrícula</dt>
-            <dd>{nutri.matricula || <span className="muted">—</span>}</dd>
+            <dd>{nutri.matricula || "—"}</dd>
           </div>
           <div>
             <dt>DNI</dt>
-            <dd>{nutri.dni || <span className="muted">—</span>}</dd>
+            <dd>{nutri.dni || "—"}</dd>
           </div>
           <div>
             <dt>CUIT</dt>
-            <dd>{nutri.cuit || <span className="muted">—</span>}</dd>
+            <dd>{nutri.cuit || "—"}</dd>
           </div>
-          <div>
+          <div className="ficha__datos-ancho">
             <dt>Condición fiscal</dt>
-            <dd>{nutri.condicionFiscal || <span className="muted">—</span>}</dd>
+            <dd>{nutri.condicionFiscal || "—"}</dd>
           </div>
-          <div>
-            <dt>Solicitud</dt>
-            <dd>{fecha(nutri.createdAt)}</dd>
-          </div>
-          <div>
-            <dt>Respaldo</dt>
-            <dd>
-              {nutri.tieneMatricula ? (
-                <button
-                  type="button"
-                  className="btn btn--sm btn--ghost"
-                  onClick={() =>
-                    abrirMatricula(nutri.id).catch(() => toast.error("No se pudo abrir el archivo."))
-                  }
-                >
-                  Ver matrícula
-                </button>
-              ) : (
-                <span className="muted">No adjuntó archivo</span>
-              )}
-            </dd>
-          </div>
+          {!nutri.tieneMatricula && (
+            <div className="ficha__datos-ancho">
+              <dt>Respaldo</dt>
+              <dd className="muted">No adjuntó archivo</dd>
+            </div>
+          )}
         </dl>
 
         {nutri.estadoValidacion === "RECHAZADA" && nutri.notasValidacion && (
@@ -228,7 +221,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
 
         <section className="ficha__bloque">
           <h3 className="ficha__titulo">Porcentajes</h3>
-          <div className="form-grid">
+          <div className="ficha__pcts">
             <label className="field">
               <span>Descuento de recetas (%)</span>
               <input
@@ -253,14 +246,59 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
                 onChange={(e) => setComision(e.target.value)}
               />
             </label>
+            <p className="ficha__hint">
+              Aplican a las recetas futuras: las emitidas conservan su porcentaje.
+            </p>
           </div>
-          <p className="ficha__hint">
-            Los cambios afectan sólo a las recetas futuras: las ya emitidas conservan el porcentaje
-            con el que salieron.
-          </p>
         </section>
 
         {error && <div className="alert alert--error">{error}</div>}
+
+        {/* Zona de cuenta: acciones raras y difíciles de revertir, separadas de lo de todos los
+            días. Cada botón lleva su aclaración al lado, en una línea — sin eso "Desactivar" y
+            "Borrar" se parecen demasiado y la diferencia se descubre apretando. */}
+        {!pendiente && (
+          <section className="ficha__bloque">
+            <h3 className="ficha__titulo">Cuenta</h3>
+            <div className="ficha__cuenta">
+              <div className="ficha__cuenta-fila">
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onResetPassword}>
+                  Cambiar contraseña
+                </button>
+                <span className="ficha__hint">No hay recuperación por email.</span>
+              </div>
+
+              {aprobada && (
+                <div className="ficha__cuenta-fila">
+                  {nutri.activo ? (
+                    <>
+                      <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onDesactivar}>
+                        Desactivar
+                      </button>
+                      <span className="ficha__hint">Le saca el acceso; conserva todo. Reversible.</span>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onReactivar}>
+                        Reactivar
+                      </button>
+                      <span className="ficha__hint">Hoy no puede entrar.</span>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <div className="ficha__cuenta-fila">
+                <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onEliminar}>
+                  Borrar
+                </button>
+                <span className="ficha__hint">
+                  Elimina usuario, perfil y pacientes. Sólo si nunca emitió una receta.
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Acción principal, siempre en el mismo lugar: abajo a la derecha. */}
         <div className="ficha__acciones">
@@ -273,60 +311,6 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
             {busy ? "Guardando…" : pendiente ? "Aprobar solicitud" : "Guardar cambios"}
           </button>
         </div>
-
-        {/* Zona de cuenta: separada porque son acciones raras y difíciles de revertir. */}
-        {!pendiente && (
-          <section className="ficha__bloque ficha__bloque--cuenta">
-            <h3 className="ficha__titulo">Cuenta</h3>
-            <div className="ficha__cuenta">
-              <div className="ficha__cuenta-fila">
-                <div>
-                  <strong>Contraseña</strong>
-                  <p className="ficha__hint">
-                    Si no puede entrar, ponele una nueva: no hay recuperación por email.
-                  </p>
-                </div>
-                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onResetPassword}>
-                  Cambiar contraseña
-                </button>
-              </div>
-
-              {aprobada && (
-                <div className="ficha__cuenta-fila">
-                  <div>
-                    <strong>{nutri.activo ? "Acceso a la plataforma" : "Acceso desactivado"}</strong>
-                    <p className="ficha__hint">
-                      {nutri.activo
-                        ? "Sacarle el acceso conserva sus recetas y pacientes. Es reversible."
-                        : "Hoy no puede entrar. Podés devolverle el acceso."}
-                    </p>
-                  </div>
-                  {nutri.activo ? (
-                    <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onDesactivar}>
-                      Desactivar
-                    </button>
-                  ) : (
-                    <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onReactivar}>
-                      Reactivar
-                    </button>
-                  )}
-                </div>
-              )}
-
-              <div className="ficha__cuenta-fila ficha__cuenta-fila--peligro">
-                <div>
-                  <strong>Borrar definitivamente</strong>
-                  <p className="ficha__hint">
-                    Elimina usuario, perfil y pacientes. Sólo se puede si nunca emitió una receta.
-                  </p>
-                </div>
-                <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onEliminar}>
-                  Borrar
-                </button>
-              </div>
-            </div>
-          </section>
-        )}
       </form>
     </Modal>
   );

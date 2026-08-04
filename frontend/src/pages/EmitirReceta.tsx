@@ -89,105 +89,102 @@ export function EmitirReceta() {
 
   return (
     <section className="emitir">
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h1 className="page-title" style={{ marginBottom: "0.35rem" }}>
-          Emitir receta
-        </h1>
-        <p className="muted">
-          Elegí el paciente y los productos; el código de descuento se genera al emitir.
-        </p>
-      </div>
+      {/* Barra superior: título + paciente. El paciente ocupaba una tarjeta entera para mostrar
+          un solo dato; acá va en la misma línea y libera todo ese alto para el buscador. */}
+      <header className="emitir__head">
+        <h1 className="emitir__titulo">Emitir receta</h1>
+        <div className="emitir__paciente">
+          {paciente ? (
+            <>
+              <span className="emitir__paciente-info">
+                <Icon name="users" size={15} />
+                <strong>
+                  {paciente.nombre} {paciente.apellido}
+                </strong>
+                <span className="muted">{paciente.email}</span>
+              </span>
+              <button className="btn btn--sm btn--ghost" onClick={() => setPaciente(null)}>
+                Cambiar
+              </button>
+            </>
+          ) : (
+            <PacientePicker onSelect={setPaciente} />
+          )}
+        </div>
+      </header>
 
+      {/* Dos paneles de alto fijo. La página no scrollea: scrollean por dentro la lista de
+          resultados y la de items, que es lo único que puede crecer sin límite. Así el buscador y
+          el botón de emitir están siempre a la vista, sin perseguirlos con la rueda. */}
       <div className="emitir__grid">
-        {/* ---- Columna izquierda: selección ---- */}
-        <div className="emitir__main">
-          <div className="card step">
-            <h2 className="step__title">1 · Paciente</h2>
-            {paciente ? (
-              <div className="chip">
-                <span>
-                  <strong>
-                    {paciente.nombre} {paciente.apellido}
-                  </strong>{" "}
-                  · {paciente.email}
-                </span>
-                <button className="btn btn--sm btn--ghost" onClick={() => setPaciente(null)}>
-                  Cambiar
-                </button>
-              </div>
-            ) : (
-              <PacientePicker onSelect={setPaciente} />
-            )}
-          </div>
-
-          <div className="card step">
-            <h2 className="step__title">2 · Productos</h2>
-            <ProductoBuscador onAdd={addProducto} selectedIds={selectedIds} />
-          </div>
+        <div className="card emitir__panel">
+          <ProductoBuscador onAdd={addProducto} selectedIds={selectedIds} />
         </div>
 
-        {/* ---- Columna derecha: resumen sticky ---- */}
-        <aside className="emitir__summary">
-          <div className="card resumen-card">
-            <h2 className="resumen-card__title">Resumen de la receta</h2>
-            <p className="resumen-card__para muted">
-              {paciente ? (
-                <>
-                  Para <strong>{paciente.nombre} {paciente.apellido}</strong>
-                </>
-              ) : (
-                "Elegí un paciente para empezar."
-              )}
-            </p>
-
-            {items.length === 0 ? (
-              <div className="resumen-card__empty">
-                <Icon name="pill" size={28} />
-                <p className="muted">Agregá productos para armar la receta.</p>
-              </div>
-            ) : (
-              <ul className="cart">
-                {items.map((it) => (
-                  <li key={it.producto.id} className="cart-item">
-                    <div className="cart-item__top">
-                      <span className="cart-item__name">{it.producto.nombre}</span>
-                      <button
-                        className="cart-item__remove"
-                        onClick={() => removeItem(it.producto.id)}
-                        aria-label="Quitar"
-                      >
-                        <Icon name="x-circle" size={16} />
-                      </button>
-                    </div>
-                    <div className="cart-item__row">
-                      <label className="cart-item__qty">
-                        <input
-                          type="number"
-                          min={1}
-                          value={it.cantidad}
-                          onChange={(e) =>
-                            updateItem(it.producto.id, {
-                              cantidad: Math.max(1, Number(e.target.value) || 1),
-                            })
-                          }
-                        />
-                        <span className="muted">× {money(it.producto.precio)}</span>
-                      </label>
-                      <span className="cart-item__sub">
-                        {money(it.producto.precio * it.cantidad)}
-                      </span>
-                    </div>
-                    <input
-                      className="cart-item__ind"
-                      placeholder="Indicaciones (ej. 1 medida post-entreno)"
-                      value={it.indicaciones}
-                      onChange={(e) => updateItem(it.producto.id, { indicaciones: e.target.value })}
-                    />
-                  </li>
-                ))}
-              </ul>
+        <aside className="card emitir__panel emitir__resumen">
+          <div className="emitir__resumen-head">
+            <h2 className="resumen-card__title">Receta</h2>
+            {items.length > 0 && (
+              <span className="muted">
+                {items.length} producto{items.length === 1 ? "" : "s"}
+              </span>
             )}
+          </div>
 
+          {items.length === 0 ? (
+            <div className="resumen-card__empty">
+              <Icon name="pill" size={28} />
+              <p className="muted">
+                {paciente
+                  ? "Agregá productos del buscador."
+                  : "Elegí un paciente y agregá productos."}
+              </p>
+            </div>
+          ) : (
+            <ul className="cart emitir__items">
+              {items.map((it) => (
+                <li key={it.producto.id} className="cart-item">
+                  <div className="cart-item__top">
+                    <span className="cart-item__name">{it.producto.nombre}</span>
+                    <button
+                      className="cart-item__remove"
+                      onClick={() => removeItem(it.producto.id)}
+                      aria-label="Quitar"
+                    >
+                      <Icon name="x-circle" size={16} />
+                    </button>
+                  </div>
+                  <div className="cart-item__row">
+                    <label className="cart-item__qty">
+                      <input
+                        type="number"
+                        min={1}
+                        value={it.cantidad}
+                        onChange={(e) =>
+                          updateItem(it.producto.id, {
+                            cantidad: Math.max(1, Number(e.target.value) || 1),
+                          })
+                        }
+                      />
+                      <span className="muted">× {money(it.producto.precio)}</span>
+                    </label>
+                    <span className="cart-item__sub">
+                      {money(it.producto.precio * it.cantidad)}
+                    </span>
+                  </div>
+                  <input
+                    className="cart-item__ind"
+                    placeholder="Indicaciones (ej. 1 medida post-entreno)"
+                    value={it.indicaciones}
+                    onChange={(e) => updateItem(it.producto.id, { indicaciones: e.target.value })}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Pie fijo del panel: totales y emitir siempre visibles, aunque el carrito scrollee. */}
+          <div className="emitir__pie">
             <div className="resumen">
               <div>
                 <span className="muted">Subtotal</span>
@@ -208,18 +205,17 @@ export function EmitirReceta() {
                 promos que se acumulan con este descuento. La receta que recibe el paciente y el
                 historial NO llevan importes: sólo se ven acá. */}
             <p className="resumen__disclaimer">
-              Valores aproximados. El precio final lo define la tienda al momento de la compra y
-              puede cambiar sin previo aviso.
+              Valores aproximados: el precio final lo define la tienda al comprar.
             </p>
 
             {error && <div className="alert alert--error">{error}</div>}
 
             <button
-              className="btn btn--primary btn--lg resumen-card__submit"
+              className="btn btn--primary resumen-card__submit"
               disabled={!canSubmit}
               onClick={onSubmit}
             >
-              <Icon name="send" size={18} />
+              <Icon name="send" size={17} />
               {submitting ? "Emitiendo…" : "Emitir receta"}
             </button>
           </div>

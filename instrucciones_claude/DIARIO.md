@@ -32,6 +32,39 @@
 
 ## Entradas
 
+## 2026-08-04 — Santi — frontend (pantallas sin scroll: emisión, navbar/footer fijos, detalle en modal)
+**Qué:** Cinco ajustes de layout salidos de usar la app. `tsc`/`oxlint`/`build` verdes.
+
+- **Emitir receta rediseñada como panel de trabajo de alto fijo.** Era una página larga: al agregar
+  el tercer producto había que scrollear para encontrar el botón de emitir, y el buscador quedaba
+  arriba fuera de pantalla. Ahora la pantalla ocupa exactamente el viewport disponible y **no
+  scrollea**: scrollean por dentro las dos listas que pueden crecer sin límite (resultados del
+  buscador e items de la receta). El buscador, los totales y el botón quedan siempre a la vista.
+  El paciente pasó de ocupar una tarjeta entera —para mostrar un solo dato— a una píldora en la
+  barra de título, y ese alto se lo quedó el buscador. Abajo de 980px vuelve a ser una página que
+  scrollea: no hay dos columnas que sostener.
+- **Navbar fijo.** Estaba en `position: sticky` y no funcionaba: hay un `html, body { overflow-x:
+  hidden }` (para que nada desborde a lo ancho) que crea un contexto de scroll y **anula el
+  sticky**. Pasado a `fixed`, que se ancla al viewport y no se ve afectado. El alto de las dos
+  barras vive ahora en `--navbar-h`/`--footer-h` y el shell las reserva con padding.
+- **Footer reducido a la barra fija** (marca + copyright + Simple Apps). Los links que tenía arriba
+  se eliminaron por dos razones: para la nutricionista duplicaban la navbar, y **para el admin
+  apuntaban a rutas que no puede ver** (Panel/Recetas/Pacientes/Cierre son sólo de nutricionista
+  por C-07) — o sea que lo mandaban a un 403 o lo rebotaban al home. Era un bug, no sólo ruido.
+- **Detalle de producto: de fila expandible a modal.** La fila expandible empujaba todas las de
+  abajo, la tabla saltaba y se perdía de vista lo que se venía leyendo.
+- **Ficha de nutricionista sin scroll**: estado y email en una línea arriba, datos en grilla densa,
+  los dos porcentajes y su aclaración en una sola fila, y las acciones de cuenta pasaron de tarjetas
+  con título+descripción a una línea cada una (botón + aclaración al lado).
+
+**Pregunta del usuario — de dónde salen las imágenes:** del **maestro**, columna
+`LINK IMAGEN TIENDA NUBE`. Son URLs al CDN de TiendaNube (`dcdn-us.mitiendanube.com`): guardamos el
+link, no el archivo, así que no cuestan storage pero dependen de que TBC no las mueva. Cobertura
+real hoy: **173 de 699 recetables (25 %)** — por eso la fila de producto tiene que verse bien sin
+imagen.
+**Refs:** `pages/EmitirReceta.tsx`, `pages/CatalogoAdmin.tsx`, `components/layout/Footer.tsx`,
+`components/nutricionista/ParametrosModal.tsx`, `components/receta/ProductoBuscador.tsx`, `index.css`.
+
 ## 2026-08-04 — Santi — frontend+backend (detalle expandible del catálogo del admin, con los tags)
 **Qué:** Pedido: "traer los tags del maestro y que filtren en la búsqueda, y poder expandir el
 producto viendo más detalles con los tags como burbujas".

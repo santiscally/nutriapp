@@ -33,6 +33,9 @@
   --shadow: 0 4px 14px rgba(20, 45, 43, 0.07), 0 2px 4px rgba(20, 45, 43, 0.04);
   --shadow-lg: 0 14px 36px rgba(20, 45, 43, 0.12);
   --content-w: 1280px;
+  /* Alto de las dos barras fijas (navbar arriba, footer abajo). El shell reserva estos espacios. */
+  --navbar-h: 64px;
+  --footer-h: 34px;
 
   /* Tipografía Comic Neue (estética Comic Sans, pedido explícito del cliente). Se carga la web
      font en index.html para render consistente; fallbacks locales luego. Los códigos RX- van .mono. */
@@ -164,16 +167,23 @@ button {
 }
 
 /* Layout autenticado — top navbar + contenido centrado + footer */
+/* Navbar y footer fijos; en el medio scrollea sólo el contenido. El shell reserva el alto de los
+   dos con padding, así nada queda tapado. */
 .app-shell {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* Alto de la barra fija del footer: sin esto tapa la última fila de cualquier listado. */
-  padding-bottom: 34px;
+  padding-top: var(--navbar-h);
+  padding-bottom: var(--footer-h);
 }
+/* `fixed` y no `sticky`: hay un `overflow-x: hidden` en html/body (para que nada desborde a lo
+   ancho) y eso crea un contexto de scroll que anula el sticky — el header se iba con la página.
+   `fixed` se ancla al viewport y no le afecta. */
 .navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -311,38 +321,12 @@ button {
   color: var(--muted);
 }
 
-/* Footer */
-/* Footer compacto. La barra inferior (copyright + Simple Apps) queda FIJA al pie de la ventana:
-   tiene que verse siempre, no sólo si alguien llega scrolleando al final. El resto del contenido
-   reserva su alto con padding-bottom en .app-shell para que la barra no tape la última fila. */
+/* Footer: una sola barra FIJA al pie de la ventana (marca + copyright + Simple Apps). Tiene que
+   verse siempre, no sólo si alguien scrollea hasta el final. El contenido reserva su alto con el
+   padding-bottom de .app-shell para que no tape la última fila de ningún listado.
+   Los links de navegación que tenía arriba se eliminaron: duplicaban la navbar para la
+   nutricionista y para el admin apuntaban a rutas que no puede ver (C-07). */
 .footer {
-  border-top: 1px solid var(--border);
-  background: var(--surface-2);
-  margin-top: 40px;
-}
-.footer__inner {
-  max-width: var(--content-w);
-  margin: 0 auto;
-  padding: 10px 28px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 20px;
-  align-items: center;
-}
-.footer__brand-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--text);
-}
-.footer__brand-row .icon { color: var(--primary); }
-.footer__tagline { margin: 0; font-size: 0.78rem; color: var(--subtle); }
-.footer__links { display: flex; flex-wrap: wrap; gap: 14px; margin-left: auto; }
-.footer__link { font-size: 0.8rem; color: var(--muted); }
-.footer__link:hover { color: var(--primary); }
-.footer__bar {
   position: fixed;
   left: 0;
   right: 0;
@@ -351,6 +335,8 @@ button {
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
+.footer__marca { font-weight: 700; color: var(--text); font-size: 0.8rem; }
+.footer__copy { flex: 1; }
 /* Píldora "powered by <s/a>" (Simple Apps): logo navy fijo, resto con la paleta del sitio. */
 .powered-by {
   display: inline-flex;
@@ -512,24 +498,111 @@ select {
   background: var(--surface);
 }
 
-/* ---- Emitir Receta ---- */
-.emitir { max-width: 1180px; }
+/* ---- Emitir Receta ----
+   Pantalla de trabajo de alto fijo: ocupa exactamente el viewport que queda entre las barras y NO
+   scrollea. Scrollean por dentro las dos listas que pueden crecer sin límite (resultados del
+   buscador e items de la receta); el buscador, los totales y el botón de emitir quedan siempre a
+   la vista. Antes todo era una página larga: al agregar el tercer producto había que scrollear
+   para encontrar el botón, y el buscador quedaba arriba, fuera de pantalla. */
+.emitir {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  /* El .content ya aporta su padding vertical; se descuenta acá para no generar overflow. */
+  height: calc(100vh - var(--navbar-h) - var(--footer-h) - 46px);
+  min-height: 460px;
+}
+.emitir__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  flex: none;
+}
+.emitir__titulo { margin: 0; font-size: 1.45rem; flex: none; }
+.emitir__paciente {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex: 1 1 320px;
+  min-width: 260px;
+  position: relative;
+}
+.emitir__paciente-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.88rem;
+}
+.emitir__paciente-info .icon { color: var(--primary); }
+/* El picker despliega resultados: van por encima del contenido, no empujándolo. */
+.emitir__paciente .picker { flex: 1; }
+.emitir__paciente .picker__results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.35rem;
+  z-index: 20;
+  background: var(--surface);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
 .emitir__grid {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 1.25rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 370px;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0; /* sin esto los hijos no pueden encogerse y el grid desborda */
 }
-.emitir__main { display: flex; flex-direction: column; gap: 1.25rem; }
-.emitir__summary { position: sticky; top: 1.5rem; }
+/* Cada panel: cabecera y pie fijos, con el medio scrolleando. */
+.emitir__panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1rem;
+}
+.emitir__resumen { gap: 0.75rem; }
+.emitir__resumen-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex: none;
+}
+.emitir__items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding-right: 0.3rem;
+}
+.emitir__pie {
+  flex: none;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+.emitir .resumen-card__empty { flex: 1; justify-content: center; }
+
 @media (max-width: 980px) {
-  .emitir__grid { grid-template-columns: 1fr; }
-  .emitir__summary { position: static; }
+  /* En angosto no hay dos columnas que sostener: vuelve a ser una página que scrollea. */
+  .emitir { height: auto; display: block; }
+  .emitir__grid { grid-template-columns: 1fr; height: auto; }
+  .emitir__panel { overflow: visible; }
+  .emitir__items { max-height: 340px; }
+  .emitir__head { margin-bottom: 0.9rem; }
+  .emitir__grid { gap: 1rem; }
 }
 
 /* Resumen / carrito */
 .resumen-card__title { margin: 0; font-size: 1.05rem; }
-.resumen-card__para { margin: 0.35rem 0 1rem; }
 .resumen-card__empty {
   display: flex;
   flex-direction: column;
@@ -592,8 +665,6 @@ select {
 }
 .resumen-card__submit { width: 100%; margin-top: 0.5rem; }
 
-.step { margin-bottom: 0; }
-.step__title { margin: 0 0 1rem; font-size: 1rem; color: var(--muted); }
 .chip {
   display: flex;
   align-items: center;
@@ -792,14 +863,32 @@ select {
 }
 .buscador__precio { -moz-appearance: textfield; appearance: textfield; }
 .buscador__meta { margin-top: 0.6rem; font-size: 0.8rem; }
+/* El buscador es una columna: controles y paginador fijos, la lista se estira y scrollea sola.
+   Con `max-height` fija sobraba espacio abajo en pantallas grandes y faltaba en las chicas. */
+.buscador {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  gap: 0.6rem;
+}
+.buscador__controls,
+.buscador__meta,
+.buscador .pager { flex: none; }
 .prod-list {
   list-style: none;
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  max-height: 320px;
+  flex: 1;
+  min-height: 140px;
   overflow-y: auto;
+}
+@media (max-width: 980px) {
+  /* Ya no hay panel de alto fijo que la contenga: vuelve a un tope propio. */
+  .buscador { height: auto; }
+  .prod-list { max-height: 340px; }
 }
 .prod-row {
   display: grid;
@@ -1712,52 +1801,71 @@ html, body { overflow-x: hidden; }
 .btn--danger-solid:hover:not(:disabled) { background: #9c3030; }
 
 /* ---- Ficha de nutricionista (modal del admin) ---- */
-/* Dos zonas separadas: arriba lo que se toca a diario, abajo las acciones de cuenta. Antes eran
-   todos botones chicos en una misma fila y no se distinguía "guardar" de "borrar para siempre". */
-.ficha { display: flex; flex-direction: column; gap: 1.5rem; }
+/* Compacta a propósito: tiene que entrar en pantalla sin scroll. Cada sección ocupa una franja
+   corta y las acciones de cuenta son una línea (botón + aclaración), no tarjetas. */
+.ficha { display: flex; flex-direction: column; gap: 1rem; }
+.ficha__estado {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.ficha__estado-btn { margin-left: auto; }
 .ficha__datos {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 1.2rem 1.6rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.8rem 1.3rem;
   margin: 0;
 }
+.ficha__datos-ancho { grid-column: span 2; }
 .ficha__datos dt {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--subtle);
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.15rem;
 }
-.ficha__datos dd { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.ficha__datos dd { margin: 0; font-size: 0.88rem; }
 .ficha__bloque {
   border-top: 1px solid var(--border);
-  padding-top: 1.25rem;
+  padding-top: 0.9rem;
 }
-.ficha__titulo { margin: 0 0 0.9rem; font-size: 0.95rem; }
-.ficha__hint { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
-.ficha__nota { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ficha__titulo { margin: 0 0 0.7rem; font-size: 0.9rem; }
+.ficha__hint { margin: 0; font-size: 0.76rem; color: var(--muted); line-height: 1.45; }
+.ficha__nota { margin: 0; font-size: 0.82rem; color: var(--muted); }
+/* Los dos porcentajes y la aclaración en una sola fila: apilados gastaban tres franjas de alto. */
+.ficha__pcts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: 0.9rem;
+  align-items: center;
+}
+.ficha__pcts .field { margin-bottom: 0; }
 .ficha__acciones {
   display: flex;
   justify-content: flex-end;
   gap: 0.6rem;
   flex-wrap: wrap;
+  padding-top: 0.2rem;
 }
-.ficha__cuenta { display: flex; flex-direction: column; gap: 0.9rem; }
-/* Cada acción con su explicación al lado: sin eso, "Desactivar" y "Borrar" son dos botones
-   parecidos y la diferencia entre ellos (reversible o no) sólo se descubre apretando. */
+.ficha__cuenta { display: flex; flex-direction: column; gap: 0.5rem; }
+/* Botón + aclaración en una línea: sin el texto, "Desactivar" y "Borrar" se parecen demasiado y
+   la diferencia (reversible o no) sólo se descubre apretando. */
 .ficha__cuenta-fila {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.8rem;
   flex-wrap: wrap;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
 }
-.ficha__cuenta-fila strong { font-size: 0.9rem; }
-.ficha__cuenta-fila--peligro { border-color: #f3d2d2; background: #fdf6f6; }
+.ficha__cuenta-fila .btn { flex: none; min-width: 148px; }
+
+@media (max-width: 620px) {
+  .ficha__pcts { grid-template-columns: 1fr 1fr; }
+  .ficha__pcts .ficha__hint { grid-column: span 2; }
+}
 
 /* Datos del perfil propio: una fila por dato, con separadores. En grilla quedaban etiqueta y valor
    de distintos campos pegados y se leía como un bloque de texto corrido. */
@@ -1785,15 +1893,8 @@ html, body { overflow-x: hidden; }
 }
 .perfil__datos dd { margin: 0; font-weight: 700; text-align: right; }
 
-/* ---- Tabla con filas expandibles (catálogo del admin) ---- */
-.tabla-expandible .celda-chevron { width: 34px; padding-right: 0; color: var(--subtle); }
-.chevron { display: inline-flex; transition: transform 0.15s ease; }
-.chevron--abierto { transform: rotate(180deg); color: var(--primary); }
-/* La fila de detalle no debe reaccionar al hover de la tabla: es contenido, no una fila más. */
-.fila-detalle > td { background: var(--surface-2); padding: 0; }
-.tabla-expandible tbody tr.fila-detalle:hover > td { background: var(--surface-2); }
-
-.prod-admin { display: flex; gap: 1.35rem; padding: 1.25rem 1.15rem; align-items: flex-start; }
+/* ---- Detalle de producto en el panel del admin (modal) ---- */
+.prod-admin { display: flex; gap: 1.35rem; align-items: flex-start; }
 .prod-admin__img {
   width: 132px;
   height: 132px;

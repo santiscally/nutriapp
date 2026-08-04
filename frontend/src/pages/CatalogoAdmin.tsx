@@ -5,12 +5,14 @@
 // contra Contabilium. Ese número aparecía en el reporte del import y se perdía al cerrar el modal;
 // sin poder listarlos, "104 sin match" no era accionable. Ahora son un filtro.
 //
-// Cada fila se expande para ver el detalle completo, incluidos los tags del maestro. Es sólo
-// lectura: el catálogo lo escriben el sync de Contabilium y el import del Excel, no esta pantalla.
+// El detalle de cada producto (incluidos los tags del maestro) se abre en un modal. Se probó como
+// fila expandible y se descartó: al abrirse empuja todas las filas de abajo, la tabla salta y se
+// pierde de vista lo que se venía leyendo. Es sólo lectura: el catálogo lo escriben el sync de
+// Contabilium y el import del Excel, no esta pantalla.
 
 import { useCallback, useState, type ReactNode } from "react";
 import { getCatalogoResumen, listarProductosAdmin } from "../api/productos";
-import { Icon } from "../components/ui/Icon";
+import { Modal } from "../components/ui/Modal";
 import { useDebounce } from "../hooks/useDebounce";
 import { useFetch } from "../hooks/useFetch";
 import { fecha, money } from "../lib/format";
@@ -116,7 +118,7 @@ export function CatalogoAdmin() {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [page, setPage] = useState(0);
-  const [abierto, setAbierto] = useState<string | null>(null);
+  const [detalle, setDetalle] = useState<ProductoAdmin | null>(null);
   const qDebounced = useDebounce(q, 300);
 
   const resumenFetcher = useCallback((s: AbortSignal) => getCatalogoResumen(s), []);
@@ -140,7 +142,6 @@ export function CatalogoAdmin() {
   function cambiarFiltro(f: Filtro) {
     setFiltro(f);
     setPage(0);
-    setAbierto(null);
   }
 
   return (
@@ -218,10 +219,9 @@ export function CatalogoAdmin() {
 
       {data && data.content.length > 0 && (
         <>
-          <table className="table tabla-expandible">
+          <table className="table">
             <thead>
               <tr>
-                <th aria-label="expandir" />
                 <th>Producto</th>
                 <th>SKU</th>
                 <th>Categoría</th>
@@ -232,48 +232,29 @@ export function CatalogoAdmin() {
               </tr>
             </thead>
             <tbody>
-              {data.content.map((p) => {
-                const expandido = abierto === p.producto.id;
-                return [
-                  <tr
-                    key={p.producto.id}
-                    className="row-click"
-                    onClick={() => setAbierto(expandido ? null : p.producto.id)}
-                  >
-                    <td className="celda-chevron">
-                      <span className={"chevron" + (expandido ? " chevron--abierto" : "")}>
-                        <Icon name="chevron" size={16} />
-                      </span>
-                    </td>
-                    <td>
-                      <strong>{p.producto.nombre}</strong>
-                      {p.producto.marca && (
-                        <>
-                          <br />
-                          <span className="muted" style={{ fontSize: "0.8rem" }}>
-                            {p.producto.marca}
-                          </span>
-                        </>
-                      )}
-                    </td>
-                    <td className="mono">{p.producto.sku}</td>
-                    <td className="muted">{p.producto.categoria || "—"}</td>
-                    <td className="ta-right">{money(p.producto.precio)}</td>
-                    <td className="ta-right">{p.producto.stock}</td>
-                    <td>
-                      <Etiquetas p={p} />
-                    </td>
-                    <td className="ta-right muted">{p.producto.tags?.length || "—"}</td>
-                  </tr>,
-                  expandido ? (
-                    <tr key={`${p.producto.id}-detalle`} className="fila-detalle">
-                      <td colSpan={8}>
-                        <Detalle p={p} />
-                      </td>
-                    </tr>
-                  ) : null,
-                ];
-              })}
+              {data.content.map((p) => (
+                <tr key={p.producto.id} className="row-click" onClick={() => setDetalle(p)}>
+                  <td>
+                    <strong>{p.producto.nombre}</strong>
+                    {p.producto.marca && (
+                      <>
+                        <br />
+                        <span className="muted" style={{ fontSize: "0.8rem" }}>
+                          {p.producto.marca}
+                        </span>
+                      </>
+                    )}
+                  </td>
+                  <td className="mono">{p.producto.sku}</td>
+                  <td className="muted">{p.producto.categoria || "—"}</td>
+                  <td className="ta-right">{money(p.producto.precio)}</td>
+                  <td className="ta-right">{p.producto.stock}</td>
+                  <td>
+                    <Etiquetas p={p} />
+                  </td>
+                  <td className="ta-right muted">{p.producto.tags?.length || "—"}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
 
@@ -297,6 +278,12 @@ export function CatalogoAdmin() {
             </button>
           </div>
         </>
+      )}
+
+      {detalle && (
+        <Modal title={detalle.producto.nombre} onClose={() => setDetalle(null)} ancho>
+          <Detalle p={detalle} />
+        </Modal>
       )}
     </section>
   );

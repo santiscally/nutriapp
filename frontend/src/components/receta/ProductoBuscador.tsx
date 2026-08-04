@@ -169,7 +169,7 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
   const totalPages = data?.totalPages ?? 0;
 
   return (
-    <div>
+    <div className="buscador">
       <div className="buscador__controls">
         <div className="buscador__barra">
           <input

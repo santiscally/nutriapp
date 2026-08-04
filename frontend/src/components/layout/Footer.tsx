@@ -1,52 +1,29 @@
-// Footer del layout autenticado.
+// Footer del layout autenticado: una sola barra fija al pie con la marca, el copyright y la
+// atribución a Simple Apps.
 //
-// La barra de copyright + "powered by Simple Apps" es FIJA al pie de la ventana: es lo que tiene
-// que verse siempre, sin depender de que alguien scrollee hasta el final. El bloque de arriba se
-// achicó a una sola línea — eran 34px de padding con una bajada de tres renglones y una columna de
-// links que ya está en la navbar.
-
-import { Link } from "react-router-dom";
-import { Icon } from "../ui/Icon";
+// Antes tenía arriba una columna de links a Panel/Recetas/Pacientes/Cierre. Se sacó por dos
+// razones: en el perfil de nutricionista repetía la navegación que ya está en la navbar, y en el
+// de admin era directamente inservible — esas cuatro rutas son sólo de nutricionista (C-07), así
+// que al admin lo mandaban a un 403 o lo rebotaban al home.
 
 export function Footer() {
   return (
     <footer className="footer">
-      <div className="footer__inner">
-        <span className="footer__brand-row">
-          <Icon name="leaf" size={15} />
-          NutriApp
+      <div className="footer__bar-inner">
+        <span className="footer__marca">NutriApp</span>
+        <span className="footer__copy">
+          © {new Date().getFullYear()} — datos confidenciales.
         </span>
-        <span className="footer__tagline">Uso exclusivo de profesionales validados.</span>
-        <nav className="footer__links">
-          <Link className="footer__link" to="/dashboard">
-            Panel
-          </Link>
-          <Link className="footer__link" to="/recetas">
-            Recetas
-          </Link>
-          <Link className="footer__link" to="/pacientes">
-            Pacientes
-          </Link>
-          <Link className="footer__link" to="/cierre-mensual">
-            Cierre mensual
-          </Link>
-        </nav>
-      </div>
-
-      <div className="footer__bar">
-        <div className="footer__bar-inner">
-          <span>© {new Date().getFullYear()} NutriApp — datos confidenciales.</span>
-          <a
-            className="powered-by"
-            href="https://simpleapps.com.ar"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="powered by Simple Apps"
-          >
-            <span className="powered-text">powered by</span>
-            <span className="powered-logo">{"<s/a>"}</span>
-          </a>
-        </div>
+        <a
+          className="powered-by"
+          href="https://simpleapps.com.ar"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="powered by Simple Apps"
+        >
+          <span className="powered-text">powered by</span>
+          <span className="powered-logo">{"<s/a>"}</span>
+        </a>
       </div>
     </footer>
   );
