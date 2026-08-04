@@ -73,17 +73,33 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 
 | Método | Path | Notas |
 |---|---|---|
-| GET | `/productos?q=&marca=&laboratorio=&principioActivo=&presentacion=&page=&size=` | `q` texto libre sobre nombre+descripcion+sku (unaccent); los demás filtros exactos-ish (ILIKE) |
+| GET | `/productos?q=&marca=&departamento=&categoria=&subcategoria=&laboratorio=&tag=&conStock=&precioMin=&precioMax=&page=&size=` | `q` texto libre sobre nombre + descripción + SKU + **código de barras** + **tags** (unaccent), **rankeado**: nombre → descripción → tag. Los demás filtros son ILIKE contains; `tag` es exacto |
 | GET | `/productos/{id}` | |
-| GET | `/productos/filtros` | valores distintos de marca/laboratorio/presentacion para poblar los dropdowns de búsqueda |
+| GET | `/productos/filtros` | listas para los dropdowns + `taxonomia` (árbol departamento→categoría→subcategoría) para encadenarlos |
 
 ```json
-// ProductoResponse
-{ "id": "...", "sku": "WHEY-CHOC-1KG", "nombre": "Whey Protein Chocolate 1kg", "descripcion": "...",
-  "precio": 45000.00, "stock": 12, "imagenUrl": "...", "marca": "Star Nutrition",
-  "laboratorio": "...", "principioActivo": "proteína de suero", "presentacion": "polvo 1kg",
-  "publicado": true, "origen": "SEED" }
+// ProductoResponse — los campos del maestro pueden venir null (producto que no está en la planilla)
+{ "id": "...", "sku": "3", "codigoBarras": "7798349830060", "nombre": "ON-ROLL FLOW X 60G",
+  "descripcion": "...", "descripcionWeb": "texto largo para el botón 'más info'",
+  "precio": 13500.00, "stock": 2309, "imagenUrl": "https://dcdn-us.mitiendanube.com/...",
+  "marca": "ON-ROLL", "departamento": "SALUD Y BIENESTAR", "categoria": "TERAPIAS NATURALES",
+  "subcategoria": "FLEBOTONICOS TOPICOS", "laboratorio": "JEIANELL",
+  "tags": ["bienestar", "circulación", "magnesio"],
+  "principioActivo": null, "presentacion": null, "publicado": true, "origen": "CONTABILIUM" }
+
+// ProductoFiltrosResponse
+{ "marcas": ["..."], "categorias": ["..."], "departamentos": ["..."], "subcategorias": ["..."],
+  "laboratorios": ["..."],
+  "taxonomia": [ { "nombre": "SALUD Y BIENESTAR",
+                   "categorias": [ { "nombre": "SUPLEMENTOS DIETARIOS",
+                                     "subcategorias": ["MULTIVITAMINICOS", "..."] } ] } ] }
 ```
+
+> **Cambio de significado, no de forma (2026-08-03):** `categoria` traía el Rubro de Contabilium, que
+> valía "Producto terminado" para el 99,8 % del catálogo. Ahora trae la CATEGORIA del maestro de TBC
+> (23 valores reales). El campo es el mismo; los datos, otros. `principioActivo` y `presentacion`
+> siguen en el contrato pero son **siempre null**: no existen en ninguna de las dos fuentes — esa
+> búsqueda se resuelve por `tags`. Detalle en `07-maestro-articulos-y-catalogo.md`.
 
 ## Recetas — `recetas:read` / `recetas:write`
 
@@ -168,6 +184,30 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (4 proveedores: contabilium/tiendanube/mail/whatsapp). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail·whatsapp) / 0 (contabilium) |
 | POST | `/admin/tiendanube/resync-cupones` | reintenta el registro de cupones de recetas PENDIENTES sin sync → `{ "intentados":n, "sincronizados":n, "pendientes":n }`. En stub siguen pendientes |
 | POST | `/admin/contabilium/sync-productos` | fuerza la sync del catálogo por SKU → `{ "revisados":n, "creados":n, "actualizados":n, "sinCambios":n, "syncedAt":ts }`. **En stub → 503 "Contabilium no conectada"** |
+
+### Admin — maestro de artículos de TBC (C-12) — `admin:manage`
+
+| Método | Path | Notas |
+|---|---|---|
+| POST | `/admin/productos/importar-maestro` | **multipart**, campo `archivo` (.xlsx). Sube el maestro de TBC y aplica sus 9 columnas al catálogo cruzando por SKU. Síncrono. `422` si el archivo no es un xlsx legible o le faltan columnas (el mensaje dice cuáles) |
+| GET | `/admin/productos/maestro/estado` | última importación para el panel; todo `null` si nunca se importó |
+
+```json
+// ImportarMaestroResponse
+{ "filasLeidas": 2225, "filasMatcheadas": 2163, "filasActualizadas": 2163,
+  "filasSinMatch": 62, "filasRechazadas": 0,
+  "skusSinMatch": ["108", "109"], "rechazos": [],   // recortados a 50; los totales van en los contadores
+  "publicados": 0, "despublicados": 26, "importadoAt": "...",
+  "mensaje": "Archivo importado: 2163 de 2225 filas aplicadas al catálogo; 62 sin producto en el catálogo; 26 dejaron de estar disponibles para recetar." }
+
+// MaestroEstadoResponse
+{ "importadoAt": "...", "nombreArchivo": "maestro.xlsx", "filasLeidas": 2225, "filasMatcheadas": 2163,
+  "filasSinMatch": 62, "filasRechazadas": 0, "catalogoActualizadoAt": "..." }
+```
+
+> El `mensaje` es el "archivo importado correctamente" que pidió Gon, pero con los números adentro: si
+> de 2225 filas matchean 300, un cartel de éxito pelado sería engañoso. El front debe mostrar el
+> `mensaje` y, si `filasSinMatch > 0`, ofrecer ver `skusSinMatch`.
 
 > Nota: además, `RecetaResponse` (emisión y detalle) incluye ahora **`cuponSyncMensaje`** (string nullable):
 > mensaje humano de degradación del cupón cuando quedó `PENDIENTE`/`ERROR`; `null` cuando sincronizó bien.

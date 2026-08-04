@@ -122,6 +122,8 @@ Reglas duras:
 - `instrucciones_claude/03-integraciones-apis.md` — investigación Contabilium + TiendaNube + patrón stub/live
 - `instrucciones_claude/04-plan-de-fases.md` — plan de fases + asignación Santi/Fran + preguntas abiertas para Gon
 - `instrucciones_claude/05-api-endpoints.md` — contrato REST completo
+- `instrucciones_claude/06-cambios-post-demo-2026-07-31.md` — los 17 cambios de la demo con Gon + Leo, en 4 olas
+- `instrucciones_claude/07-maestro-articulos-y-catalogo.md` — maestro de artículos de TBC + ajustes de catálogo (Ola 3)
 - `presupuesto_nutriapp.pdf` — presupuesto firmado con el cliente (alcance comprometido)
 
 ## Comandos comunes

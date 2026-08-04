@@ -32,6 +32,509 @@
 
 ## Entradas
 
+## 2026-08-03 — Santi — frontend+infra (CORS del puerto 5174 + registro en una sola pantalla)
+**Qué:** Dos cosas que salieron de probar la app en vivo. Front `tsc`/`oxlint`/`build` verdes.
+
+- **CORS roto al levantar el front en `:5174`.** Login y registro fallaban con *"No 'Access-Control-Allow-Origin'
+  header"*. Había que tocar **tres** lugares, no uno: (1) `app.cors.allowed-origins` del backend, (2) el
+  **`.env` local**, que pisaba el default del compose —por eso el primer rebuild no cambió nada—, y (3) los
+  **`redirectUris` del client `nutriapp-frontend` en Keycloak**, porque tiene `webOrigins: ["+"]`, o sea que
+  los orígenes permitidos se derivan de los redirectUris: sin `http://localhost:5174/*` ahí, el `/token`
+  responde sin header CORS por más que el backend esté bien.
+  Quedaron los dos puertos permitidos (5173 y 5174) en `application.yml`, `docker-compose.yml`,
+  `.env.example`, `.env` y el realm JSON, **y aplicado también al Keycloak vivo** por la Admin REST API
+  (el JSON del realm solo se importa en un realm nuevo). Verificado con `curl -H "Origin: ..."`.
+- **Registro en una sola pantalla.** Con C-08 el form pasó a 11 campos y en el card de 460px a dos columnas
+  obligaba a scrollear. Ahora el card va a 720px y la grilla a **tres columnas**, con los campos reordenados
+  para que las filas cierren completas (email ocupa dos celdas, el adjunto el ancho completo). Se agregó
+  compactación por **alto de viewport** (`@media (max-height: 880px)`) en vez de dejar que aparezca scroll en
+  notebooks, y breakpoints 3→2→1 columnas.
+- **Alineación:** el `<select>` de condición fiscal usaba el padding base (`0.5rem`) y los inputs del auth
+  `12px`, así que al lado quedaban de distinta altura; ahora inputs, selects y file inputs comparten caja.
+  El `input[type=file]` tiene el botón nativo estilado como el resto.
+- **Responsive del resto:** `overflow-x: hidden` global, la fila de producto (que ahora tiene 5 columnas por
+  la miniatura y el "Más info") se apila en dos líneas abajo de 720px, los filtros del buscador pasan a ancho
+  completo, y la grilla de integraciones a una columna.
+
+**Pendiente:** verificación visual. Está todo verde por contrato pero no pude mirar las pantallas (no hay
+herramientas de browser en esta sesión). Front en `:5174`, back en `:8088`.
+**Impacto para el otro (Fran):** si levantás el front en un puerto distinto de 5173/5174, hay que agregarlo
+en los tres lugares de arriba — está anotado en `.env.example`.
+**Refs:** `frontend/src/pages/Registro.tsx`, `frontend/src/index.css`, `keycloak/realms/nutriapp-realm.json`,
+`backend/src/main/resources/application.yml`, `docker-compose.yml`.
+
+## 2026-08-03 — Santi — backend+db (maestro de artículos de TBC: C-10/C-11/C-12/C-13 + los 3 ajustes del mail de Gon)
+**Qué:** Llegó el Excel maestro que faltaba desde la demo → **Ola 3 desbloqueada y hecha del lado backend**.
+`mvn test` **141 unit** BUILD SUCCESS (+28). Migración `V009`. Análisis completo en
+**`07-maestro-articulos-y-catalogo.md`** (documento nuevo, referenciado desde `CLAUDE.md` y desde el `06-`).
+
+- **El archivo no se commitea.** De sus 126 columnas nutriapp usa 9; las otras traen costo, margen,
+  comisión y precio por proveedor de 2225 artículos — la estructura de costos de TBC. Va al `.gitignore`
+  igual que `presupuesto_nutriapp.pdf`. Y el importador **lee solo esas 9 y descarta el resto**: los costos
+  nunca entran a la base.
+- **C-12 importador** (`modules/producto/maestro/`): `POST /admin/productos/importar-maestro` multipart +
+  `GET /admin/productos/maestro/estado`. Parser con `fastexcel-reader` (streaming, ~200 KB, contra los
+  ~12 MB de deps de Apache POI para leer 9 columnas). **Busca las columnas por nombre, nunca por posición**:
+  son 126 columnas de una planilla que el cliente edita a diario, y un parser posicional escribiría marcas
+  en el campo de categoría sin que nadie se entere. Reporte con filas leídas/matcheadas/sin match/rechazadas.
+- **Dos escritores, cero campos compartidos.** Contabilium es dueño de nombre/precio/stock/marca/rubro/
+  tipo/código de barras; el maestro de departamento/categoría/subcategoría/laboratorio/descripción web/
+  imagen/tags/bloqueo. Con esa partición **importar y sincronizar son conmutativos** — el admin no puede
+  romper nada haciéndolo en el orden "equivocado". `publicado` dejó de ser un campo que alguien escribe y
+  pasó a ser derivado (`PublicacionPolicy`, una sola definición para los dos procesos).
+- **`categoria` cambió de dueño.** Guardaba el Rubro de Contabilium, que vale "Producto terminado" para el
+  99,8 % del catálogo recetable: como filtro era decorativo. El rubro se mudó a su columna (`rubro`/`rubro_id`,
+  ahora filtro de ingreso) y `categoria` pasó a ser la del maestro, con 23 valores reales.
+- **C-10 buscador rankeado**: `q` matchea nombre + descripción + SKU + **código de barras** + **tags**, y
+  ordena nombre → descripción → tag, que es literal lo que pidió Gon en la call (`29:15`). Los tags entran
+  por `EXISTS` y no por `JOIN`: con JOIN, un producto con 20 tags que matchean salía 20 veces y rompía la
+  paginación. **C-11 filtros** de departamento/categoría/subcategoría/laboratorio + `taxonomia` en cascada
+  (142 subcategorías sueltas en un dropdown no las usa nadie).
+
+**Problemas:**
+1. **`Tipo` de Contabilium tiene TRES valores, no dos.** Gon pidió "solo quedarnos con Producto" pensando en
+   sacar los servicios, pero el campo también vale `Combo` (209 artículos: los packs x2/x3 y los exhibidores
+   de la línea ON-ROLL propia de TBC). Aplicado tal cual, **el catálogo recetable caía de 702 a 496 (−29 %)**.
+   **Decidido con Santi: van los dos** (`CATALOGO_TIPOS_ERP=Producto,Combo`, que quedó como default en
+   `application.yml`/compose/`.env.example`) → **699 recetables, 203 combos**. Igual hay que consultárselo a
+   Gon; volver a su versión literal es cambiar el env var y re-sincronizar. Por eso `tipos-erp-permitidos`
+   es una **lista** y no un valor único.
+2. **Un `.xlsx` inválido salía como 500 "error interno"** en vez de un mensaje accionable: el `IOException`
+   del zip se escapaba como `UncheckedIOException`. Lo encontró un test. Ahora 422 diciendo qué pasa.
+   De paso quedó `UnprocessableException` + handler para archivos que el usuario puede arreglar.
+3. **El default de multipart de Spring Boot es 1 MB** y el maestro pesa 1,5 MB: el import habría fallado
+   siempre. Subido a 25 MB en el contenedor; el tope de negocio real lo pone `catalogo.import-max-bytes`.
+4. **`mvn -q` me ocultó un BUILD FAILURE** al filtrar la salida con `Select-String`: di por compilado algo
+   que no compilaba. Correr sin `-q` cuando se filtra el output.
+5. **`RecetaFlowIT` estaba roto desde el 2026-07-28** (no por esto): tomaba `productoRepository.findAll().get(0)`,
+   o sea el primer producto del seed de `V003`… que ese día se vació a propósito. Nadie corrió `mvn verify`
+   desde entonces. Ahora el test **crea su propio producto** y no depende de ninguna migración de datos.
+   `mvn verify` vuelve a estar verde: **141 unit + 1 IT**, y las 9 migraciones aplican limpias sobre una
+   Postgres nueva (que es la validación real de `V009`, porque en la DB local corrió sobre datos existentes).
+
+**Verificado e2e** contra el stack real y el archivo de verdad: import 2225 filas → **2163 aplicadas, 62 sin
+match, 0 rechazadas** (coincide exacto con el análisis offline del Excel contra la DB), 26 despublicados por
+`ESTADO=BLOQUEADO`, 8447 tags. Después corrí el sync de Contabilium y **no pisó un solo campo del maestro**.
+Buscador: `q=magnesio` → 41 resultados con los de nombre arriba y los de solo-tag al final; `q=7798349830060`
+→ ON-ROLL FLOW. Filtros: 4 departamentos / 14 categorías / 72 subcategorías / 35 laboratorios / 125 marcas.
+
+**Hallazgo de alcance:** el presupuesto promete buscar "por principio activo, presentación, marca,
+laboratorio". **Presentación no existe** en el maestro (lo más cercano tiene 12 % de cobertura) y **principio
+activo tampoco**. Lo cubren los **tags**: el ejemplo que dio Gon en la call fue buscar "magnesio", y magnesio
+está como tag en 39 artículos. Por eso C-10 se hizo con ranking y no como un OR suelto.
+
+**Frontend (con autorización explícita del usuario, mismo criterio que C-06/C-07/C-09):** `tsc -b`, `oxlint`
+y `vite build` verdes.
+- **`MaestroImportCard`** en `/integraciones`, al lado del sync de Contabilium: examinar + importar + la
+  última importación + el reporte. **Si hay filas sin match o rechazadas el toast sale como advertencia, no
+  como éxito** — es el caso justo en el que un "importado correctamente" verde engaña. Los SKUs sin match se
+  despliegan.
+- **Buscador**: filtros nuevos de departamento/categoría/subcategoría/laboratorio **encadenados con el árbol
+  de `/productos/filtros`** (sueltas, las subcategorías son 142 opciones y no las usa nadie), y cambiar un
+  nivel limpia los de abajo. Placeholder del input ahora menciona el código de barras.
+- **Miniatura + "Más info"**: la columna de la miniatura existe siempre, con placeholder cuando no hay imagen
+  (solo el 24 % la tiene) para que las filas no queden desalineadas. El modal muestra imagen grande, SKU,
+  código de barras, laboratorio, marca, categoría, el texto largo del maestro y los tags; **click en un tag
+  filtra por ese tag**, que es la navegación "por propiedad" que el catálogo no tiene como campo.
+
+**Verificación visual pendiente**: está todo verde por contrato (typecheck, lint, build, respuestas reales de
+la API) pero nadie miró las pantallas. Front levantado en **:5174** (el 5173 lo ocupa imedba en esta máquina).
+
+**Impacto para el otro (Fran):** **nada se rompe** — todo lo del contrato es aditivo. `ProductoResponse` suma
+`codigoBarras`, `descripcionWeb`, `departamento`, `subcategoria`, `tags[]` (y `laboratorio` por fin tiene
+datos); `ProductoFiltrosResponse` suma `departamentos`, `subcategorias`, `laboratorios` y `taxonomia`.
+**Pero `categoria` cambió de significado**: antes traía "Producto terminado" para casi todo, ahora trae la
+categoría real del maestro. `principioActivo` y `presentacion` siguen en el contrato pero son siempre `null`.
+Toqué `frontend/`: `types/producto.ts`, `types/maestro.ts` (nuevo), `api/maestro.ts` (nuevo),
+`components/admin/MaestroImportCard.tsx` (nuevo), `components/receta/ProductoBuscador.tsx`,
+`pages/Integraciones.tsx`, `index.css`. Contrato actualizado en `05-api-endpoints.md`.
+**Refs:** `V009__catalogo_maestro.sql`, `modules/producto/maestro/*`, `PublicacionPolicy`, `CatalogoProperties`,
+`07-maestro-articulos-y-catalogo.md`.
+
+## 2026-08-02 — Santi — backend+frontend (C-08 registro ampliado + C-17 foto de perfil) — CIERRA OLA 2
+**Qué:** `mvn test` **113 unit** BUILD SUCCESS (+10); front `tsc`/`oxlint`/`build` verdes. Migración `V008`.
+
+- **Subsistema de archivos** (lo comparten C-08 y C-17, por eso se hicieron juntos): tabla
+  `nutricionista_archivos` + `ArchivoService`. **Los bytes van en la DB, no en un volumen**: son pocos y
+  chicos (un PDF y una foto por persona) y así entran en el backup que ya existe (`scripts/backup-db.sh`)
+  en vez de sumar una segunda cosa que acordarse de respaldar. Whitelist de content-type (no confiamos en
+  la extensión), tope por tipo, y un archivo vigente por (nutricionista, tipo) — subir de nuevo reemplaza.
+- **C-08 — registro ampliado.** `POST /registro` pasó a **multipart**: parte `datos` con el JSON y parte
+  `matricula` con el PDF/imagen. Campos nuevos: **DNI** (con índice único parcial y guard de duplicados,
+  que es justo para lo que Gon lo pidió), **CUIT** (normalizado sin guiones al guardar) y **condición
+  fiscal**. El admin ve todo en la ficha y tiene **"Ver matrícula"**. El **CUIT ya sale en el exportable
+  de C-06**, que era lo que le faltaba.
+- **C-17 — foto de perfil.** `POST/DELETE /perfil/foto` + pantalla `/perfil`. La foto se **redimensiona en
+  el server** a 256px de lado y se guarda en JPEG (una PNG de 400x400 y 220 KB quedó en 14 KB), y **viaja
+  embebida como data URI en `/me`**: es un thumbnail de pocos KB y así el front pinta el avatar sin un
+  segundo request autenticado ni manejar object URLs. Componente `Avatar` con fallback a iniciales.
+
+**Problemas (dos, los dos reales):**
+1. **`@Lob byte[]` no funciona contra `BYTEA` en Hibernate 6**: lo mapea a `oid` (large object) y tira
+   *"column is of type bytea but expression is of type bigint"*. Va `@JdbcTypeCode(SqlTypes.VARBINARY)`.
+2. **La compensación de Keycloak del registro no cubría fallas en el commit.** El error del punto 1 explotó
+   al hacer flush **al cerrar la transacción**, o sea *fuera* del try/catch de `RegistroService` → el
+   usuario de Keycloak quedó huérfano y bloqueando el email. Arreglado con `saveAndFlush` en
+   `ArchivoService`: el INSERT revienta dentro del try y la compensación corre. **Vale como patrón**: en
+   cualquier alta con compensación, forzar el flush antes de salir del bloque protegido.
+
+**Verificado e2e** (script `verify_c08.sh`): registro multipart → PENDIENTE con DNI/CUIT/condición fiscal
+guardados → el admin ve los datos y `tieneMatricula: true` → descarga el PDF **byte a byte idéntico** al
+subido → una nutricionista pidiendo la matrícula de otra recibe **403** → foto 400x400 PNG de 220 KB queda
+en JPEG de 14 KB → `/me` la trae como data URI → subir un PDF como foto da **409 con mensaje claro** →
+CUIT presente en el consolidado. Validaciones del form: CUIT mal formado 400, DNI repetido 409.
+
+**Nota de contrato para el front:** `api/client.ts` ahora detecta `FormData` y **no** le pisa el
+`Content-Type` (si se lo seteás a mano, se rompe el boundary del multipart y el server no parsea nada).
+
+**Impacto para el otro (Fran):** `Me` suma `foto` (data URI, opcional); `RegistroRequest` suma dni/cuit/
+condicionFiscal y `registrar()` ahora pide el `File` de la matrícula; ruta `/perfil` nueva; componente
+`Avatar` reemplaza al span de iniciales del navbar.
+
+**Pendiente:** el campo `matricula` sigue llamándose así — Leo se llevó confirmar si va "matrícula
+nacional" (call 42:34). Renombrarlo después es una migración de una línea.
+
+**Refs:** `V008__nutricionista_datos_fiscales_y_archivos.sql`,
+`modules/nutricionista/{entity/{NutricionistaArchivo,TipoArchivo},repository/NutricionistaArchivoRepository,service/ArchivoService,controller/PerfilController}`,
+`modules/registro/**`, `common/web/MeController`, `frontend/src/{pages/{Perfil,Registro}.tsx,components/ui/Avatar.tsx,api/{perfil,registro,nutricionistas,client}.ts,types/{registro,session,nutricionista,cierre}.ts}`.
+
+## 2026-08-02 — Santi — backend+frontend (C-06: cierre consolidado del admin con exportable)
+**Qué:** Cierra el circuito de plata: conversión → comisión → liquidación → registro de que se pagó.
+`mvn test` **103 unit** BUILD SUCCESS (+6); front `tsc`/`oxlint` verdes.
+
+- **Backend:** `GET /api/v1/admin/liquidaciones/consolidado?desde&hasta` (`admin:manage`), una fila por
+  nutricionista con actividad: recetas convertidas, facturado, comisión, y **cuánto queda impago** con los
+  **ids de las recetas pendientes** para poder liquidar de un click contra el endpoint que ya existía.
+  `CierreConsolidadoService` + `findConvertidasEntreTodas` (mismas reglas que el cierre individual: ventana por
+  `ordenPaidAt` y cuenta APLICADA+LIQUIDADA).
+  - **Rango configurable**, no mes calendario (Leo, 55:49). Fechas **inclusive de punta a punta** en hora
+    argentina — "del 1 al 31" incluye todo el 31, que es donde este tipo de reportes suele perder un día.
+  - **Sin paginar a propósito:** es una fila por nutricionista y el exportable tiene que salir completo, no la
+    página que se esté mirando.
+  - Guards: 409 si el rango está invertido, si falta una fecha o si supera 366 días (que nadie barra años de
+    recetas de una); 403 para la nutricionista.
+  - Ordena por **comisión pendiente descendente**: arriba a quien más hay que pagarle.
+- **Frontend:** `/cierres` (solo admin) — rango con default al mes en curso, 4 tiles (convertidas, facturado,
+  comisión, **a pagar**), tabla con botón "Liquidar N" por fila y confirmación que dice el monto, y
+  **"Exportar CSV"**. Ícono `download` nuevo en el set.
+- **El CSV está pensado para que Excel en español lo abra bien de una** (`lib/csv.ts`): separador `;` (con
+  locale es-AR, la coma mete todo en una columna), **BOM UTF-8** (si no, se rompen acentos y ñ) y decimales con
+  coma. Se genera en el front con los datos ya cargados: no vuelve a pegarle al backend y, como el endpoint no
+  pagina, sale completo.
+
+**Falta la columna CUIT** que Gon pidió explícitamente para el exportable (57:02): el campo no existe todavía
+en `nutricionistas` — entra con **C-08**. Está anotado en el javadoc del DTO para que no se pierda.
+
+**Verificado e2e:** receta nueva convertida a $8.000 → el consolidado muestra 3 recetas / $30.500 facturado /
+$3.300 de comisión con **$2.050 pendientes en 2 recetas** → liquidar desde ahí devuelve "2 liquidadas por
+$2.050" → el consolidado **mantiene el histórico** (3 recetas, $3.300) pero baja el pendiente a **0** →
+reintento idempotente ("ya estaba liquidada"). Guards: 409 rango invertido, 403 como nutricionista.
+
+**Impacto para el otro (Fran):** ruta `/cierres` + `types/cierre.ts` + `api/cierres.ts` + helper `lib/csv.ts`
+reutilizable para cualquier otro exportable.
+
+**Refs:** `modules/admin/{service/CierreConsolidadoService,dto/CierreConsolidadoResponse,controller/AdminLiquidacionController}`,
+`modules/receta/repository/RecetaRepository`, `frontend/src/{pages/CierreConsolidado.tsx,api/cierres.ts,types/cierre.ts,lib/csv.ts,components/ui/Icon.tsx,App.tsx,components/layout/AppLayout.tsx}`.
+
+## 2026-08-02 — Santi — frontend (C-09: bandeja de nutricionistas + mensajes de login traducidos)
+**Qué:** Arranca la Ola 2. `tsc` + `oxlint` + `build` verdes. Backend sin cambios (los 4 endpoints ya existían).
+
+- **C-09 — bandeja de nutricionistas** (`/nutricionistas`, sólo admin). Tres tabs: **Solicitudes pendientes /
+  Aceptadas / Rechazadas** (la tercera no la pidieron, pero sin ella una rechazada desaparece de la vista y no
+  hay forma de ver por qué se rechazó). La tabla muestra, por cada una, si el % es **override propio o el
+  global** — el admin necesita ver cuál rige sin abrir la ficha. Desde la ficha (modal) se aprueba, se rechaza
+  con motivo y se setean los % de C-01 en el mismo gesto: **vacío = usa el global**, así no hay que copiar el
+  valor global en cada fila. Archivos nuevos: `types/nutricionista.ts`, `api/nutricionistas.ts`,
+  `components/nutricionista/ParametrosModal.tsx`, `pages/Nutricionistas.tsx`, estilos `.tabs/.tab`.
+- **La casa del admin pasó a ser `/nutricionistas`** (era `/configuracion`, interino mientras esto no existía):
+  `lib/home.ts`, el brand de la navbar y el primer ítem del nav.
+- **Mensajes de login traducidos** (era el ítem #1 de la auditoría de la pantalla de login, y lo destapó otra
+  vez la verificación de este flujo): `lib/auth.ts` mapea `Account disabled` → *"Tu cuenta todavía no está
+  habilitada: el administrador tiene que aprobar tu solicitud"*, más `Account temporarily disabled` (el realm
+  tiene brute-force ON) e `Invalid client credentials`. Y **el error de red** ya no se ve como `Failed to
+  fetch`: `fetch` sólo rechaza por red/CORS, así que se envuelve y sale *"No pudimos conectarnos con el
+  servidor"*.
+
+**Verificado e2e contra el stack real** (el flujo completo, no sólo las pantallas): registro público de
+`ana.test@nutriapp.dev` → queda **PENDIENTE** → el login le da **"Account disabled"** (ahora traducido) →
+aparece en la tab de pendientes con los % efectivos 15/10 heredados del global → el admin le setea **30% / 8%**
+y la aprueba → queda **APROBADA con sus % propios** → **ahora sí puede loguearse**. Los contadores de las tabs
+se mueven bien (pendientes 0, aprobadas 3).
+
+**Dato de entorno:** quedó `ana.test@nutriapp.dev` / `test1234` en la DB y en Keycloak, creada por esta
+verificación. Es una nutricionista APROBADA con 30%/8% — sirve para probar C-01 con dos perfiles distintos.
+Si molesta para una demo, se borra de Keycloak + `nutricionistas`.
+
+**Impacto para el otro (Fran):** ruta y pantalla nuevas + `lib/home.ts` decide el landing por rol. Si agregás
+pantallas de admin, sumalas a `NAV_ADMIN` en `AppLayout` (no al array viejo, que ahora es `NAV_NUTRI`).
+
+**Refs:** `frontend/src/{pages/Nutricionistas.tsx,components/nutricionista/ParametrosModal.tsx,api/nutricionistas.ts,types/nutricionista.ts,lib/{home,auth}.ts,App.tsx,components/layout/AppLayout.tsx,index.css}`.
+
+## 2026-08-02 — Santi — backend+frontend (cierra Ola 1: C-07 admin sin recetas, C-02 sin precios)
+**Qué:** Con Fran todavía de vacaciones, el usuario autorizó tocar `frontend/`. Cierra la Ola 1 del plan
+`06-cambios-post-demo-2026-07-31.md`. Backend `mvn test` 97 unit BUILD SUCCESS; front `tsc` + `oxlint` + `build` verdes.
+
+- **C-07 — el admin ya no emite recetas, de verdad.** No es esconder ítems del menú: el rol realm **ADMIN
+  dejó de ser composite de `recetas:*`, `pacientes:*`, `productos:read` y `dashboard:read`** — queda sólo
+  `admin:manage`. Aplicado en el `nutriapp-realm.json` **y** con `kcadm` sobre el Keycloak ya importado (si no,
+  el cambio no entra hasta un re-import; misma lección que el service-account). Verificado: con token de admin,
+  `/recetas`, `/pacientes`, `/dashboard/resumen` y `/productos` dan **403**, y `/admin/*` + `/me` siguen 200.
+  La nutricionista quedó intacta.
+  - Front: `NAV_ADMIN` (Configuración + Integraciones) vs `NAV_NUTRI`, CTA "Nueva receta" oculto para admin,
+    guard `RequireRol` por ruta y `homeDe()` en `lib/home.ts` — cada rol arranca en su pantalla y el login
+    redirige según rol (`login()` de `AuthContext` ahora devuelve el `Me` para poder decidir sin estado stale).
+  - **Interino a mirar:** el admin queda con sólo dos pantallas y su "casa" es `/configuracion`, porque el
+    cierre consolidado (C-06) y la bandeja de nutricionistas (C-09) todavía no existen en el front. Cuando
+    esté C-09, la casa del admin debería pasar a ser la bandeja.
+- **C-02 — precios sólo en la pantalla de emisión.** Backend: `RecetaResponse.Item` **ya no expone
+  `precioLista`** (el snapshot se sigue guardando en `receta_items` para auditoría, pero no sale por la API).
+  Front: sin importes en el detalle de receta, en la pantalla de éxito ni en la tabla del dashboard. En el
+  dashboard la columna "Total" (que era una estimación con el precio de Contabilium) pasó a **"Venta"** con el
+  monto real de TiendaNube, y "—" mientras no convierta. Se mantienen precios en el buscador y el carrito de
+  emisión, con leyenda nueva: *"Valores aproximados. El precio final lo define la tienda…"* y el total pasó a
+  llamarse **"Total estimado"**.
+  - **Decisión discutible, marcada a propósito:** saqué los precios también de `RecetaExito` (la pantalla
+    inmediatamente posterior a emitir). Se puede leer como parte de la emisión, pero Leo fue tajante con que no
+    quede histórico con precios (53:35) y ahí ya la receta existe. Fácil de revertir si Gon lo pide.
+  - **Lo que NO saqué:** el `producto` anidado del item sigue trayendo su `precio` **actual de catálogo**. No es
+    el snapshot histórico y la nutricionista lo ve igual en el buscador, así que no contradice la regla.
+- **C-05 en el front:** `EstadoReceta` suma `"LIQUIDADA"` (filtro del listado + badge propio, verde sólido), y
+  el detalle muestra "Comisión liquidada el …" / "Comisión pendiente de liquidación".
+
+**Pendiente de verificación:** todo lo anterior está verificado por contrato (API + typecheck + build), **no
+visualmente**. Falta abrir las pantallas con los dos usuarios y mirar. Stack arriba: back `:8088`, front `:5173`.
+
+**Impacto para el otro (Fran):** el contrato de `RecetaResponse.Item` **perdió** `precioLista` — cualquier
+cálculo del front que dependiera de él ya no compila (revisé y ajusté los tres lugares que lo usaban).
+`EstadoReceta` tiene un quinto valor. `AuthContext.login()` ahora devuelve `Promise<Me>` en vez de `Promise<void>`.
+
+**Refs:** `keycloak/realms/nutriapp-realm.json`, `modules/receta/{dto/RecetaResponse,service/RecetaService}`,
+`frontend/src/{App.tsx,components/layout/{AppLayout,RequireRol}.tsx,lib/home.ts,auth/AuthContext.tsx,pages/{Login,Dashboard,EmitirReceta,Recetas}.tsx,components/receta/{RecetaDetalle,RecetaExito}.tsx,types/receta.ts,index.css}`.
+
+## 2026-08-01 — Santi — backend (Ola 1 post-demo: C-05 liquidación, C-04 cierre por fecha de pago, C-14 inactivos)
+**Qué:** Primeros tres cambios del plan `06-cambios-post-demo-2026-07-31.md`. `mvn test` = **91 unit, BUILD SUCCESS**
+(84 previos + 7 nuevos).
+- **C-05 — estado terminal `LIQUIDADA`.** Migración `V006__receta_liquidada.sql` (nuevo valor en el CHECK de
+  `estado` + columna `liquidada_at` + índice `(nutricionista_id, orden_paid_at)`). `EstadoReceta.LIQUIDADA` con
+  helper `esConvertida()`. `LiquidacionService` (idempotente: lo ya liquidado se omite sin pisar la fecha) +
+  `POST /api/v1/admin/liquidaciones` (`admin:manage`). La respuesta lleva `omitidas[]` con el **motivo** de cada
+  receta que no se pudo liquidar — el admin tiene que ver qué quedó afuera, no un conteo mudo.
+- **C-04 — el cierre agrupa por fecha de pago en TiendaNube.** Las agregaciones del dashboard y del cierre pasaron
+  de ventanear por `aplicadaAt` a `ordenPaidAt`. En los datos actuales da igual (`aplicar()` ya seteaba
+  `aplicadaAt = paidAt`), pero deja la regla explícita en vez de depender de esa coincidencia.
+- **C-03 — verificado, ya estaba bien**: la comisión sale de `order.total()` (el total real de TiendaNube), nunca
+  del precio de Contabilium. No hizo falta tocar nada.
+- **C-14 — no se recetan inactivos de Contabilium.** `ProductoSyncService` ahora cruza el precio con el `Estado`
+  del ERP. Defensivo a propósito: estado desconocido o nulo → se asume activo (preferimos publicar de más antes
+  que vaciar el catálogo si Contabilium cambia el vocabulario).
+- **Decisión de diseño (C-05):** las queries de cierre cuentan `APLICADA` **e** `LIQUIDADA`. Liquidar es haberle
+  pagado a la nutricionista, no deshace la conversión: los cierres históricos tienen que seguir mostrando la
+  receta, con `liquidadaAt` como marca de "ya cobraste esto". Lo que filtra sólo `APLICADA` es `findLiquidables`,
+  que alimenta el cierre consolidado del admin (C-06, pendiente).
+
+**Problemas (2 bugs preexistentes del working tree sin commitear, ninguno introducido por estos cambios):**
+1. **NPE que tumbaba la sync entera de catálogo.** `ProductoSyncService.aplicar()` hacía
+   `lk.rubros().get(c.idRubro())` sin chequear null, y el lookup puede ser un `Map` **inmutable** —
+   `RubrosLookup.vacio()` es el fallback de `HttpContabiliumClient:106` cuando falla `/rubros`. `Map.of().get(null)`
+   tira NPE, así que **un solo concepto sin rubro mataba el sync completo en live**. Arreglado chequeando los ids
+   antes del lookup. Lo destaparon 5 tests que venían rotos en el working tree.
+2. **`ProductoSyncServiceTest.sync_live_existenteSinCambios` desactualizado**: su fixture usaba precio $50, que
+   bajo la regla de "precio irrisorio (<$100) = producto de baja" (trabajo del 28/07) despublica el producto y por
+   lo tanto cuenta como cambio. Subido a $500, que es lo que el test quiso decir siempre.
+
+**Impacto para el otro (Fran):** cambió el contrato en tres puntos, hay que espejar los types:
+`RecetaResponse.Conversion` suma `liquidadaAt` (nullable), `CierreMensualResponse.Detalle` suma `liquidadaAt`
+(nullable), y `estado` de receta ahora puede venir `"LIQUIDADA"` — el `EstadoReceta` del front tiene 4 valores y
+necesita el quinto, y el filtro del listado debería ofrecerlo.
+
+**Verificado e2e contra el stack real** (backend :8088, migración V006 aplicada según `flyway_schema_history`):
+emitir → simular orden pagada ($12.500) → **APLICADA** con comisión 10% = $1.250 → liquidar como admin →
+**LIQUIDADA** con `liquidadaAt` → reintento devuelve `liquidadas: 0, motivo: "ya estaba liquidada"` →
+la receta **sigue apareciendo en el cierre mensual** de la nutricionista con su marca de pago →
+`POST /admin/liquidaciones` con rol NUTRICIONISTA da **403**.
+
+**C-01 también hecho (mismo día): % de descuento y comisión por nutricionista.** Migración `V007` (dos columnas
+nullable con CHECK 0–100 en `nutricionistas`; **NULL = usá el global**, así no hay que backfillear ni duplicar la
+config global en cada fila). `ParametrosNegocioService` es el **único** punto donde se resuelve override→global:
+`RecetaService.emitir` (descuento) y el webhook (comisión) ya no leen `ConfiguracionService` directo — si alguien
+vuelve a hacerlo se saltea el override y los cálculos quedan inconsistentes entre emisión y conversión.
+`PUT /api/v1/admin/nutricionistas/{id}/parametros` (`admin:manage`), y la fila de la bandeja ahora expone el
+override **y** el valor efectivo ya resuelto. **Ojo con el 0:** `0%` es un override válido (decisión del admin),
+sólo `null` cae al global — hay test. Verificado e2e: sin override efectivo=15/10 → seteo 25/12,5 → receta nueva
+snapshotea 25 → convertida a $10.000 comisiona 12,5% = $1.250 → reset a null vuelve a 15/10; 400 con 150%, 403 con
+rol NUTRICIONISTA. **Nota de contrato:** el backend serializa sin nulls, así que los overrides sin setear llegan
+como **campos ausentes**, no como `null`.
+
+**Refs:** `V006__receta_liquidada.sql`, `V007__nutricionista_parametros.sql`,
+`modules/configuracion/service/ParametrosNegocioService`, `modules/admin/{service/LiquidacionService,service/AdminNutricionistaService,controller/AdminLiquidacionController,controller/AdminNutricionistaController,dto/*}`,
+`modules/receta/{entity/EstadoReceta,entity/Receta,repository/RecetaRepository,dto/RecetaResponse,service/RecetaService}`,
+`modules/dashboard/{service/DashboardService,dto/CierreMensualResponse}`, `modules/producto/service/ProductoSyncService`.
+
+## 2026-07-31 — Santi — docs (demo con el cliente: 16 cambios nuevos + segundo proyecto asomando)
+**Qué:** Demo de la plataforma a Gon y Leo (call de 59 min, 2026-07-31 13:56). Tres entregables nuevos en
+`instrucciones_claude/`:
+1. **`transcripcion-2026-07-31-call-gon-leo.pdf`** (+ `.txt` para grepear) — transcripción cruda de Tactiq.
+2. **`06-cambios-post-demo-2026-07-31.md`** — los 16 cambios (C-01…C-16) con timestamp de dónde se decidió cada uno,
+   pendientes del cliente, preguntas abiertas y plan de ejecución en 4 olas.
+3. **`nuevo-proyecto-tbc-insumos.pdf`** — insumos del *otro* proyecto que se habló en la misma call, para cotizarlo aparte.
+   **Movido fuera de este repo** (2026-07-31): vive en `../../datawarehouse-contabilium/docs/`, como proyecto separado.
+   **Alcance confirmado por el usuario el mismo día:** un **data warehouse de toda la data de Contabilium** (no solo
+   productos — también ventas, comprobantes, clientes, stock, compras), con **sync automático una vez por día**, y el
+   objetivo explícito de **dejar de pegarle a las APIs**. El PDF se rehízo con eso + el relevamiento completo de la API
+   oficial de Contabilium (colección Postman): inventario de entidades extraíbles, restricciones duras, matemática de
+   requests, arquitectura, fases, riesgos y las preguntas que faltan.
+
+**Resultado de la demo:** les gustó ("espectacular"; la tipografía Comic Neue pasó el filtro de Leo, que la odiaba).
+No hubo rechazos ni rehacer nada: la arquitectura y el modelo aguantan los 16 cambios.
+
+**Los cambios que más pegan (detalle completo en el doc 06):**
+- **C-03 — la comisión va sobre el total real de TiendaNube**, y los descuentos son **acumulativos**: el cupón de la
+  receta (15%) se suma a la promo de la tienda (30%) → el paciente puede pagar 45% menos. Nada calculado con el precio
+  de Contabilium sirve. Mientras la receta no convierta, la comisión es $0, **nunca** una estimación.
+- **C-02 — los precios salen de casi toda la app.** Solo se ven en el buscador de la pantalla de emisión, con leyenda
+  "valores aproximados, pueden cambiar sin previo aviso". Fuera del listado, del detalle y de lo que recibe el paciente.
+  Racional de Leo: es una receta médica, y no quieren que la nutricionista se calcule la comisión con un número falso.
+- **C-05/C-06 — aparece la liquidación:** estado terminal `LIQUIDADA` (una receta liquidada deja de salir en cierres
+  siguientes; se liquida **por receta** aunque la pantalla sea mensual) + pantalla nueva de cierre consolidado del admin,
+  con rango de fechas configurable, columnas CUIT/mail/facturado/comisionado/#recetas y **exportable a Excel**.
+- **C-07 — el admin ya no emite recetas.** Se queda con Cierres, Nutricionistas, Integraciones y Configuración.
+  Hay que separar permisos de verdad, no solo esconder ítems del menú (hoy el ADMIN tiene todas las authorities).
+- **C-01 — % de descuento y de comisión por nutricionista** (nullable, fallback al global) + snapshot del % en la receta.
+- **C-12 — ingesta del "maestro de artículos"** (Excel de OneDrive, cruza por SKU): es la fuente real de categoría,
+  subcategoría, laboratorio, presentación y tags, que **Contabilium no tiene**. Carga **manual a demanda**, Gon fue
+  explícito en que no quiere un job diario.
+
+**Hallazgo de alcance:** los "buscadores por principio activo, presentación, marca, laboratorio" están **en el
+presupuesto firmado**, y sin el Excel maestro no se pueden cumplir → C-10/C-11/C-12 entran sí o sí aunque no estuvieran
+estimados. En cambio C-01, C-05, C-06 y C-08 **no están en el presupuesto**: son candidatos a negociar o a v1.1.
+
+**Problemas:** la transcripción de Tactiq tiene un **hueco de ~9 minutos (04:05 → 12:57)**, justo el tramo donde Santi
+habló con Gon a solas del proyecto nuevo, antes de que entrara Leo. Lo único que sobrevive de ahí es un link que Gon pegó
+en el chat (`getStockBySKU`, stock por depósito). El tema se dedujo de las esquirlas del resto de la call y **el usuario
+lo confirmó**; lo que sigue faltando es el **detalle** (cuánta historia hacia atrás, qué reportes, quién lo usa), que es
+justo lo que más mueve el número.
+
+**Datos de la API de Contabilium relevados hoy (sirven para nutriapp también):**
+- **Rate limit real AR: 25 req/10s para toda la cuenta**, con **bloqueo por IP que afecta a TODOS los endpoints**
+  (no solo al que se pasó) + cabecera `Retry-After`. `getStockByDeposito` tiene su propio límite de 30/10s.
+- **`/api/stock/Novedades` (deltas) sigue siendo solo Chile y Uruguay** → confirmado que en AR no hay sync incremental
+  para productos ni clientes: barrido completo. Comprobantes y órdenes sí filtran por rango de fechas.
+- **`comprobantes/search` devuelve solo cabeceras**; las líneas requieren `GET /api/comprobantes/?id=` → **1 request por
+  comprobante**. Es el costo dominante de cualquier carga histórica.
+- **`getStockByDeposito`** (paginado por depósito) es mucho más barato que consultar SKU por SKU: ~322 req para los 7
+  depósitos vs. 2266. Es la forma correcta de snapshotear stock a diario.
+- **El detalle del comprobante trae `IDIntegracion` e `IDVentaIntegracion`** → la factura de Contabilium sabe de qué venta
+  de TiendaNube vino. Sirve como **segunda vía para confirmar conversiones en nutriapp**, sin depender del webhook.
+- `ordenesVenta/search` **no devuelve órdenes de integraciones** si no se pasa `IDIntegracion`.
+- Proveedores solo se consultan **por ID**: no hay endpoint de listado.
+
+**Impacto para el otro (Fran):** el frontend se lleva la mayor parte del trabajo de la Ola 1 y 2 — sacar precios de
+listado/detalle/receta del paciente, menú separado por rol, pantalla nueva de cierre consolidado del admin con
+exportable, tabs en la bandeja de nutricionistas y campos nuevos en el registro (DNI, celular, CUIT, condición fiscal,
+matrícula + upload de archivo). Nada de eso lo toqué: ver el doc 06 antes de empezar.
+
+**Refs:** `instrucciones_claude/06-cambios-post-demo-2026-07-31.md`, `../../datawarehouse-contabilium/`,
+`transcripcion-2026-07-31-call-gon-leo.{pdf,txt}`, `presupuesto_nutriapp.pdf`.
+
+## 2026-07-28 — Santi — backend+frontend (filtro de precio + regla "precio irrisorio (<$100) = producto de baja")
+**Qué:** (1) **Filtro de precio** (precioMin/precioMax) en `GET /productos` + inputs "Precio desde/hasta" en el buscador
+(con debounce). (2) **Regla de negocio:** un producto con `precioFinal < $100` se considera **dado de baja / inactivo**
+→ el sync lo marca `publicado = false` (desaparece del catálogo; el buscador ya filtra `publicado = true`). Umbral
+`UMBRAL_PRECIO_ACTIVO = 100` en `ProductoSyncService`.
+- El sync ahora **sí** setea `publicado` (antes lo dejaba en true a propósito): `publicado = precioFinal >= 100`. Self-correcting:
+  si el ERP corrige el precio, un re-sync lo republica.
+- **Aplicado a los 2266 actuales por SQL** (`UPDATE productos SET publicado=false WHERE precio<100`) para que tenga efecto
+  **ya** sin depender del DNS: **1538 marcados de baja** (placeholders de $1) → **728 productos activos** quedan visibles.
+**Verificación:** filtro OK (sin filtro 728 · precioMin=20000→480 · 1000-5000→15). Backend compila (main+tests), front build verde.
+**Impacto para Fran:** `GET /productos` gana params `precioMin`/`precioMax`; `ProductoQuery` type actualizado. Sin otros cambios de contrato.
+**Nota:** el umbral $100 es constante; si Gon lo quiere configurable, se mueve al módulo `configuracion` (como descuento/comisión).
+**Refs:** `modules/producto/{service/ProductoSyncService,repository/ProductoRepository,service/ProductoService,controller/ProductoController}.java`,
+`frontend/src/components/receta/ProductoBuscador.tsx`, `types/producto.ts`, `index.css`.
+
+## 2026-07-28 — Santi — auth (admin con acceso completo a la app como nutricionista)
+**Qué:** El perfil ADMIN ahora tiene acceso completo a las funciones de nutricionista (emitir, pacientes, dashboard, recetas)
+además de las de admin. **No hizo falta tocar el realm**: el rol `ADMIN` YA es composite e incluye todas las authorities de
+nutri (`recetas:*`, `pacientes:*`, `productos:read`, `dashboard:read`) + `admin:manage`. **Ni el front**: el nav de `AppLayout`
+ya muestra todo para admin (Panel/Recetas/Pacientes/Cierre + Configuración/Integraciones).
+- **Único gap real:** `NutricionistaService.getCurrent()` resuelve el nutricionista por sub/email; `admin@nutriapp.dev` no tenía
+  perfil de Nutricionista → emitir/pacientes/dashboard tiraban "no tiene perfil de nutricionista". **Fix:** el `DevDataSeeder`
+  crea un perfil **APROBADO** para el admin (`ensureNutriAprobado`, idempotente), **antes** del guard del demo → se crea también
+  en la DB ya seedeada al reiniciar el backend (no hace falta `down -v`, se preservan los 2266 productos).
+- **Modelo:** el admin actúa como **su propio** nutricionista (pacientes/recetas propios, arranca vacío). NO ve la data de otros
+  nutricionistas (eso sería otro feature). getCurrent linkea el sub por email en el primer acceso.
+**Verificación (token admin):** `/me`, `/dashboard/resumen`, `/recetas`, `/pacientes` → 200; `/admin/integraciones/estado` → 200.
+Perfil `admin@nutriapp.dev` APROBADA en la DB. Compila (main).
+**Impacto para Fran:** ninguno en el contrato. El usuario admin ahora puede usar todas las pantallas de nutricionista con su propio espacio.
+**Refs:** `config/DevDataSeeder.java` (ensureNutriAprobado + creación para admin). Realm y front sin cambios.
+
+## 2026-07-28 — Santi — backend+frontend (mejoras del catálogo: filtros reales, paginador, sync async, multi-producto, footer Simple Apps)
+**Qué:** Batch grande pedido por el usuario tras probar en vivo. Toca backend y `frontend/` (área de Fran, autorizado explícitamente).
+**Análisis de la data de Contabilium (probe raw):** el concepto NO trae marca/laboratorio/presentación. **El Subrubro ES la marca**
+(CENTRUM, ENA, GENTECH, NATIER, SUPRADYN… ~200 bajo el rubro "Producto terminado") y el **Rubro = categoría** (8: Producto terminado,
+Insumos, Materias primas, Servicios, Gastos, Material PoP, General, Ficticios). ⚠️ El catálogo son los 2266 de **toda la farmacia**
+(suplementos + golosinas + cosmética + higiene + pilas + insumos), no solo suplementos → los filtros importan.
+- **Filtros (5):** `marca` ← Subrubro, `categoria` ← Rubro (mapeados en el sync vía `ContabiliumClient.rubrosLookup()`), toggle
+  **"solo con stock"**, y texto (nombre/SKU/desc). Se sacaron laboratorio/presentación (no existen en Contabilium). Migración
+  **`V005`** agrega `categoria` (se reusa `marca` para el subrubro). `ProductoRepository.search(q, marca, categoria, conStock)`,
+  `ProductoFiltrosResponse{marcas, categorias}`, `ProductoResponse` gana `categoria`.
+- **Paginador** en el `ProductoBuscador` (antes solo mostraba la página 1 → "solo 20"). Usa `PageResponse.{totalPages,first,last,totalElements}`.
+- **Sync ASÍNCRONO:** `POST /admin/contabilium/sync-productos` ahora responde **202** y corre en background (`@Async` + `@EnableAsync`);
+  `IntegracionesEstadoService`/DTO exponen `sincronizando` + `ultimoResultado`. El panel `/integraciones` togglea "iniciada" → pollinea el
+  estado cada 3s → toast "Catálogo sincronizado. revisados=…". (Cierra el pedido de async + mensajes al usuario.)
+- **Recetas multi-producto:** `RECETA_MAX_ITEMS` 1 → **10** (la UI del emisor YA soportaba N ítems; solo el backend lo capaba).
+- **Footer "powered by `<s/a>`" (Simple Apps):** píldora al lado del copyright (logo navy `#092F70` en General Sans Bold vía Fontshare,
+  resto con la paleta del sitio), link a simpleapps.com.ar. Se sumó Fontshare a la **CSP de prod** (`nginx/conf.d/nutriapp.conf`).
+**⚠️ Pendiente para que los filtros tengan data:** hay que **re-sincronizar** (los 2266 actuales se cargaron sin categoria/marca;
+el sync por SKU los actualiza y puebla). El POST del sync lo gatea el clasificador para mí → lo dispara el usuario desde el panel.
+**Verificación:** backend compila (main + tests, image build) — arreglé `ProductoSyncServiceTest` (aridad de `Concepto` +1 idRubro/idSubrubro,
+mock `rubrosLookup`) y `IntegracionesEstadoServiceTest` (dep nueva `ProductoSyncService`). Frontend `npm run build` (tsc+vite) verde.
+Verificado en vivo: V005 aplicada, `/productos` pagina (454 págs), `/productos/filtros` = {marcas,categorias}. Falta el re-sync del usuario.
+**Impacto para Fran:** contrato de productos cambió — `GET /productos` params `marca/categoria/conStock` (fuera laboratorio/principioActivo/presentacion),
+`/productos/filtros` = {marcas,categorias}, `ProductoResponse.categoria` nuevo, `POST sync-productos` → 202 (no el resumen). `RecetaResponse`
+sin cambios. Type espejo actualizado (`types/producto.ts`, `types/integraciones.ts`). Reescribí `ProductoBuscador` + `Integraciones` + `Footer`.
+**Refs:** backend `modules/producto/**`, `integrations/contabilium/**`, `modules/admin/**`, `NutriappApplication`, `application.yml`,
+`db/migration/V005__producto_categoria.sql`; frontend `components/receta/ProductoBuscador.tsx`, `pages/Integraciones.tsx`,
+`components/layout/Footer.tsx`, `types/{producto,integraciones}.ts`, `api/{productos,integraciones}.ts`, `index.{html,css}`; `nginx/conf.d/nutriapp.conf`.
+
+## 2026-07-28 — Santi — db/integraciones (catálogo SIN seed: ahora viene de la sync real de Contabilium; rebuild total)
+**Qué:** Removí el seed de productos (`V003__seed_productos.sql` → no-op). El catálogo arranca **vacío** y se puebla con
+la **sync real de Contabilium** (`POST /admin/contabilium/sync-productos` / botón "Sincronizar catálogo" del panel
+`/integraciones`). Más fiel a la regla de oro: el catálogo es el del ERP real, no 12 suplementos ficticios.
+- `DevDataSeeder` ya contemplaba el catálogo vacío (guard `productos.isEmpty()`): crea nutri demo + 4 pacientes y
+  **saltea las 6 recetas demo** (dependían de productos). **Sin cambios en el seeder.**
+- **`CONTABILIUM_MODE=live` persistido en `.env`** (antes era override transitorio) para que el botón del front funcione
+  siempre. Machine-local (`.env` gitignored) — no afecta a Fran ni a prod (prod usa `application-prod.yml`, fail-closed).
+  No hay job scheduled de Contabilium → live-by-default no golpea prod solo.
+- **Rebuild total** (`docker compose down -v` + `up --build`): DB fresca con V003 vacío → **0 productos** (verificado por
+  `select count(*)`), estado integraciones: contabilium `modo=live`, resto stub. (Hipo transitorio de DNS a Docker Hub en
+  el 1er `up --build`; reintento OK.)
+**Cómo probar (end-user):** login admin `admin@nutriapp.dev`/`test1234` → panel Integraciones → "Sincronizar catálogo"
+→ ~2266 productos reales; después, como nutri, el emisor ya los ve. (El POST del sync lo gatea el clasificador de auto-mode
+para mí; desde el navegador del usuario anda normal.)
+**Impacto para Fran:** en entorno limpio el catálogo arranca **vacío** hasta sincronizar Contabilium; las recetas demo del
+dashboard ya no se seedean (dependían de los productos ficticios).
+**Refs:** `db/migration/V003__seed_productos.sql`, `.env` (local, gitignored), `config/DevDataSeeder.java` (sin cambios).
+
+## 2026-07-28 — Santi — planificación/integraciones (decisión: WhatsApp por link wa.me, NO Cloud API — sacar la integración real)
+**Qué:** Decisión del usuario/cliente: el envío por WhatsApp se hace con un **link `wa.me`** que el nutricionista toca
+para mandar el mensaje él mismo desde su WhatsApp — **NO** se usa la WhatsApp Cloud API automática (patrón "WhatsApp
+SIEMPRE manual" de imedba, opción 3 del §4 de `03-integraciones-apis.md`). Baja el costo y saca la dependencia del
+WABA + aprobación de template de Meta.
+**Qué hay que SACAR (cuando haya tiempo — anotado, NO urgente, NO se tocó código todavía):**
+- `integrations/whatsapp/` completo (port `WhatsAppSender` + `CloudApiWhatsAppSender` + `StubWhatsAppSender`) y su
+  config `WHATSAPP_*` (`application.yml`, `.env.example`, `docker-compose.yml`) + el test `CloudApiWhatsAppSenderTest`.
+- El canal `CanalNotificacion.WHATSAPP` de la cola: `RecetaService.emitir` deja de encolar la notif WHATSAPP y el
+  `NotificacionDispatcher` pierde su rama WhatsApp. **Email sigue igual** (canal automático real).
+- El proveedor "whatsapp" del `GET /admin/integraciones/estado` (ya no es una integración).
+**Qué hay que AGREGAR:**
+- `waMeUrl` en `RecetaResponse` (o computarlo en el front desde `paciente.telefono` + `codigo`):
+  `https://wa.me/<tel_e164_sin_+>?text=<mensaje url-encoded con código + link tienda + vencimiento>`. Front: botón
+  "Enviar por WhatsApp" en la pantalla de receta emitida. Reusar el texto del template WhatsApp actual (`NotificacionTemplates`).
+**Impacto para Fran:** al implementarse, `RecetaResponse` gana `waMeUrl` + botón en "Receta emitida"; el detalle de receta
+ya no listará una notif WHATSAPP (solo EMAIL). Se coordina cuando se encare.
+**Refs:** a tocar `integrations/whatsapp/**`, `modules/notificacion/**`, `RecetaService`, `RecetaResponse`, `application.yml`,
+`03-integraciones-apis.md §4`, plan 2.4. Estado: **sólo anotado.**
+
 ## 2026-07-28 — Santi — integraciones (Contabilium conectado LIVE contra prod: probe read-only + fix de charset UTF-8)
 **Qué:** Primer contacto real con Contabilium (arranque de Fase 2), **read-only** contra la cuenta de **prod** del
 cliente (razón social real: J&L NEO PHARMA SAS). Credenciales del `.env` validadas: token OK, `conceptos/search`
