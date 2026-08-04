@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Parámetros técnicos de recetas (vigencia, tope de items). Los porcentajes de negocio (descuento y
- * comisión) se movieron a la DB, editables por el admin — ver {@code modules/configuracion}.
+ * comisión) viven en cada nutricionista, los setea el admin — ver {@code ParametrosNegocioService}.
  */
 @ConfigurationProperties(prefix = "nutriapp.recetas")
 public record RecetaProperties(

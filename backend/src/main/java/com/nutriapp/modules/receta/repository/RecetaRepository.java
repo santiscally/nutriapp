@@ -24,6 +24,14 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
 
     long countByNutricionistaIdAndEstadoAndDeletedAtIsNull(UUID nutricionistaId, EstadoReceta estado);
 
+    /**
+     * Todas las recetas de una nutricionista, incluidas las soft-deleted: se usa como guard antes
+     * de borrarla definitivamente. El filtro por deleted_at sería peor que inútil acá — una fila
+     * soft-deleted sigue teniendo la FK viva y rompería el DELETE igual, además de ser plata que
+     * alguna vez se contabilizó.
+     */
+    long countByNutricionistaId(UUID nutricionistaId);
+
     /** Guard del borrado de paciente: ¿tiene recetas en un estado dado? (409 si PENDIENTE). */
     boolean existsByPacienteIdAndEstadoAndDeletedAtIsNull(UUID pacienteId, EstadoReceta estado);
 
@@ -111,18 +119,6 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     BigDecimal sumComisionEntre(@Param("nutricionistaId") UUID nutricionistaId,
                                 @Param("desde") Instant desde,
                                 @Param("hasta") Instant hasta);
-
-    /** Ventas generadas: total REAL pagado en TiendaNube (C-03), nunca el precio de Contabilium. */
-    @Query("""
-            SELECT COALESCE(SUM(r.ordenTotal), 0) FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
-              AND r.estado IN ('APLICADA','LIQUIDADA')
-              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
-            """)
-    BigDecimal sumVentasEntre(@Param("nutricionistaId") UUID nutricionistaId,
-                              @Param("desde") Instant desde,
-                              @Param("hasta") Instant hasta);
 
     /** Cierre mensual: recetas emitidas en la ventana (por emitidaAt). */
     @Query("""

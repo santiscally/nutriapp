@@ -77,8 +77,8 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
             </div>
           </dl>
 
-          {/* C-02: la receta emitida no lleva precios. El único importe real es el de la
-              conversión (lo que el paciente pagó en TiendaNube), más abajo. */}
+          {/* C-02: la receta emitida no lleva precios. El único importe que se muestra es la
+              comisión de la conversión, más abajo — no lo que la tienda facturó. */}
           <h3 className="detalle__title">Productos</h3>
           <ul className="detalle__items">
             {data.items.map((it, i) => (
@@ -110,8 +110,8 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
             <>
               <h3 className="detalle__title">Conversión</h3>
               <p>
-                Orden #{data.conversion.ordenNumero} · {money(data.conversion.ordenTotal)} · comisión{" "}
-                {data.conversion.comisionPct}% = <strong>{money(data.conversion.comisionMonto)}</strong>
+                Orden #{data.conversion.ordenNumero} · tu comisión ({data.conversion.comisionPct}%):{" "}
+                <strong>{money(data.conversion.comisionMonto)}</strong>
               </p>
               <p className="muted">
                 {data.conversion.liquidadaAt

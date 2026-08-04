@@ -1,6 +1,7 @@
 package com.nutriapp.modules.nutricionista.entity;
 
 import com.nutriapp.common.entity.BaseEntity;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -50,11 +51,27 @@ public class Nutricionista extends BaseEntity {
     private String notasValidacion;
 
     /**
-     * C-01 — % de descuento propio de esta nutricionista. {@code null} = usa el global
-     * ({@code configuracion_sistema}). Lo setea sólo el admin.
+     * % de descuento de las recetas de esta nutricionista. Lo setea sólo el admin.
+     *
+     * <p>V011: obligatorio. Antes era nullable y {@code null} significaba "usá el global de
+     * {@code configuracion_sistema}", tabla que dejó de existir — el dato vive en un solo lugar.
+     * En el alta lo completa {@code NutricionistaProperties}; después lo ajusta el admin.
      */
+    @Column(nullable = false)
     private BigDecimal descuentoPct;
 
-    /** C-01 — % de comisión propio. {@code null} = usa el global. Lo setea sólo el admin. */
+    /** % de comisión de esta nutricionista. Obligatorio (V011). Lo setea sólo el admin. */
+    @Column(nullable = false)
     private BigDecimal comisionPct;
+
+    /**
+     * ¿Puede loguearse? Espejo local del {@code enabled} de Keycloak, que es quien realmente
+     * decide (V012). Vive acá para que la bandeja del admin muestre el estado de una página entera
+     * sin pedirle una fila por request a Keycloak.
+     *
+     * <p>Es independiente de {@link #estadoValidacion}: una nutricionista APROBADA puede estar dada
+     * de baja sin que haya que mentirle al historial marcándola como RECHAZADA.
+     */
+    @Column(nullable = false)
+    private boolean activo;
 }

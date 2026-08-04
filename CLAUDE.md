@@ -67,7 +67,13 @@ Ver `instrucciones_claude/02-entidad-relacion.md` (DDL completo). Núcleo: `nutr
 - La receta pasa a APLICADA cuando una orden **pagada** de TiendaNube usó su cupón (webhook `order/paid`
   + polling de respaldo). Se persiste orden, total y monto de comisión.
 - Dashboard del nutricionista: recetas pendientes/aplicadas + cierre mensual del $$$ (comisión sobre
-  recetas convertidas). % de descuento y % de comisión: parámetros de configuración (valores reales TBD con Gon).
+  recetas convertidas). **La nutricionista no ve facturación**: ni el total de la orden ni ventas generadas,
+  sólo su comisión (el admin sí, en el cierre consolidado, porque es con lo que liquida).
+- **% de descuento y de comisión: propios de cada nutricionista**, los setea el admin en su ficha (V011 eliminó
+  el valor global; los valores reales siguen TBD con Gon). Se snapshotean en la receta al emitir y al convertir.
+- Gestión de cuentas (admin): **desactivar** saca el acceso y es reversible; **borrar** elimina de verdad
+  (Keycloak + fila + pacientes) y se niega con 409 si emitió recetas, porque están en los cierres. El reset de
+  contraseña por admin es la única vía de recuperación: no hay flujo de "olvidé mi contraseña".
 - Cantidad de productos por receta: el modelo soporta N items (`receta_items`); la UI del MVP arranca con 1.
 
 ## Fases

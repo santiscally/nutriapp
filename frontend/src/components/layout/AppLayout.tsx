@@ -21,7 +21,7 @@ const NAV_NUTRI: { to: string; label: string; end?: boolean }[] = [
 const NAV_ADMIN: { to: string; label: string; end?: boolean }[] = [
   { to: "/nutricionistas", label: "Nutricionistas" },
   { to: "/cierres", label: "Cierres" },
-  { to: "/configuracion", label: "Configuración" },
+  { to: "/catalogo", label: "Productos" },
   { to: "/integraciones", label: "Integraciones" },
 ];
 

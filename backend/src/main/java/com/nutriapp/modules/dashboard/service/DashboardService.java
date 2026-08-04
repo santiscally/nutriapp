@@ -66,11 +66,10 @@ public class DashboardService {
                 aplicadasMes,
                 vencidasMes,
                 recetaRepository.sumComisionEntre(nutriId, desde, hasta),
-                recetaRepository.sumVentasEntre(nutriId, desde, hasta),
                 ultimas);
     }
 
-    /** Cierre mensual: tasa de conversión, ventas y comisión del mes + detalle de convertidas. */
+    /** Cierre mensual: tasa de conversión y comisión del mes + detalle de convertidas. */
     @Transactional(readOnly = true)
     public CierreMensualResponse cierreMensual(int year, int month) {
         UUID nutriId = nutricionistaService.getCurrent().getId();
@@ -86,7 +85,6 @@ public class DashboardService {
 
         long emitidas = recetaRepository.countEmitidasEntre(nutriId, desde, hasta);
         long aplicadas = recetaRepository.countConvertidasEntre(nutriId, desde, hasta);
-        BigDecimal ventas = recetaRepository.sumVentasEntre(nutriId, desde, hasta);
         BigDecimal comision = recetaRepository.sumComisionEntre(nutriId, desde, hasta);
         BigDecimal tasa = emitidas == 0
                 ? BigDecimal.ZERO
@@ -100,18 +98,18 @@ public class DashboardService {
                             pid -> pacienteRepository.findById(pid).orElse(null));
                     String nombre = p != null ? (p.getNombre() + " " + p.getApellido()) : "—";
                     return new CierreMensualResponse.Detalle(
-                            r.getCodigo(), nombre, r.getOrdenTotal(), r.getComisionMonto(),
+                            r.getCodigo(), nombre, r.getComisionMonto(),
                             r.getOrdenPaidAt(), r.getLiquidadaAt());
                 })
                 .toList();
 
         return new CierreMensualResponse(
-                year, month, emitidas, aplicadas, tasa, ventas, comision, detalle);
+                year, month, emitidas, aplicadas, tasa, comision, detalle);
     }
 
     /**
      * Serie mensual (últimos {@code meses}, cronológica) para los gráficos del dashboard: recetas
-     * emitidas/aplicadas y ventas/comisión por mes. Reusa las mismas queries por ventana del cierre.
+     * emitidas/aplicadas y comisión por mes. Reusa las mismas queries por ventana del cierre.
      * {@code meses} se acota a [1, 24]; default 6.
      */
     @Transactional(readOnly = true)
@@ -131,7 +129,6 @@ public class DashboardService {
                     ym.getMonthValue(),
                     recetaRepository.countEmitidasEntre(nutriId, desde, hasta),
                     recetaRepository.countConvertidasEntre(nutriId, desde, hasta),
-                    recetaRepository.sumVentasEntre(nutriId, desde, hasta),
                     recetaRepository.sumComisionEntre(nutriId, desde, hasta)));
         }
         return new EstadisticasResponse(serie);

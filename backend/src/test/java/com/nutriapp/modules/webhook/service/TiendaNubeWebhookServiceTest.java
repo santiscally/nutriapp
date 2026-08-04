@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
+import com.nutriapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
@@ -60,9 +60,8 @@ class TiendaNubeWebhookServiceTest {
         service = new TiendaNubeWebhookService(
                 eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, parametrosNegocioService, objectMapper);
         when(recetaRepository.save(any(Receta.class))).thenAnswer(inv -> inv.getArgument(0));
-        // C-01: la comisión ahora se resuelve por nutricionista (con fallback al global).
-        // any() sin tipo: matchea también nutricionistaId null (las recetas de estos
-        // fixtures no lo setean), que es justo el caso de "caé al global".
+        // La comisión se resuelve por nutricionista (V011: ya no hay global).
+        // nullable(): matchea también nutricionistaId null, que estas recetas de fixture no setean.
         when(parametrosNegocioService.comisionPctDe(nullable(java.util.UUID.class)))
                 .thenReturn(new BigDecimal("10"));
     }

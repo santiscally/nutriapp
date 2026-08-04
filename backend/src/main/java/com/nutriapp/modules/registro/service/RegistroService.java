@@ -2,6 +2,7 @@ package com.nutriapp.modules.registro.service;
 
 import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
+import com.nutriapp.modules.nutricionista.NutricionistaProperties;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.entity.TipoArchivo;
@@ -28,6 +29,7 @@ public class RegistroService {
     private final NutricionistaRepository repository;
     private final KeycloakAdminClient keycloak;
     private final ArchivoService archivoService;
+    private final NutricionistaProperties props;
 
     @Transactional
     public RegistroResponse registrar(RegistroRequest req, MultipartFile matricula) {
@@ -58,6 +60,10 @@ public class RegistroService {
             n.setCuit(req.cuitNormalizado());
             n.setCondicionFiscal(req.condicionFiscal());
             n.setEstadoValidacion(EstadoValidacion.PENDIENTE);
+            // V011: los % son obligatorios y propios de cada una. Acá van los de arranque; el admin
+            // los ajusta al aprobarla (que es cuando recién puede emitir algo).
+            n.setDescuentoPct(props.descuentoPctDefault());
+            n.setComisionPct(props.comisionPctDefault());
             Nutricionista saved = repository.save(n);
             // El adjunto es parte del alta: si falla, falla el registro entero y se compensa
             // Keycloak igual que con cualquier otro error — no queremos una solicitud sin respaldo

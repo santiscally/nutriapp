@@ -17,6 +17,8 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -143,6 +145,17 @@ public class GlobalExceptionHandler {
         log.warn("Referencia a entidad eliminada en {}: {}", req.getRequestURI(), ex.getMessage());
         return build(HttpStatus.CONFLICT, "DELETED_REFERENCE",
                 "El registro referencia datos que fueron eliminados", req);
+    }
+
+    /**
+     * Ruta inexistente. Sin este handler la atrapa el catch-all de abajo y sale un 500 "Error
+     * interno" — el front muestra "algo se rompió" cuando en realidad pidió una URL que no existe,
+     * y en los logs queda un stacktrace de error por cada 404. Aparece cada vez que se retira un
+     * endpoint y algún cliente viejo lo sigue llamando.
+     */
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiError> handleRutaInexistente(Exception ex, HttpServletRequest req) {
+        return build(HttpStatus.NOT_FOUND, "NOT_FOUND", "El recurso solicitado no existe", req);
     }
 
     @ExceptionHandler(Exception.class)

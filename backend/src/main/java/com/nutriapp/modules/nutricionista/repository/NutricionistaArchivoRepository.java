@@ -23,4 +23,7 @@ public interface NutricionistaArchivoRepository extends JpaRepository<Nutricioni
             WHERE a.deletedAt IS NULL AND a.tipo = :tipo AND a.nutricionistaId IN :ids
             """)
     List<UUID> idsConArchivo(@Param("tipo") TipoArchivo tipo, @Param("ids") List<UUID> ids);
+
+    /** Borrado físico: sólo para la baja definitiva de una nutricionista (la FK no admite huérfanos). */
+    void deleteByNutricionistaId(UUID nutricionistaId);
 }

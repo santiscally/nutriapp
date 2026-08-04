@@ -63,6 +63,11 @@ class RecetaFlowIT extends PostgresITBase {
         nutri.setEmail(email);
         nutri.setEstadoValidacion(EstadoValidacion.APROBADA);
         nutri.setKeycloakUserId(sub);
+        // V011: los % son propios de cada nutricionista y obligatorios (ya no hay global al que caer).
+        // De estos dos salen el descuento de la receta emitida y la comisión de la conversión.
+        nutri.setDescuentoPct(new BigDecimal("15.00"));
+        nutri.setComisionPct(new BigDecimal("10.00"));
+        nutri.setActivo(true);
         nutri = nutricionistaRepository.save(nutri);
 
         Paciente p = new Paciente();
@@ -138,7 +143,9 @@ class RecetaFlowIT extends PostgresITBase {
         JsonNode conv = det.get("conversion");
         assertThat(conv.get("comisionPct").decimalValue()).isEqualByComparingTo("10.00");
         assertThat(conv.get("comisionMonto").decimalValue()).isEqualByComparingTo("100.00");
-        assertThat(conv.get("ordenTotal").decimalValue()).isEqualByComparingTo("1000.00");
+        // La nutricionista ve lo que gana, no lo que la tienda facturó: el total de la orden no
+        // viaja en su response (sí en el cierre consolidado del admin, que es con lo que liquida).
+        assertThat(conv.has("ordenTotal")).isFalse();
 
         // 4. El cierre mensual del mes en curso refleja la conversión.
         YearMonth ym = YearMonth.now(AR);

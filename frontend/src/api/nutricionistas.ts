@@ -27,9 +27,27 @@ export const aprobarNutricionista = (id: string) =>
 export const rechazarNutricionista = (id: string, motivo?: string) =>
   api.post<NutricionistaAdmin>(`/admin/nutricionistas/${id}/rechazar`, { motivo });
 
-/** C-01 — % propios de esta nutricionista. null = usa el global. */
+/** % propios de esta nutricionista. Ambos obligatorios (V011: no hay global al que volver). */
 export const actualizarParametros = (id: string, body: ParametrosRequest) =>
   api.put<NutricionistaAdmin>(`/admin/nutricionistas/${id}/parametros`, body);
+
+/** Le quita el acceso sin borrar nada. Reversible con {@link reactivarNutricionista}. */
+export const desactivarNutricionista = (id: string) =>
+  api.post<NutricionistaAdmin>(`/admin/nutricionistas/${id}/desactivar`);
+
+export const reactivarNutricionista = (id: string) =>
+  api.post<NutricionistaAdmin>(`/admin/nutricionistas/${id}/reactivar`);
+
+/**
+ * Baja definitiva (usuario + perfil + pacientes). El backend responde 409 si emitió recetas: esas
+ * recetas están en los cierres y borrarlas dejaría plata sin dueño.
+ */
+export const eliminarNutricionista = (id: string) =>
+  api.del<void>(`/admin/nutricionistas/${id}`);
+
+/** Le pone una contraseña nueva. Única vía de recuperación: no hay "olvidé mi contraseña". */
+export const resetearPassword = (id: string, password: string) =>
+  api.post<void>(`/admin/nutricionistas/${id}/password`, { password });
 
 /**
  * C-08 — abre la matrícula en una pestaña nueva. No se puede usar un <a href> pelado: el endpoint

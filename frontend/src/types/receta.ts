@@ -15,7 +15,7 @@ export interface RecetaItemInput {
 export interface RecetaCreateRequest {
   pacienteId: string;
   items: RecetaItemInput[];
-  // El % de descuento NO viaja: es fijo global, lo define el admin (GET /configuracion).
+  // El % de descuento NO viaja: es el de la nutricionista y lo define el admin (viene en /me).
 }
 
 // --- Response ---
@@ -35,9 +35,10 @@ export interface RecetaNotificacion {
   sentAt: string | null;
 }
 
+// La nutricionista ve lo que gana, no lo que la tienda facturó: el total de la orden no viaja
+// (sí está en el cierre consolidado del admin, que es con lo que liquida).
 export interface RecetaConversion {
   ordenNumero: number;
-  ordenTotal: number;
   paidAt: string;
   comisionPct: number;
   comisionMonto: number;

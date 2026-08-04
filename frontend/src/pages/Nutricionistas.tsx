@@ -16,12 +16,12 @@ const TABS: { estado: EstadoValidacion; label: string }[] = [
   { estado: "RECHAZADA", label: "Rechazadas" },
 ];
 
-/** Muestra el override si existe, y si no el global aclarado — el admin necesita ver cuál rige. */
-function Pct({ propio, efectivo }: { propio?: number; efectivo: number }) {
-  return propio === undefined || propio === null ? (
-    <span className="muted">{efectivo}% (global)</span>
+/** Estado de acceso: separado del estado de la solicitud (una aprobada puede estar dada de baja). */
+function AccesoBadge({ activo }: { activo: boolean }) {
+  return activo ? (
+    <span className="badge badge--ok">Activo</span>
   ) : (
-    <strong>{propio}%</strong>
+    <span className="badge badge--off">Sin acceso</span>
   );
 }
 
@@ -92,6 +92,7 @@ export function Nutricionistas() {
               <th>Matrícula</th>
               <th>Descuento</th>
               <th>Comisión</th>
+              <th>Acceso</th>
               <th>{tab === "PENDIENTE" ? "Solicitó" : "Validada"}</th>
             </tr>
           </thead>
@@ -104,10 +105,13 @@ export function Nutricionistas() {
                 <td className="muted">{n.email}</td>
                 <td className="muted">{n.matricula || "—"}</td>
                 <td>
-                  <Pct propio={n.descuentoPct} efectivo={n.descuentoPctEfectivo} />
+                  <strong>{n.descuentoPct}%</strong>
                 </td>
                 <td>
-                  <Pct propio={n.comisionPct} efectivo={n.comisionPctEfectiva} />
+                  <strong>{n.comisionPct}%</strong>
+                </td>
+                <td>
+                  <AccesoBadge activo={n.activo} />
                 </td>
                 <td className="muted">
                   {tab === "PENDIENTE"

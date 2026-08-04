@@ -135,6 +135,16 @@ public class ArchivoService {
                 .orElse(null);
     }
 
+    /**
+     * Borrado físico de todos los archivos de una nutricionista. Sólo lo usa la baja definitiva
+     * del admin: acá el soft-delete no alcanza, porque las filas tienen FK a `nutricionistas` y
+     * quedarían apuntando a alguien que ya no existe.
+     */
+    @Transactional
+    public void borrarTodos(UUID nutricionistaId) {
+        repo.deleteByNutricionistaId(nutricionistaId);
+    }
+
     @Transactional
     public void borrar(UUID nutricionistaId, TipoArchivo tipo) {
         repo.findByNutricionistaIdAndTipoAndDeletedAtIsNull(nutricionistaId, tipo)

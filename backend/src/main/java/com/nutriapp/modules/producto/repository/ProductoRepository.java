@@ -81,6 +81,45 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
                           @Param("precioMax") BigDecimal precioMax,
                           Pageable pageable);
 
+    /**
+     * Buscador del <b>admin</b>: a diferencia del de recetas, ve también los despublicados (que es
+     * justamente lo que necesita revisar) y puede filtrar por lo que no matcheó contra el maestro.
+     *
+     * <p>Se queda con el texto libre y la taxonomía; no repite los 10 filtros del emisor porque acá
+     * la pregunta es otra: "¿qué quedó afuera y por qué?", no "¿qué le receto a esta paciente?".
+     *
+     * @param sinMaestro  true = sólo los que el maestro nunca tocó; false/null = todos.
+     * @param publicado   true/false para filtrar por estado; null = ambos.
+     */
+    @Query("""
+            SELECT p FROM Producto p
+            WHERE p.deletedAt IS NULL
+              AND (:q IS NULL OR :q = ''
+                   OR LOWER(FUNCTION('unaccent', CONCAT(p.nombre, ' ', COALESCE(p.descripcion, ''), ' ',
+                        COALESCE(p.sku, ''), ' ', COALESCE(p.codigoBarras, ''))))
+                      LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%'))))
+              AND (:departamento IS NULL OR :departamento = '' OR p.departamento = :departamento)
+              AND (:categoria IS NULL OR :categoria = '' OR p.categoria = :categoria)
+              AND (:sinMaestro = FALSE OR p.maestroSyncedAt IS NULL)
+              AND (:publicado IS NULL OR p.publicado = :publicado)
+            ORDER BY p.nombre
+            """)
+    Page<Producto> searchAdmin(@Param("q") String q,
+                               @Param("departamento") String departamento,
+                               @Param("categoria") String categoria,
+                               @Param("sinMaestro") boolean sinMaestro,
+                               @Param("publicado") Boolean publicado,
+                               Pageable pageable);
+
+    long countByDeletedAtIsNull();
+
+    long countByPublicadoAndDeletedAtIsNull(boolean publicado);
+
+    /** En el ERP pero no en el Excel de TBC: se recetan sin categoría, laboratorio, imagen ni tags. */
+    long countByMaestroSyncedAtIsNullAndDeletedAtIsNull();
+
+    long countByBloqueadoMaestroAndDeletedAtIsNull(boolean bloqueadoMaestro);
+
     /** Conciliación del catálogo por SKU (clave natural TiendaNube ↔ Contabilium) — sync 2.9. */
     Optional<Producto> findBySkuAndDeletedAtIsNull(String sku);
 
@@ -104,6 +143,10 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
 
     @Query("SELECT DISTINCT p.laboratorio FROM Producto p WHERE p.deletedAt IS NULL AND p.publicado = true AND p.laboratorio IS NOT NULL ORDER BY p.laboratorio")
     List<String> distinctLaboratorios();
+
+    /** Precio mínimo y máximo de lo publicado, para los extremos del slider del buscador. */
+    @Query("SELECT MIN(p.precio), MAX(p.precio) FROM Producto p WHERE p.deletedAt IS NULL AND p.publicado = true")
+    Object[] rangoPrecios();
 
     /**
      * Las tres columnas de la taxonomía del maestro en una sola pasada, para armar el filtro en

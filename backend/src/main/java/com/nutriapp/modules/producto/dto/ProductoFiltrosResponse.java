@@ -1,5 +1,6 @@
 package com.nutriapp.modules.producto.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -19,7 +20,14 @@ public record ProductoFiltrosResponse(
         List<String> departamentos,
         List<String> subcategorias,
         List<String> laboratorios,
-        List<Departamento> taxonomia
+        List<Departamento> taxonomia,
+        /**
+         * Rango de precios real de lo recetable, para los extremos del slider. Sin esto el front
+         * tendría que inventar un tope: el catálogo va de cientos a cientos de miles de pesos y un
+         * máximo fijo dejaría medio catálogo fuera del recorrido del control.
+         */
+        BigDecimal precioMin,
+        BigDecimal precioMax
 ) {
     public record Departamento(String nombre, List<Categoria> categorias) {}
 

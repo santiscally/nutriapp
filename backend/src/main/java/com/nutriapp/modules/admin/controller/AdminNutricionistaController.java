@@ -4,6 +4,7 @@ import com.nutriapp.common.dto.PageResponse;
 import com.nutriapp.modules.admin.dto.NutricionistaResponse;
 import com.nutriapp.modules.admin.dto.ParametrosNutricionistaRequest;
 import com.nutriapp.modules.admin.dto.RechazarRequest;
+import com.nutriapp.modules.admin.dto.ResetPasswordRequest;
 import com.nutriapp.modules.admin.service.AdminNutricionistaService;
 import com.nutriapp.modules.nutricionista.entity.NutricionistaArchivo;
 import com.nutriapp.modules.nutricionista.entity.TipoArchivo;
@@ -17,15 +18,18 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** Bandeja de validación de nutricionistas — sólo ADMIN (authority admin:manage). */
@@ -59,9 +63,45 @@ public class AdminNutricionistaController {
     }
 
     /**
-     * C-01 — % de descuento y de comisión propios de esta nutricionista.
-     * Mandar un campo en null lo devuelve al valor global. Sólo el admin toca esto (call 19:29).
+     * Le quita el acceso sin borrar nada, y se puede revertir. Es lo que corresponde para alguien
+     * que dejó de trabajar: rechazar reescribiría el historial de validación de su solicitud.
      */
+    @PostMapping("/{id}/desactivar")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public NutricionistaResponse desactivar(@PathVariable UUID id) {
+        return service.desactivar(id);
+    }
+
+    @PostMapping("/{id}/reactivar")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public NutricionistaResponse reactivar(@PathVariable UUID id) {
+        return service.reactivar(id);
+    }
+
+    /**
+     * Baja definitiva (usuario de Keycloak + fila local + pacientes). Para limpiar altas
+     * equivocadas o de prueba: si emitió recetas responde 409 y hay que desactivarla, porque esas
+     * recetas están en los cierres.
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable UUID id) {
+        service.eliminar(id);
+    }
+
+    /**
+     * Le pone una contraseña nueva. Única vía de recuperación del sistema: no hay flujo de
+     * "olvidé mi contraseña" por email.
+     */
+    @PostMapping("/{id}/password")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetearPassword(@PathVariable UUID id, @Valid @RequestBody ResetPasswordRequest req) {
+        service.resetearPassword(id, req.password());
+    }
+
+    /** % de descuento y de comisión de esta nutricionista. Ambos obligatorios (V011). */
     @PutMapping("/{id}/parametros")
     @PreAuthorize("hasAuthority('admin:manage')")
     public NutricionistaResponse actualizarParametros(@PathVariable UUID id,

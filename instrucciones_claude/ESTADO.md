@@ -14,8 +14,47 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-04** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)** y **commiteadas
-las Olas 1–3**, que estaban enteras en el working tree (5 commits temáticos, sin push).
+**Última actualización: 2026-08-04** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
+las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**
+(bloque 🆕 abajo). `mvn verify` **149 unit + 1 IT**.
+
+**🆕 TANDA DE CAMBIOS (2026-08-04) — back y front, verificada e2e.** Dos migraciones nuevas (`V011`, `V012`).
+
+- **Se eliminó la configuración global de %** (`V011`). Convivían un global y un override por nutricionista
+  donde `NULL` = "usá el global": el mismo dato en dos lugares. Ahora cada una tiene los suyos, **obligatorios**.
+  La migración hereda el global vigente (verificado: `ana.test` conservó su 30/8, el resto quedó en 15/10) y las
+  recetas ya emitidas no se tocan. Se borró el módulo `configuracion` y la pantalla `/configuracion`;
+  **el descuento del emisor ahora sale de `GET /me`**. Las altas nuevas arrancan con
+  `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT`/`..._COMISION_...` (15/10) y el admin los ajusta al aprobar.
+- **Gestión de cuentas del admin** (`V012`, columna `activo`): **desactivar/reactivar** (reversible, conserva
+  todo), **borrar** (Keycloak + fila + pacientes + archivos) y **reset de contraseña**. Borrar da **409 si
+  emitió recetas** — están en los cierres — y el mensaje manda a desactivar.
+- **Cambio de contraseña propio** (`PUT /perfil/password`): pide la actual y la valida contra Keycloak. Es lo
+  único que cada quien puede cambiar de sí mismo además de la foto.
+- **La nutricionista dejó de ver facturación**: fuera `ordenTotal`, `ventasGeneradas*` y ticket promedio del
+  detalle, dashboard, cierre mensual y estadísticas. Sólo ve su comisión. **El admin lo conserva** en el
+  consolidado, que es con lo que liquida.
+- **Pantalla `/catalogo` para el admin**: catálogo completo con los despublicados y **el motivo en castellano**,
+  más filtro "sin match del maestro". Contra el catálogo real: **2267 productos, 699 recetables, 104 sin match,
+  484 bloqueados**.
+- **UI**: filtros del buscador plegados detrás de un botón + chips de lo aplicado + **slider de precio de doble
+  pulgar** (escala logarítmica: el catálogo va de $4.011 a $1.421.999); filtros de recetas alineados; `/perfil`
+  en dos columnas y con aire; **notas de pacientes editables** y visibles en el listado; footer reducido con la
+  barra de copyright + Simple Apps **fija**; modal acotado al viewport con scroll interno.
+- **Bug preexistente arreglado**: cualquier ruta inexistente devolvía **500** en vez de 404.
+
+**🔎 Sobre el "no me tomaba la contraseña":** no era un bug. El flujo registro → aprobar → login funciona, y el
+usuario en cuestión tiene su credencial en Keycloak y está habilitado; lo que hay son 3 intentos fallidos (no
+alcanzan a bloquear, el umbral es 30). O fue un typo, o se probó antes de aprobar (ahí el error es
+`Account disabled`). **Lo que sí faltaba era una vía de recuperación** — no hay "olvidé mi contraseña" — y eso
+es lo que se construyó (reset por admin + cambio propio).
+
+**⚠️ Contrato — Fran tiene que espejar (hay cambios que ROMPEN):** `RecetaResponse.Conversion` pierde
+`ordenTotal`; `DashboardResumen` pierde `ventasGeneradasMesActual`; `CierreMensual` pierde `ventasGeneradas` y
+`Detalle.ordenTotal`; `EstadisticasMes` pierde `ventasGeneradas`; `NutricionistaAdmin` pierde
+`descuentoPctEfectivo`/`comisionPctEfectiva` (ahora `descuentoPct`/`comisionPct` son obligatorios) y suma
+`activo`; `Paciente` suma `notas`/`fechaNacimiento`; `ProductoFiltros` suma `precioMin`/`precioMax`;
+**`GET /configuracion` ya no existe**. Todo el front del repo ya está actualizado.
 
 **🆕 2.4 — WhatsApp por link `wa.me` CERRADA (2026-08-04), back y front.** El envío por WhatsApp pasa a ser
 **manual**: `RecetaResponse` trae `waMeUrl` y la nutricionista toca un botón que le abre el chat con la

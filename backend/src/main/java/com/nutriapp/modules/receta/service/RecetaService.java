@@ -4,7 +4,7 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
+import com.nutriapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
@@ -218,7 +218,6 @@ public class RecetaService {
         if (receta.getEstado().esConvertida()) {
             conversion = new RecetaResponse.Conversion(
                     receta.getOrdenNumero(),
-                    receta.getOrdenTotal(),
                     receta.getOrdenPaidAt(),
                     receta.getComisionPct(),
                     receta.getComisionMonto(),

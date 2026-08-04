@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Emisión de receta. El % de descuento NO viaja en el request: es fijo global y lo define el admin
- * (ConfiguracionService). El backend lo aplica siempre; el front lo muestra como dato de solo lectura.
+ * Emisión de receta. El % de descuento NO viaja en el request: es el de la nutricionista y lo define
+ * el admin. El backend lo aplica siempre; el front lo muestra como dato de solo lectura.
  */
 public record RecetaCreateRequest(
         @NotNull UUID pacienteId,

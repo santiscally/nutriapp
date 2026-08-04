@@ -93,15 +93,6 @@ export function Dashboard() {
                 <span className="tile__value">{money(data.comisionMesActual)}</span>
               </span>
             </div>
-            <div className="card tile">
-              <span className="tile__icon tile__icon--green">
-                <Icon name="trending-up" />
-              </span>
-              <span className="tile__body">
-                <span className="tile__label">Ventas generadas (mes)</span>
-                <span className="tile__value">{money(data.ventasGeneradasMesActual)}</span>
-              </span>
-            </div>
           </div>
 
           {stats && <EstadisticasCharts stats={stats} />}
@@ -124,9 +115,9 @@ export function Dashboard() {
                   <th>Estado</th>
                   <th>Emitida</th>
                   <th>Vence</th>
-                  {/* C-02/C-03: el único importe honesto es lo que la persona pagó de verdad
-                      en TiendaNube. Mientras no convierta, no hay monto que mostrar. */}
-                  <th className="ta-right">Venta</th>
+                  {/* Lo que ella gana, no lo que la tienda facturó: el total de la orden es dato
+                      comercial de TBC y no viaja en los endpoints de la nutricionista. */}
+                  <th className="ta-right">Comisión</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,7 +133,7 @@ export function Dashboard() {
                     <td className="muted">{fecha(r.emitidaAt)}</td>
                     <td className="muted">{fecha(r.venceAt)}</td>
                     <td className="ta-right">
-                      {r.conversion ? money(r.conversion.ordenTotal) : <span className="muted">—</span>}
+                      {r.conversion ? money(r.conversion.comisionMonto) : <span className="muted">—</span>}
                     </td>
                   </tr>
                 ))}

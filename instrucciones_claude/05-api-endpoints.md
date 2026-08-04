@@ -112,7 +112,7 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 | POST | `/recetas/{id}/reenviar` | re-encola el mail (solo PENDIENTE). No manda WhatsApp: eso es el link `waMeUrl` |
 
 ```json
-// RecetaCreateRequest — el % de descuento NO viaja: es fijo global, lo define el admin (ver Configuración).
+// RecetaCreateRequest — el % de descuento NO viaja: es el de la nutricionista, lo define el admin (viene en /me).
 { "pacienteId": "...", "items": [ { "productoId": "...", "cantidad": 1, "indicaciones": "1 medida post-entreno" } ] }
 
 // RecetaResponse
@@ -127,49 +127,69 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
   "notificaciones": [ { "canal": "EMAIL", "estado": "QUEUED", "sentAt": null } ],
   "conversion": null }
 // cuando APLICADA:
-// "conversion": { "ordenNumero": 306, "ordenTotal": 31500.00, "paidAt": "...", "comisionPct": 10.0, "comisionMonto": 3150.00 }
+// "conversion": { "ordenNumero": 306, "paidAt": "...", "comisionPct": 10.0, "comisionMonto": 3150.00 }
+// OJO: SIN ordenTotal. La nutricionista ve lo que gana, no lo que la tienda facturó (ver más abajo).
 ```
 
 ## Dashboard — `dashboard:read`
+
+> **La nutricionista no ve facturación.** Ningún endpoint suyo devuelve el monto de la orden: ni
+> `ventasGeneradas`, ni `ordenTotal`, ni ticket promedio. Extiende C-02 (los precios sólo se ven en la
+> emisión): el total de la orden es información comercial de TBC e incluye productos que ella no recetó,
+> así que mostrarlo invita a calcular la comisión sobre un número equivocado. **El admin sí lo ve**, en
+> `GET /admin/liquidaciones/consolidado` y su exportable, porque es con lo que liquida.
 
 ### GET /dashboard/resumen
 Primera pantalla post-login.
 ```json
 { "recetasPendientes": 4, "recetasAplicadasMes": 7, "recetasVencidasMes": 2,
-  "comisionMesActual": 22050.00, "ventasGeneradasMesActual": 220500.00,
+  "comisionMesActual": 22050.00,
   "ultimasRecetas": [ { ...RecetaResponse resumida, 8 items } ] }
 ```
 
 ### GET /dashboard/cierre-mensual?year=2026&month=7
 ```json
 { "year": 2026, "month": 7, "recetasEmitidas": 15, "recetasAplicadas": 7, "tasaConversion": 0.47,
-  "ventasGeneradas": 220500.00, "comisionTotal": 22050.00,
-  "detalle": [ { "recetaCodigo": "RX-...", "paciente": "Juan Pérez", "ordenTotal": 31500.00,
-                  "comisionMonto": 3150.00, "paidAt": "..." } ] }
+  "comisionTotal": 22050.00,
+  "detalle": [ { "recetaCodigo": "RX-...", "paciente": "Juan Pérez",
+                  "comisionMonto": 3150.00, "paidAt": "...", "liquidadaAt": null } ] }
 ```
 
 ### GET /dashboard/estadisticas?meses=6
 Serie mensual para los gráficos del dashboard (barras de recetas por mes + tendencia de comisión).
 `meses` opcional (default 6, acotado a [1, 24]). Orden **cronológico ascendente** — el último es el mes en curso.
-Todo dato real; el front deriva ticket promedio (`ventas/aplicadas`) y el delta vs mes anterior.
+Todo dato real; el front deriva el delta de comisión vs. el mes anterior.
 ```json
 { "meses": [
-    { "year": 2026, "month": 2, "recetasEmitidas": 18, "recetasAplicadas": 11,
-      "ventasGeneradas": 210000.00, "comisionTotal": 21000.00 },
-    { "year": 2026, "month": 7, "recetasEmitidas": 40, "recetasAplicadas": 28,
-      "ventasGeneradas": 612900.00, "comisionTotal": 91935.00 }
+    { "year": 2026, "month": 2, "recetasEmitidas": 18, "recetasAplicadas": 11, "comisionTotal": 21000.00 },
+    { "year": 2026, "month": 7, "recetasEmitidas": 40, "recetasAplicadas": 28, "comisionTotal": 91935.00 }
 ] }
 ```
 
-## Configuración — parámetros de negocio
+## Parámetros de negocio — por nutricionista
 
-Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión** los define el admin en runtime
-(tabla `configuracion_sistema`, seed inicial 15/10). El emisor de recetas lee el descuento de acá (read-only).
+Los % de **descuento** y **comisión** son **propios de cada nutricionista** y los define el admin desde su ficha.
+**`GET /configuracion` y `PUT /admin/configuracion` ya no existen** (V011): había un valor global y además un
+override por nutricionista, o sea el mismo dato en dos lugares y dos formas de leerlo. Ahora hay una sola.
 
-| Método | Path | Auth | Notas |
-|---|---|---|---|
-| GET | `/configuracion` | autenticado | `{ "descuentoPct": 15.0, "comisionPct": 10.0 }` |
-| PUT | `/admin/configuracion` | `admin:manage` | body `{ "descuentoPct": 25.0, "comisionPct": 12.0 }` (ambos [0,100]); comisión afecta solo conversiones futuras |
+- El emisor lee el descuento de **`GET /me` → `descuentoPct`** (read-only).
+- El admin los edita en `PUT /admin/nutricionistas/{id}/parametros` (ambos obligatorios).
+- Se **snapshotean** en la receta al emitir (descuento) y al convertir (comisión): cambiarlos no reescribe
+  la historia ni mueve los cierres ya cerrados.
+- Una nutricionista que se registra nace con los valores de `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT` /
+  `NUTRICIONISTA_COMISION_PCT_DEFAULT` (15/10). No es una configuración de negocio: es el punto de partida
+  del alta, porque el registro es público y nadie elige ahí su propio descuento.
+
+## Perfil propio
+
+Lo único que cada quien puede cambiar de sí mismo. El resto de sus datos (nombre, matrícula, datos
+fiscales, porcentajes) los toca el admin: son los que se validaron al aprobar la cuenta.
+
+| Método | Path | Notas |
+|---|---|---|
+| PUT | `/perfil/password` | body `{ "passwordActual": "…", "passwordNueva": "…" }` (mín. 8). La actual se verifica contra Keycloak por ROPC: sin eso, una sesión abierta y olvidada alcanzaría para quedarse con la cuenta. `409` si no coincide. `204` |
+| POST | `/perfil/foto` | **multipart**, campo `foto`. Devuelve `{ "foto": "data:image/jpeg;base64,…" }` |
+| DELETE | `/perfil/foto` | `204` |
 
 ## Admin — `admin:manage`
 
@@ -178,6 +198,11 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | GET | `/admin/nutricionistas?estado=&q=&page=` | bandeja de validación |
 | POST | `/admin/nutricionistas/{id}/aprobar` | habilita el usuario Keycloak; 409 si no está PENDIENTE |
 | POST | `/admin/nutricionistas/{id}/rechazar` | body `{ "motivo": "..." }` |
+| PUT | `/admin/nutricionistas/{id}/parametros` | body `{ "descuentoPct": 30, "comisionPct": 8 }` — **ambos obligatorios** (V011) |
+| POST | `/admin/nutricionistas/{id}/desactivar` | le quita el acceso (deshabilita en Keycloak) sin borrar nada. Reversible. No cambia `estadoValidacion` |
+| POST | `/admin/nutricionistas/{id}/reactivar` | devuelve el acceso; `409` si la solicitud no está APROBADA |
+| DELETE | `/admin/nutricionistas/{id}` | baja definitiva: borra el usuario de Keycloak, sus pacientes, sus archivos y la fila. `409` si emitió recetas (están en los cierres) → hay que desactivar. `204` |
+| POST | `/admin/nutricionistas/{id}/password` | body `{ "password": "…" }` (mín. 8). Única vía de recuperación: no hay "olvidé mi contraseña". Limpia también los intentos fallidos de la protección de fuerza bruta. `204` |
 
 ### Admin — resiliencia de integraciones (2.7–2.9)
 
@@ -187,10 +212,12 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | POST | `/admin/tiendanube/resync-cupones` | reintenta el registro de cupones de recetas PENDIENTES sin sync → `{ "intentados":n, "sincronizados":n, "pendientes":n }`. En stub siguen pendientes |
 | POST | `/admin/contabilium/sync-productos` | fuerza la sync del catálogo por SKU → `{ "revisados":n, "creados":n, "actualizados":n, "sinCambios":n, "syncedAt":ts }`. **En stub → 503 "Contabilium no conectada"** |
 
-### Admin — maestro de artículos de TBC (C-12) — `admin:manage`
+### Admin — catálogo y maestro de artículos de TBC (C-12) — `admin:manage`
 
 | Método | Path | Notas |
 |---|---|---|
+| GET | `/admin/productos?q=&departamento=&categoria=&sinMaestro=&publicado=&page=` | catálogo completo, **incluidos los que no se pueden recetar**. Cada fila: `{ producto, enMaestro, bloqueadoMaestro, maestroSyncedAt, lastSyncedAt, motivoNoPublicado }`. `sinMaestro=true` lista los que no matchearon el Excel |
+| GET | `/admin/productos/resumen` | `{ total, publicados, noPublicados, sinMaestro, bloqueados }` para las tarjetas |
 | POST | `/admin/productos/importar-maestro` | **multipart**, campo `archivo` (.xlsx). Sube el maestro de TBC y aplica sus 9 columnas al catálogo cruzando por SKU. Síncrono. `422` si el archivo no es un xlsx legible o le faltan columnas (el mensaje dice cuáles) |
 | GET | `/admin/productos/maestro/estado` | última importación para el panel; todo `null` si nunca se importó |
 
@@ -226,8 +253,8 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 | Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
 | Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |
 | Pacientes | CRUD `/pacientes` |
-| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` + `GET /configuracion` (descuento) + `POST /recetas` |
+| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` (trae `precioMin`/`precioMax` para el slider) + el descuento de `GET /me` + `POST /recetas` |
 | Recetas | `GET /recetas` + detalle + anular/reenviar |
-| Configuración (admin) | `GET /configuracion` + `PUT /admin/configuracion` |
-| Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar |
+| Productos (admin) | `GET /admin/productos` + `GET /admin/productos/resumen` |
+| Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar + parámetros + desactivar/reactivar/borrar/password |
 | Admin Integraciones (`/integraciones`) | `GET /admin/integraciones/estado` + `POST /admin/tiendanube/resync-cupones` + `POST /admin/contabilium/sync-productos` (panel de resiliencia, solo admin; página hecha, degrada en stub) |

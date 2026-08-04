@@ -16,6 +16,13 @@ public interface PacienteRepository extends JpaRepository<Paciente, UUID> {
     boolean existsByNutricionistaIdAndEmailIgnoreCaseAndDeletedAtIsNull(UUID nutricionistaId, String email);
 
     /**
+     * Borrado físico de los pacientes de una nutricionista. Sólo lo usa la baja definitiva del
+     * admin, que exige que no haya ninguna receta: un paciente sin recetas no es más que una ficha
+     * de contacto que le pertenece a ella y a nadie más.
+     */
+    void deleteByNutricionistaId(UUID nutricionistaId);
+
+    /**
      * Lista paginada del nutricionista, con búsqueda opcional sin tilde (unaccent) sobre
      * nombre/apellido/email. `q` null o vacío → todos.
      */

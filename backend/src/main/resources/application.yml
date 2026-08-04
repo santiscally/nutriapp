@@ -102,10 +102,16 @@ nutriapp:
     precio-minimo: ${CATALOGO_PRECIO_MINIMO:100}
     # Tope del Excel maestro que sube el admin (el real pesa ~1,5 MB).
     import-max-bytes: ${CATALOGO_IMPORT_MAX_BYTES:20971520}
+  nutricionistas:
+    # Porcentajes con los que nace una nutricionista al registrarse. NO es una configuración global
+    # de negocio (V011 la eliminó): es sólo el punto de partida, porque el registro es público y
+    # nadie elige ahí su propio descuento. El admin los ajusta al aprobarla y desde entonces manda
+    # el valor de su ficha.
+    descuento-pct-default: ${NUTRICIONISTA_DESCUENTO_PCT_DEFAULT:15.00}
+    comision-pct-default: ${NUTRICIONISTA_COMISION_PCT_DEFAULT:10.00}
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
-    # Los % de descuento y comisión ya NO viven acá: son configurables por el admin en runtime
-    # (tabla configuracion_sistema, seed inicial 15/10 en la migración V004).
+    # Los % de descuento y comisión no viven acá: son de cada nutricionista (ver arriba).
     max-items: ${RECETA_MAX_ITEMS:10}
     # Cron del job de vencimiento (diario 03:00 AR). Catch-up adicional al arrancar.
     vencimiento-cron: ${RECETA_VENCIMIENTO_CRON:0 0 3 * * *}
@@ -148,6 +154,9 @@ nutriapp:
     # (application-prod.yml lo deja vacío → fail-closed si no se configura).
     client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:nutriapp-backend-dev-secret-change-me}
     nutricionista-role: ${KEYCLOAK_NUTRICIONISTA_ROLE:NUTRICIONISTA}
+    # Client publico del front. Solo se usa para verificar la contrasena actual (ROPC) cuando
+    # alguien la cambia desde su perfil: la Admin API no expone un "validar credencial".
+    public-client-id: ${KEYCLOAK_PUBLIC_CLIENT_ID:nutriapp-frontend}
   integrations:
     contabilium:
       mode: ${CONTABILIUM_MODE:stub}

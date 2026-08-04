@@ -2,15 +2,14 @@
 // derecha = resumen sticky tipo carrito (items + descuento + total + emitir).
 // El modelo soporta N items; la UI arranca en 1 pero permite agregar/quitar varios.
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ApiRequestError } from "../api/client";
-import { getConfiguracion } from "../api/configuracion";
 import { emitirReceta } from "../api/recetas";
 import { PacientePicker } from "../components/receta/PacientePicker";
 import { ProductoBuscador } from "../components/receta/ProductoBuscador";
 import { RecetaExito } from "../components/receta/RecetaExito";
 import { Icon } from "../components/ui/Icon";
-import { useFetch } from "../hooks/useFetch";
+import { useAuth } from "../auth/AuthContext";
 import { money } from "../lib/format";
 import type { Paciente } from "../types/paciente";
 import type { Producto } from "../types/producto";
@@ -29,10 +28,10 @@ export function EmitirReceta() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecetaResponse | null>(null);
 
-  // Descuento fijo global: lo define el admin, el nutricionista no lo edita.
-  const configFetcher = useCallback((s: AbortSignal) => getConfiguracion(s), []);
-  const { data: config } = useFetch(configFetcher);
-  const descuentoPct = config?.descuentoPct ?? 0;
+  // El descuento es el propio de esta nutricionista y lo define el admin; ella no lo edita.
+  // Viene en /me desde V011, cuando se eliminó el valor global (y con él GET /configuracion).
+  const { me } = useAuth();
+  const descuentoPct = me?.descuentoPct ?? 0;
 
   const selectedIds = useMemo(() => new Set(items.map((i) => i.producto.id)), [items]);
 

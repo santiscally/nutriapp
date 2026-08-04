@@ -168,6 +168,8 @@ button {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* Alto de la barra fija del footer: sin esto tapa la última fila de cualquier listado. */
+  padding-bottom: 34px;
 }
 .navbar {
   position: sticky;
@@ -179,8 +181,8 @@ button {
 .navbar__inner {
   max-width: var(--content-w);
   margin: 0 auto;
-  padding: 10px 24px;
-  min-height: 72px;
+  padding: 8px 24px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   gap: 20px;
@@ -267,14 +269,34 @@ button {
   flex: none;
 }
 .avatar--img { object-fit: cover; background: var(--surface-2); }
-/* C-17 — bloque de foto en Mi perfil */
-.perfil__foto { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+/* Mi perfil: datos y contraseña en dos columnas; abajo de 900px se apilan. */
+.perfil-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+}
+.card__title { margin: 0 0 1rem; font-size: 1.05rem; }
+/* C-17 — bloque de foto. `align-items: center` alineaba el avatar de 96px con el bloque de texto
+   y dejaba los botones flotando a media altura; con flex-start arrancan parejos arriba. */
+.perfil__foto {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.35rem;
+  border-bottom: 1px solid var(--border);
+}
+.perfil__foto-acciones { display: flex; flex-direction: column; gap: 0.7rem; }
+.perfil__foto-botones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.perfil__hint { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.perfil__datos { margin-top: 1.35rem; }
 
 .content {
   width: 100%;
   max-width: var(--content-w);
   margin: 0 auto;
-  padding: 40px 28px;
+  padding: 26px 28px 20px;
   flex: 1;
 }
 @media (max-width: 720px) {
@@ -290,43 +312,52 @@ button {
 }
 
 /* Footer */
+/* Footer compacto. La barra inferior (copyright + Simple Apps) queda FIJA al pie de la ventana:
+   tiene que verse siempre, no sólo si alguien llega scrolleando al final. El resto del contenido
+   reserva su alto con padding-bottom en .app-shell para que la barra no tape la última fila. */
 .footer {
   border-top: 1px solid var(--border);
   background: var(--surface-2);
-  margin-top: 64px;
+  margin-top: 40px;
 }
 .footer__inner {
   max-width: var(--content-w);
   margin: 0 auto;
-  padding: 34px 28px;
+  padding: 10px 28px;
   display: flex;
   flex-wrap: wrap;
-  gap: 28px;
-  align-items: flex-start;
-  justify-content: space-between;
+  gap: 8px 20px;
+  align-items: center;
 }
-.footer__brand { display: flex; flex-direction: column; gap: 6px; max-width: 340px; }
-.footer__brand-row { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); }
-.footer__brand-row .icon { color: var(--primary); }
-.footer__tagline { margin: 0; font-size: 0.82rem; line-height: 1.55; color: var(--subtle); }
-.footer__col { display: flex; flex-direction: column; gap: 9px; }
-.footer__col-title {
-  font-size: 0.7rem;
+.footer__brand-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--subtle);
+  font-size: 0.85rem;
+  color: var(--text);
 }
-.footer__link { font-size: 0.84rem; color: var(--muted); }
+.footer__brand-row .icon { color: var(--primary); }
+.footer__tagline { margin: 0; font-size: 0.78rem; color: var(--subtle); }
+.footer__links { display: flex; flex-wrap: wrap; gap: 14px; margin-left: auto; }
+.footer__link { font-size: 0.8rem; color: var(--muted); }
 .footer__link:hover { color: var(--primary); }
-.footer__bar { border-top: 1px solid var(--border); }
+.footer__bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
 /* Píldora "powered by <s/a>" (Simple Apps): logo navy fijo, resto con la paleta del sitio. */
 .powered-by {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.3rem 0.65rem;
-  background: var(--surface);
+  padding: 0.15rem 0.55rem;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 20px;
   text-decoration: none;
@@ -339,32 +370,31 @@ button {
   border-color: var(--primary);
   transform: translateY(-2px);
 }
-.powered-text { color: var(--muted); font-size: 0.6875rem; }
+.powered-text { color: var(--muted); font-size: 0.66rem; }
 .powered-logo {
   font-family: "General Sans", sans-serif;
   font-weight: 700;
   color: #092f70;
-  font-size: 0.9375rem;
+  font-size: 0.85rem;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
 .footer__bar-inner {
   max-width: var(--content-w);
   margin: 0 auto;
-  padding: 16px 28px;
+  padding: 7px 28px;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   justify-content: space-between;
   align-items: center;
-  justify-content: space-between;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--subtle);
 }
 
 /* Dashboard */
 .page-title {
-  margin: 0 0 1.25rem;
+  margin: 0 0 0.85rem;
 }
 .section-title {
   margin: 2rem 0 0.75rem;
@@ -608,8 +638,137 @@ select {
 
 /* Buscador productos */
 .buscador__controls { display: flex; flex-direction: column; gap: 0.6rem; }
-.buscador__filtros { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-.buscador__filtros select { flex: 1; min-width: 140px; }
+.buscador__barra { display: flex; gap: 0.6rem; align-items: center; }
+.buscador__barra .picker__input { flex: 1; }
+.buscador__toggle { height: 42px; white-space: nowrap; }
+.buscador__toggle--on { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-soft); }
+.buscador__contador {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+/* Chips de filtros aplicados: con el panel cerrado son lo único que explica por qué la lista
+   trae 12 resultados y no 700. */
+.buscador__chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary-dark); }
+.chip--limpiar { border-style: dashed; }
+.buscador__panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  padding: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.buscador__filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.7rem;
+}
+.buscador__campo { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.75rem; color: var(--muted); }
+.buscador__campo select {
+  height: 38px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+}
+.buscador__panel-pie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Slider de rango de precio: dos <input type=range> superpuestos sobre una pista común. Los
+   inputs no reciben eventos salvo en sus pulgares, así el click cae siempre en el correcto. */
+.rango { flex: 1 1 260px; min-width: 240px; }
+.rango__valores {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.45rem;
+}
+.rango__valores .muted { font-weight: 400; }
+.rango__pista { position: relative; height: 26px; }
+.rango__pista::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.rango__activo {
+  position: absolute;
+  top: 11px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.rango__input {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+  height: 26px;
+  margin: 0;
+  background: none;
+  pointer-events: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.rango__input::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.rango__input::-moz-range-thumb {
+  pointer-events: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.rango__input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(15, 138, 102, 0.24); }
 .buscador__stock { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
 .buscador__precio {
   width: 120px;
@@ -813,13 +972,34 @@ select {
   padding: 1rem;
   z-index: 50;
 }
-.modal__card { width: 100%; max-width: 520px; }
+/* El modal nunca puede pasar del alto de la ventana: con un producto de descripción larga y 20
+   tags, la card crecía hasta cortarse contra el borde y el botón de cerrar quedaba fuera de
+   pantalla. Ahora el cuerpo scrollea solo y el header queda fijo arriba. */
+.modal__card {
+  width: 100%;
+  max-width: 520px;
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 .modal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 1rem;
+  flex: none;
 }
+.modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Aire para que la última línea no quede pegada al borde del recorte. */
+  padding-right: 0.35rem;
+  margin-right: -0.35rem;
+}
+.modal__card--ancho { max-width: 680px; }
 .modal__title { margin: 0; font-size: 1.1rem; }
 .modal__close {
   background: transparent;
@@ -830,27 +1010,41 @@ select {
 }
 
 /* ---- Recetas ---- */
+/* Fila de filtros: todos los campos con la misma estructura y el mismo alto. Con controles pelados
+   mezclados con labels de dos líneas, las fechas quedaban más bajas y corridas. */
 .filtros {
   display: flex;
-  gap: 0.7rem;
-  align-items: center;
+  gap: 0.75rem;
+  align-items: flex-end;
   flex-wrap: wrap;
   margin-bottom: 1rem;
 }
-.filtros .picker__input { flex: 1; min-width: 220px; }
-.filtros__date {
+.filtros__campo {
   display: flex;
   flex-direction: column;
+  gap: 0.3rem;
   font-size: 0.75rem;
   color: var(--muted);
-  gap: 0.2rem;
+  flex: 0 0 auto;
 }
-.filtros__date input {
-  padding: 0.45rem 0.6rem;
+.filtros__campo--ancho { flex: 1 1 240px; min-width: 200px; }
+.filtros__campo > input,
+.filtros__campo > select {
+  height: 40px;
+  padding: 0 0.65rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 9px;
   font: inherit;
+  color: var(--text);
+  background: var(--surface);
 }
+.filtros__campo > input:focus,
+.filtros__campo > select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(15, 138, 102, 0.14);
+}
+.filtros__campo .picker__input { width: 100%; }
 .row-click { cursor: pointer; }
 .btn--danger { background: transparent; border-color: #feb2b2; color: var(--danger); }
 .btn--danger:hover:not(:disabled) { background: #fff5f5; }
@@ -875,16 +1069,18 @@ select {
   gap: 0.75rem;
   margin-bottom: 1rem;
 }
+/* Grilla que se acomoda a la cantidad de datos: con `1fr auto auto` fijas, la ficha del admin
+   (8 campos desde C-08) apilaba tres columnas desparejas y todo quedaba encimado. */
 .detalle__meta {
   display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 1rem;
-  margin: 0 0 1rem;
-  padding-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.15rem 1.5rem;
+  margin: 0 0 1.25rem;
+  padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
 }
 .detalle__meta dt { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
-.detalle__meta dd { margin: 0.2rem 0 0; }
+.detalle__meta dd { margin: 0.35rem 0 0; line-height: 1.45; }
 .detalle__title { font-size: 0.9rem; margin: 1rem 0 0.5rem; }
 .detalle__items, .detalle__notifs {
   list-style: none;
@@ -1458,3 +1654,36 @@ html, body { overflow-x: hidden; }
   .integraciones-grid { grid-template-columns: 1fr; }
   .prod-detalle__datos { grid-template-columns: 1fr 1fr; }
 }
+
+/* Notas de paciente en el listado: se ven, pero no deforman la fila. El texto completo está en el
+   form de edición y en el tooltip. */
+.cell-notas {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Barra de filtros del catálogo del admin: buscador ancho + tabs a la derecha, alineados por alto. */
+.filtros-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1.25rem 0 1rem;
+}
+.filtros-bar__search {
+  flex: 1 1 280px;
+  min-width: 220px;
+  height: 40px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font: inherit;
+  background: var(--surface);
+}
+.filtros-bar .tabs { margin-left: auto; }
+
+/* Etiquetas de estado apiladas en una celda (recetable / sin maestro / bloqueado). */
+.labels { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+.badge--warn { background: var(--amber-soft); color: var(--amber); }

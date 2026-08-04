@@ -63,27 +63,39 @@ export function Recetas() {
         </Link>
       </div>
 
+      {/* Los cuatro controles comparten estructura (label arriba + control abajo) y alto: antes el
+          buscador y el select iban pelados y las fechas dentro de un label con texto, así que
+          quedaban más bajos y corridos respecto de los otros dos. */}
       <div className="filtros card">
-        <input
-          className="picker__input"
-          placeholder="Buscar por código o paciente…"
-          value={q}
-          onChange={(e) => onFilter(setQ)(e.target.value)}
-        />
-        <select value={estado} onChange={(e) => onFilter(setEstado)(e.target.value as EstadoReceta | "")}>
-          <option value="">Estado (todos)</option>
-          {ESTADOS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <label className="filtros__date">
-          Desde
+        <label className="filtros__campo filtros__campo--ancho">
+          <span>Buscar</span>
+          <input
+            className="picker__input"
+            placeholder="Código o paciente…"
+            value={q}
+            onChange={(e) => onFilter(setQ)(e.target.value)}
+          />
+        </label>
+        <label className="filtros__campo">
+          <span>Estado</span>
+          <select
+            value={estado}
+            onChange={(e) => onFilter(setEstado)(e.target.value as EstadoReceta | "")}
+          >
+            <option value="">Todos</option>
+            {ESTADOS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="filtros__campo">
+          <span>Desde</span>
           <input type="date" value={desde} onChange={(e) => onFilter(setDesde)(e.target.value)} />
         </label>
-        <label className="filtros__date">
-          Hasta
+        <label className="filtros__campo">
+          <span>Hasta</span>
           <input type="date" value={hasta} onChange={(e) => onFilter(setHasta)(e.target.value)} />
         </label>
       </div>

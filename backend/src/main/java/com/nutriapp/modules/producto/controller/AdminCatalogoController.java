@@ -1,9 +1,15 @@
 package com.nutriapp.modules.producto.controller;
 
+import com.nutriapp.common.dto.PageResponse;
+import com.nutriapp.modules.producto.dto.AdminProductoResponse;
+import com.nutriapp.modules.producto.dto.CatalogoResumenResponse;
 import com.nutriapp.modules.producto.maestro.ImportarMaestroResponse;
 import com.nutriapp.modules.producto.maestro.MaestroEstadoResponse;
 import com.nutriapp.modules.producto.maestro.MaestroImportService;
+import com.nutriapp.modules.producto.service.ProductoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +33,34 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminCatalogoController {
 
     private final MaestroImportService maestroImportService;
+    private final ProductoService productoService;
+
+    /**
+     * Catálogo completo, incluidos los que no se pueden recetar y con el motivo. El buscador de
+     * recetas sólo muestra publicados: acá la pregunta es la contraria, qué quedó afuera.
+     *
+     * @param sinMaestro sólo los que no matchearon contra el Excel de TBC (62 en el import real).
+     * @param publicado  true/false para filtrar por estado; omitido = todos.
+     */
+    @GetMapping
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public PageResponse<AdminProductoResponse> listar(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String departamento,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(defaultValue = "false") boolean sinMaestro,
+            @RequestParam(required = false) Boolean publicado,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return PageResponse.of(
+                productoService.searchAdmin(q, departamento, categoria, sinMaestro, publicado, pageable));
+    }
+
+    /** Conteos del catálogo (total / publicados / sin maestro / bloqueados) para las tarjetas. */
+    @GetMapping("/resumen")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public CatalogoResumenResponse resumen() {
+        return productoService.resumen();
+    }
 
     /**
      * Importa el maestro sobre el catálogo ya sincronizado. Síncrono: parsear 2225 filas y hacer el

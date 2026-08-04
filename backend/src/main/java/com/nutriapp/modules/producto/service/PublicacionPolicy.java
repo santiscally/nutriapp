@@ -43,6 +43,35 @@ public class PublicacionPolicy {
                 && !p.isBloqueadoMaestro();
     }
 
+    /**
+     * Por qué este producto no es recetable, en castellano. {@code null} si sí lo es.
+     *
+     * <p>Devuelve la <b>primera</b> regla que lo bloquea, en el mismo orden en que las evalúa
+     * {@link #esPublicable}. Es para el panel del admin: "hay 26 despublicados" no le dice cuál
+     * arreglar ni dónde — si el motivo es el precio se corrige en Contabilium, si es el bloqueo se
+     * corrige en el Excel.
+     */
+    public String motivoNoPublicable(Producto p) {
+        if (!precioValido(p.getPrecio())) {
+            return p.getPrecio() == null
+                    ? "Sin precio en Contabilium"
+                    : "Precio por debajo del mínimo ($" + props.precioMinimo() + ")";
+        }
+        if (!p.isActivoErp()) {
+            return "Inactivo en Contabilium";
+        }
+        if (!permitido(props.tiposErpPermitidos(), p.getTipoErp())) {
+            return "Tipo \"" + p.getTipoErp() + "\" excluido del catálogo";
+        }
+        if (!permitido(props.rubrosPermitidos(), p.getRubroId())) {
+            return "Rubro fuera de los permitidos (no es producto terminado)";
+        }
+        if (p.isBloqueadoMaestro()) {
+            return "Bloqueado en el maestro de artículos";
+        }
+        return null;
+    }
+
     /** Aplica la política; devuelve true si el valor cambió. */
     public boolean aplicar(Producto p) {
         boolean nuevo = esPublicable(p);

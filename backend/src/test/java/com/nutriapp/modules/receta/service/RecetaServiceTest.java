@@ -12,7 +12,6 @@ import static org.mockito.Mockito.when;
 import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ConfiguracionService;
 import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
@@ -52,7 +51,6 @@ class RecetaServiceTest {
     @Mock TiendaNubeClient tiendaNubeClient;
     @Mock CuponSyncService cuponSyncService;
     @Mock RecetaProperties props;
-    @Mock ConfiguracionService configuracionService;
     @Mock WaMeLinkBuilder waMeLinkBuilder;
 
     @InjectMocks RecetaService service;

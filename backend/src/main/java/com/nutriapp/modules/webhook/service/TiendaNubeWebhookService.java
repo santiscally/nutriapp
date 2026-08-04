@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
+import com.nutriapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.repository.RecetaRepository;

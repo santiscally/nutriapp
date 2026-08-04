@@ -42,9 +42,17 @@ public record RecetaResponse(
             String indicaciones
     ) {}
 
+    /**
+     * Datos de la compra que convirtió la receta.
+     *
+     * <p><b>Sin el total facturado</b>: la nutricionista ve lo que gana, no lo que la tienda
+     * vendió. Es la misma línea que trazó C-02 con los precios (call 53:35) — el monto de la orden
+     * es información comercial de TBC, y mostrarlo invita a que se calcule la comisión por su
+     * cuenta sobre un número que además incluye productos que ella no recetó. El admin sí lo ve,
+     * en su cierre consolidado, porque es con lo que liquida.
+     */
     public record Conversion(
             Integer ordenNumero,
-            BigDecimal ordenTotal,
             Instant paidAt,
             BigDecimal comisionPct,
             BigDecimal comisionMonto,

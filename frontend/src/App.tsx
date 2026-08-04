@@ -6,8 +6,8 @@ import { RequireRol } from "./components/layout/RequireRol";
 import { ToastProvider } from "./components/ui/Toast";
 import { CierreConsolidado } from "./pages/CierreConsolidado";
 import { CierreMensual } from "./pages/CierreMensual";
-import { Configuracion } from "./pages/Configuracion";
 import { Dashboard } from "./pages/Dashboard";
+import { CatalogoAdmin } from "./pages/CatalogoAdmin";
 import { EmitirReceta } from "./pages/EmitirReceta";
 import { Integraciones } from "./pages/Integraciones";
 import { Login } from "./pages/Login";
@@ -46,7 +46,7 @@ export default function App() {
             {/* Sólo admin. */}
             <Route path="/nutricionistas" element={<RequireRol rol="ADMIN"><Nutricionistas /></RequireRol>} />
             <Route path="/cierres" element={<RequireRol rol="ADMIN"><CierreConsolidado /></RequireRol>} />
-            <Route path="/configuracion" element={<RequireRol rol="ADMIN"><Configuracion /></RequireRol>} />
+            <Route path="/catalogo" element={<RequireRol rol="ADMIN"><CatalogoAdmin /></RequireRol>} />
             <Route path="/integraciones" element={<RequireRol rol="ADMIN"><Integraciones /></RequireRol>} />
           </Route>
 

@@ -16,7 +16,6 @@ export function EstadisticasCharts({ stats }: { stats: Estadisticas }) {
   const maxEmitidas = Math.max(1, ...meses.map((m) => m.recetasEmitidas));
   const actual = meses[meses.length - 1];
   const previo = meses.length > 1 ? meses[meses.length - 2] : null;
-  const ticket = actual.recetasAplicadas > 0 ? actual.ventasGeneradas / actual.recetasAplicadas : 0;
   const deltaPct =
     previo && previo.comisionTotal > 0
       ? Math.round(((actual.comisionTotal - previo.comisionTotal) / previo.comisionTotal) * 100)
@@ -83,12 +82,8 @@ export function EstadisticasCharts({ stats }: { stats: Estadisticas }) {
             <dd>{actual.recetasAplicadas}</dd>
           </div>
           <div>
-            <dt>Ventas generadas</dt>
-            <dd>{money(actual.ventasGeneradas)}</dd>
-          </div>
-          <div>
-            <dt>Ticket promedio</dt>
-            <dd>{money(ticket)}</dd>
+            <dt>Comisión del mes</dt>
+            <dd>{money(actual.comisionTotal)}</dd>
           </div>
         </dl>
       </div>

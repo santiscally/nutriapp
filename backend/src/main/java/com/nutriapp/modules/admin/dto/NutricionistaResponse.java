@@ -22,10 +22,12 @@ public record NutricionistaResponse(
         Instant validadoAt,
         String notasValidacion,
         Instant createdAt,
-        /** C-01: override propio. null = usa el global (ver {@code descuentoPctEfectivo}). */
+        /**
+         * % propios, siempre presentes (V011 eliminó el global y con él la distinción entre el
+         * override y el valor "efectivo": lo que está acá es lo que se aplica).
+         */
         BigDecimal descuentoPct,
         BigDecimal comisionPct,
-        /** Lo que realmente se le aplica hoy, ya resuelto contra el global. */
-        BigDecimal descuentoPctEfectivo,
-        BigDecimal comisionPctEfectiva
+        /** ¿Puede loguearse hoy? Refleja el `enabled` del usuario en Keycloak. */
+        boolean activo
 ) {}

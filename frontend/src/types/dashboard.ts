@@ -6,7 +6,6 @@ export interface DashboardResumen {
   recetasAplicadasMes: number;
   recetasVencidasMes: number;
   comisionMesActual: number;
-  ventasGeneradasMesActual: number;
   ultimasRecetas: RecetaResponse[];
 }
 
@@ -16,7 +15,6 @@ export interface EstadisticasMes {
   month: number;
   recetasEmitidas: number;
   recetasAplicadas: number;
-  ventasGeneradas: number;
   comisionTotal: number;
 }
 
@@ -31,13 +29,12 @@ export interface CierreMensual {
   recetasEmitidas: number;
   recetasAplicadas: number;
   tasaConversion: number;
-  ventasGeneradas: number;
   comisionTotal: number;
   detalle: {
     recetaCodigo: string;
     paciente: string;
-    ordenTotal: number;
     comisionMonto: number;
     paidAt: string;
+    liquidadaAt?: string | null;
   }[];
 }

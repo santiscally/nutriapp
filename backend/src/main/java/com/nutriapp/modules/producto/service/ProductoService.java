@@ -1,6 +1,8 @@
 package com.nutriapp.modules.producto.service;
 
 import com.nutriapp.common.error.NotFoundException;
+import com.nutriapp.modules.producto.dto.AdminProductoResponse;
+import com.nutriapp.modules.producto.dto.CatalogoResumenResponse;
 import com.nutriapp.modules.producto.dto.ProductoFiltrosResponse;
 import com.nutriapp.modules.producto.dto.ProductoResponse;
 import com.nutriapp.modules.producto.entity.Producto;
@@ -26,6 +28,7 @@ public class ProductoService {
 
     private final ProductoRepository repository;
     private final ProductoMapper mapper;
+    private final PublicacionPolicy publicacionPolicy;
 
     @Transactional(readOnly = true)
     public Page<ProductoResponse> search(ProductoFiltro filtro, Pageable pageable) {
@@ -43,16 +46,64 @@ public class ProductoService {
         return mapper.toResponse(p);
     }
 
+    /**
+     * Catálogo completo para el admin: incluye los despublicados y dice por qué lo están. El
+     * buscador de recetas no sirve para esto — filtra publicados, que es exactamente lo que el
+     * admin necesita mirar después de correr un sync o una importación.
+     */
+    @Transactional(readOnly = true)
+    public Page<AdminProductoResponse> searchAdmin(String q, String departamento, String categoria,
+                                                   boolean sinMaestro, Boolean publicado,
+                                                   Pageable pageable) {
+        return repository.searchAdmin(q, departamento, categoria, sinMaestro, publicado, pageable)
+                .map(this::toAdminResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public CatalogoResumenResponse resumen() {
+        long total = repository.countByDeletedAtIsNull();
+        long publicados = repository.countByPublicadoAndDeletedAtIsNull(true);
+        return new CatalogoResumenResponse(
+                total,
+                publicados,
+                total - publicados,
+                repository.countByMaestroSyncedAtIsNullAndDeletedAtIsNull(),
+                repository.countByBloqueadoMaestroAndDeletedAtIsNull(true));
+    }
+
+    private AdminProductoResponse toAdminResponse(Producto p) {
+        return new AdminProductoResponse(
+                mapper.toResponse(p),
+                p.getMaestroSyncedAt() != null,
+                p.isBloqueadoMaestro(),
+                p.getMaestroSyncedAt(),
+                p.getLastSyncedAt(),
+                p.isPublicado() ? null : publicacionPolicy.motivoNoPublicable(p));
+    }
+
     @Transactional(readOnly = true)
     public ProductoFiltrosResponse filtros() {
         List<Object[]> filas = repository.taxonomia();
+        // El query devuelve una fila con dos columnas; Hibernate la entrega envuelta cuando el
+        // proyectado es Object[], así que hay que desanidar antes de leerla.
+        Object[] rango = repository.rangoPrecios();
+        Object[] minMax = rango != null && rango.length == 1 && rango[0] instanceof Object[] inner
+                ? inner
+                : rango;
         return new ProductoFiltrosResponse(
                 repository.distinctMarcas(),
                 valoresDe(filas, 1),
                 valoresDe(filas, 0),
                 valoresDe(filas, 2),
                 repository.distinctLaboratorios(),
-                arbol(filas));
+                arbol(filas),
+                decimal(minMax, 0),
+                decimal(minMax, 1));
+    }
+
+    /** Catálogo vacío o sin precios: devolvemos null y el front no dibuja el slider. */
+    private static BigDecimal decimal(Object[] fila, int col) {
+        return fila != null && fila.length > col && fila[col] instanceof BigDecimal v ? v : null;
     }
 
     /** Valores distintos y ordenados de una de las tres columnas de la taxonomía, sin nulos. */

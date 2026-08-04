@@ -8,13 +8,15 @@
 // Los productos que no están en el maestro de TBC no tienen ni taxonomía ni imagen ni tags: la fila
 // tiene que verse bien igual (solo 1 de cada 4 tiene imagen).
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { buscarProductos, getFiltros } from "../../api/productos";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useFetch } from "../../hooks/useFetch";
 import { money } from "../../lib/format";
 import type { Producto } from "../../types/producto";
+import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
+import { RangoPrecio } from "./RangoPrecio";
 
 interface Props {
   onAdd: (p: Producto) => void;
@@ -32,13 +34,15 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
   const [laboratorio, setLaboratorio] = useState("");
   const [tag, setTag] = useState("");
   const [conStock, setConStock] = useState(false);
-  const [precioMin, setPrecioMin] = useState("");
-  const [precioMax, setPrecioMax] = useState("");
+  // null = el extremo del catálogo, o sea "sin filtrar por ese lado".
+  const [precioDesde, setPrecioDesde] = useState<number | null>(null);
+  const [precioHasta, setPrecioHasta] = useState<number | null>(null);
   const [page, setPage] = useState(0);
   const [detalle, setDetalle] = useState<Producto | null>(null);
+  const [panelAbierto, setPanelAbierto] = useState(false);
   const dq = useDebounce(q);
-  const dMin = useDebounce(precioMin);
-  const dMax = useDebounce(precioMax);
+  const dMin = useDebounce(precioDesde);
+  const dMax = useDebounce(precioHasta);
 
   const filtros = useFetch(useCallback((s: AbortSignal) => getFiltros(s), []));
 
@@ -55,8 +59,8 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
             laboratorio,
             tag,
             conStock,
-            precioMin: dMin ? Number(dMin) : undefined,
-            precioMax: dMax ? Number(dMax) : undefined,
+            precioMin: dMin ?? undefined,
+            precioMax: dMax ?? undefined,
             page,
             size: PAGE_SIZE,
           },
@@ -115,90 +119,183 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
     setSubcategoria("");
   }
 
+  // Extremos reales del catálogo. Mientras no lleguen, el slider no se dibuja (no hay escala).
+  const catalogoMin = f?.precioMin ?? null;
+  const catalogoMax = f?.precioMax ?? null;
+  const hayRango = catalogoMin != null && catalogoMax != null && catalogoMax > catalogoMin;
+
+  // Si el catálogo cambia de rango (re-sync), un filtro viejo puede quedar fuera de escala.
+  useEffect(() => {
+    if (!hayRango) return;
+    setPrecioDesde((v) => (v != null && v < catalogoMin! ? catalogoMin : v));
+    setPrecioHasta((v) => (v != null && v > catalogoMax! ? catalogoMax : v));
+  }, [hayRango, catalogoMin, catalogoMax]);
+
+  // Chips de lo que está filtrando ahora mismo: con el panel cerrado es lo único que dice por qué
+  // la lista trae 12 resultados y no 700.
+  const activos: { label: string; quitar: () => void }[] = [];
+  if (departamento) activos.push({ label: departamento, quitar: () => onDepartamento("") });
+  if (categoria) activos.push({ label: categoria, quitar: () => onCategoria("") });
+  if (subcategoria) activos.push({ label: subcategoria, quitar: () => onFiltro(setSubcategoria)("") });
+  if (laboratorio) activos.push({ label: laboratorio, quitar: () => onFiltro(setLaboratorio)("") });
+  if (marca) activos.push({ label: marca, quitar: () => onFiltro(setMarca)("") });
+  if (conStock) activos.push({ label: "Con stock", quitar: () => onFiltro(setConStock)(false) });
+  if (tag) activos.push({ label: `#${tag}`, quitar: () => onFiltro(setTag)("") });
+  if (precioDesde != null || precioHasta != null) {
+    activos.push({
+      label: `${money(precioDesde ?? catalogoMin ?? 0)} – ${money(precioHasta ?? catalogoMax ?? 0)}`,
+      quitar: () => {
+        setPage(0);
+        setPrecioDesde(null);
+        setPrecioHasta(null);
+      },
+    });
+  }
+
+  function limpiarTodo() {
+    setPage(0);
+    setDepartamento("");
+    setCategoria("");
+    setSubcategoria("");
+    setLaboratorio("");
+    setMarca("");
+    setConStock(false);
+    setTag("");
+    setPrecioDesde(null);
+    setPrecioHasta(null);
+  }
+
   const data = productos.data;
   const totalPages = data?.totalPages ?? 0;
 
   return (
     <div>
       <div className="buscador__controls">
-        <input
-          className="picker__input"
-          placeholder="Buscar por nombre, SKU, código de barras o palabra clave…"
-          value={q}
-          onChange={(e) => onFiltro(setQ)(e.target.value)}
-        />
-        <div className="buscador__filtros">
-          <select value={departamento} onChange={(e) => onDepartamento(e.target.value)}>
-            <option value="">Departamento (todos)</option>
-            {f?.departamentos.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <select value={categoria} onChange={(e) => onCategoria(e.target.value)}>
-            <option value="">Categoría (todas)</option>
-            {categorias.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select value={subcategoria} onChange={(e) => onFiltro(setSubcategoria)(e.target.value)}>
-            <option value="">Subcategoría (todas)</option>
-            {subcategorias.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <select value={laboratorio} onChange={(e) => onFiltro(setLaboratorio)(e.target.value)}>
-            <option value="">Laboratorio (todos)</option>
-            {f?.laboratorios.map((l) => (
-              <option key={l} value={l}>
-                {l}
-              </option>
-            ))}
-          </select>
-          <select value={marca} onChange={(e) => onFiltro(setMarca)(e.target.value)}>
-            <option value="">Marca (todas)</option>
-            {f?.marcas.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <label className="buscador__stock">
-            <input
-              type="checkbox"
-              checked={conStock}
-              onChange={(e) => onFiltro(setConStock)(e.target.checked)}
-            />
-            Solo con stock
-          </label>
+        <div className="buscador__barra">
           <input
-            type="number"
-            className="buscador__precio"
-            placeholder="Precio desde"
-            min={0}
-            value={precioMin}
-            onChange={(e) => onFiltro(setPrecioMin)(e.target.value)}
+            className="picker__input"
+            placeholder="Buscar por nombre, SKU, código de barras o palabra clave…"
+            value={q}
+            onChange={(e) => onFiltro(setQ)(e.target.value)}
           />
-          <input
-            type="number"
-            className="buscador__precio"
-            placeholder="Precio hasta"
-            min={0}
-            value={precioMax}
-            onChange={(e) => onFiltro(setPrecioMax)(e.target.value)}
-          />
+          {/* Los 8 controles de filtro estaban siempre a la vista y tapaban la lista, que es lo
+              que la nutricionista viene a leer. Ahora se despliegan, y los chips de abajo dejan
+              ver qué hay aplicado sin abrir nada. */}
+          <button
+            type="button"
+            className={"btn btn--ghost buscador__toggle" + (panelAbierto ? " buscador__toggle--on" : "")}
+            onClick={() => setPanelAbierto((v) => !v)}
+            aria-expanded={panelAbierto}
+          >
+            <Icon name="search" size={15} />
+            Filtros
+            {activos.length > 0 && <span className="buscador__contador">{activos.length}</span>}
+          </button>
         </div>
-        {tag && (
-          <div className="buscador__tag-activo">
-            Filtrando por la palabra clave <strong>{tag}</strong>
-            <button className="btn btn--sm btn--ghost" onClick={() => onFiltro(setTag)("")}>
-              Quitar
+
+        {activos.length > 0 && (
+          <div className="buscador__chips">
+            {activos.map((a) => (
+              <button key={a.label} className="chip" onClick={a.quitar} title="Quitar este filtro">
+                {a.label}
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
+            <button className="chip chip--limpiar" onClick={limpiarTodo}>
+              Limpiar todo
             </button>
+          </div>
+        )}
+
+        {panelAbierto && (
+          <div className="buscador__panel">
+            <div className="buscador__filtros">
+              <label className="buscador__campo">
+                <span>Departamento</span>
+                <select value={departamento} onChange={(e) => onDepartamento(e.target.value)}>
+                  <option value="">Todos</option>
+                  {f?.departamentos.map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="buscador__campo">
+                <span>Categoría</span>
+                <select value={categoria} onChange={(e) => onCategoria(e.target.value)}>
+                  <option value="">Todas</option>
+                  {categorias.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="buscador__campo">
+                <span>Subcategoría</span>
+                <select
+                  value={subcategoria}
+                  onChange={(e) => onFiltro(setSubcategoria)(e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {subcategorias.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="buscador__campo">
+                <span>Laboratorio</span>
+                <select value={laboratorio} onChange={(e) => onFiltro(setLaboratorio)(e.target.value)}>
+                  <option value="">Todos</option>
+                  {f?.laboratorios.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="buscador__campo">
+                <span>Marca</span>
+                <select value={marca} onChange={(e) => onFiltro(setMarca)(e.target.value)}>
+                  <option value="">Todas</option>
+                  {f?.marcas.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="buscador__panel-pie">
+              {hayRango && (
+                <RangoPrecio
+                  min={catalogoMin!}
+                  max={catalogoMax!}
+                  desde={precioDesde ?? catalogoMin!}
+                  hasta={precioHasta ?? catalogoMax!}
+                  formato={money}
+                  onChange={(d, h) => {
+                    setPage(0);
+                    // Pegado a un extremo = sin filtro por ese lado: así el chip no miente
+                    // diciendo que hay un rango aplicado cuando abarca todo el catálogo.
+                    setPrecioDesde(d <= catalogoMin! ? null : d);
+                    setPrecioHasta(h >= catalogoMax! ? null : h);
+                  }}
+                />
+              )}
+              <label className="buscador__stock">
+                <input
+                  type="checkbox"
+                  checked={conStock}
+                  onChange={(e) => onFiltro(setConStock)(e.target.checked)}
+                />
+                Solo con stock
+              </label>
+            </div>
           </div>
         )}
       </div>
@@ -288,7 +385,7 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
       )}
 
       {detalle && (
-        <Modal title={detalle.nombre} onClose={() => setDetalle(null)}>
+        <Modal title={detalle.nombre} onClose={() => setDetalle(null)} ancho>
           <div className="prod-detalle">
             {detalle.imagenUrl && (
               <img className="prod-detalle__img" src={detalle.imagenUrl} alt={detalle.nombre} />

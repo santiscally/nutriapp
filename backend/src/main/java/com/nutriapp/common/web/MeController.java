@@ -4,6 +4,7 @@ import com.nutriapp.common.auth.AuthUtils;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.service.ArchivoService;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
+import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
@@ -44,6 +45,13 @@ public class MeController {
                 .map(n -> archivoService.fotoDataUri(n.getId()))
                 .orElse(null);
 
+        // V011: el descuento es propio de cada nutricionista. Viaja acá porque la pantalla de
+        // emisión lo muestra como dato de sólo lectura y antes lo sacaba de GET /configuracion,
+        // que dejó de existir junto con el valor global.
+        BigDecimal descuentoPct = nutricionistaService.findCurrent()
+                .map(Nutricionista::getDescuentoPct)
+                .orElse(null);
+
         return new MeResponse(
                 AuthUtils.currentUserId().map(Object::toString).orElse(null),
                 nombre,
@@ -52,7 +60,8 @@ public class MeController {
                 AuthUtils.currentRoles(),
                 authorities,
                 estadoValidacion,
-                foto);
+                foto,
+                descuentoPct);
     }
 
     public record MeResponse(
@@ -64,6 +73,8 @@ public class MeController {
             List<String> authorities,
             String estadoValidacion,
             /** C-17: data URI del avatar, o null si no cargó foto. */
-            String foto
+            String foto,
+            /** % de descuento propio. null para el admin, que no emite recetas (C-07). */
+            BigDecimal descuentoPct
     ) {}
 }

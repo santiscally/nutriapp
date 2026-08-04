@@ -19,5 +19,10 @@ public record KeycloakAdminProperties(
         String realm,
         String clientId,
         String clientSecret,
-        String nutricionistaRole
+        String nutricionistaRole,
+        /**
+         * Client público del front (ROPC). Sólo se usa para verificar la contraseña actual cuando
+         * alguien la cambia desde su perfil: la Admin API no tiene un "validar credencial".
+         */
+        String publicClientId
 ) {}

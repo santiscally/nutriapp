@@ -82,14 +82,95 @@ public class KeycloakAdminClient {
     /** Borra un usuario. Best-effort: se usa para compensar si el registro local falla luego de crearlo. */
     public void deleteUser(String userId) {
         try {
+            deleteUserOrFail(userId);
+        } catch (Exception ex) {
+            // No re-lanzar: es compensación. Dejamos rastro para limpieza manual si hiciera falta.
+            log.error("No se pudo borrar el usuario Keycloak {} en compensación: {}", userId, ex.getMessage());
+        }
+    }
+
+    /**
+     * Borra un usuario propagando el error. Es la variante para la baja definitiva que dispara el
+     * admin: si Keycloak no lo borra, la operación tiene que fallar entera — un usuario que sigue
+     * existiendo allá y no acá es alguien que puede loguearse sin perfil.
+     *
+     * <p>Un 404 se toma como éxito: el objetivo es que no exista, y ya no existe.
+     */
+    public void deleteUserOrFail(String userId) {
+        try {
             http.delete()
                     .uri("/admin/realms/{realm}/users/{id}", props.realm(), userId)
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
                     .retrieve()
                     .toBodilessEntity();
+        } catch (HttpClientErrorException.NotFound ex) {
+            log.warn("El usuario Keycloak {} ya no existía al borrarlo", userId);
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException("No se pudo borrar el usuario en Keycloak", ex);
+        }
+    }
+
+    /**
+     * Reemplaza la contraseña de un usuario por una permanente (sin obligarlo a cambiarla al
+     * entrar). Es la única vía de recuperación que tiene el sistema: no hay "olvidé mi contraseña"
+     * por email, así que sin esto una nutricionista que se equivoca queda afuera para siempre.
+     */
+    public void resetPassword(String userId, String password) {
+        try {
+            http.put()
+                    .uri("/admin/realms/{realm}/users/{id}/reset-password", props.realm(), userId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("type", "password", "value", password, "temporary", false))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException("No se pudo cambiar la contraseña en Keycloak", ex);
+        }
+    }
+
+    /**
+     * Limpia el contador de intentos fallidos de la protección de fuerza bruta. Se llama al
+     * resetear una contraseña: si el usuario quedó frenado por reintentar, la contraseña nueva no
+     * le serviría de nada hasta que expire el bloqueo.
+     */
+    public void limpiarIntentosFallidos(String userId) {
+        try {
+            http.delete()
+                    .uri("/admin/realms/{realm}/attack-detection/brute-force/users/{id}", props.realm(), userId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .retrieve()
+                    .toBodilessEntity();
         } catch (Exception ex) {
-            // No re-lanzar: es compensación. Dejamos rastro para limpieza manual si hiciera falta.
-            log.error("No se pudo borrar el usuario Keycloak {} en compensación: {}", userId, ex.getMessage());
+            // Accesorio: si falla, la contraseña igual quedó cambiada.
+            log.warn("No se pudieron limpiar los intentos fallidos de {}: {}", userId, ex.getMessage());
+        }
+    }
+
+    /**
+     * Valida una contraseña haciendo un login real (ROPC) contra el client público del front.
+     * Se usa para exigir la contraseña actual antes de cambiarla desde el perfil: Keycloak no
+     * expone un "verificar credencial" en la Admin API, y el reset a secas dejaría que cualquiera
+     * con la sesión abierta de otro le cambie la clave.
+     *
+     * @return true si las credenciales son válidas.
+     */
+    public boolean passwordEsValida(String username, String password) {
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "password");
+        form.add("client_id", props.publicClientId());
+        form.add("username", username);
+        form.add("password", password);
+        try {
+            http.post()
+                    .uri("/realms/{realm}/protocol/openid-connect/token", props.realm())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(form)
+                    .retrieve()
+                    .toBodilessEntity();
+            return true;
+        } catch (HttpClientErrorException ex) {
+            return false;
         }
     }
 

@@ -1,5 +1,11 @@
-// C-09 — ficha de una nutricionista: datos del registro + % propios (C-01) + aprobar/rechazar.
-// Vacío en un % = "usá el global": así el admin no tiene que copiar el valor global en cada fila.
+// C-09 — ficha de una nutricionista: datos del registro, sus % (obligatorios desde V011: se
+// eliminó el valor global) y las acciones del admin sobre su cuenta.
+//
+// Las cuatro acciones de cuenta son distintas y no intercambiables:
+//   · Aprobar/Rechazar → resuelven la SOLICITUD, sólo mientras está pendiente.
+//   · Desactivar/Reactivar → cortan o devuelven el acceso conservando todo. Para bajas.
+//   · Borrar → elimina de verdad. Para altas equivocadas; el backend lo frena si emitió recetas.
+//   · Nueva contraseña → única vía de recuperación que existe (no hay "olvidé mi contraseña").
 
 import { useState, type FormEvent } from "react";
 import { ApiRequestError } from "../../api/client";
@@ -7,7 +13,11 @@ import {
   abrirMatricula,
   actualizarParametros,
   aprobarNutricionista,
+  desactivarNutricionista,
+  eliminarNutricionista,
+  reactivarNutricionista,
   rechazarNutricionista,
+  resetearPassword,
 } from "../../api/nutricionistas";
 import { fecha } from "../../lib/format";
 import type { NutricionistaAdmin } from "../../types/nutricionista";
@@ -21,43 +31,40 @@ interface Props {
 }
 
 const pctValido = (v: string) => {
-  if (v.trim() === "") return true; // vacío = global
   const n = Number(v);
-  return !Number.isNaN(n) && n >= 0 && n <= 100;
+  return v.trim() !== "" && !Number.isNaN(n) && n >= 0 && n <= 100;
 };
-
-/** "" → null (global); "0" → 0, que es un override válido y NO debe caer al global. */
-const aNumeroOnull = (v: string) => (v.trim() === "" ? null : Number(v));
 
 export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
   const toast = useToast();
-  const [descuento, setDescuento] = useState(nutri.descuentoPct?.toString() ?? "");
-  const [comision, setComision] = useState(nutri.comisionPct?.toString() ?? "");
+  const [descuento, setDescuento] = useState(nutri.descuentoPct.toString());
+  const [comision, setComision] = useState(nutri.comisionPct.toString());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pendiente = nutri.estadoValidacion === "PENDIENTE";
+  const aprobada = nutri.estadoValidacion === "APROBADA";
 
   async function guardarParametros(): Promise<boolean> {
     if (!pctValido(descuento) || !pctValido(comision)) {
-      setError("Los porcentajes deben estar entre 0 y 100. Dejalos vacíos para usar el global.");
+      setError("Los dos porcentajes son obligatorios y van entre 0 y 100.");
       return false;
     }
     await actualizarParametros(nutri.id, {
-      descuentoPct: aNumeroOnull(descuento),
-      comisionPct: aNumeroOnull(comision),
+      descuentoPct: Number(descuento),
+      comisionPct: Number(comision),
     });
     return true;
   }
 
-  async function correr(accion: () => Promise<unknown>, ok: string) {
+  async function correr(accion: () => Promise<unknown>, ok: string, cerrar = true) {
     setBusy(true);
     setError(null);
     try {
       await accion();
       toast.success(ok);
       onChanged();
-      onClose();
+      if (cerrar) onClose();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.message : "No se pudo completar la acción.");
     } finally {
@@ -80,6 +87,36 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
     correr(() => rechazarNutricionista(nutri.id, motivo), "Solicitud rechazada.");
   }
 
+  function onDesactivar() {
+    if (!window.confirm(`${nutri.nombre} no va a poder entrar más, pero se conservan sus recetas y pacientes. ¿Seguimos?`)) return;
+    correr(() => desactivarNutricionista(nutri.id), "Acceso desactivado.");
+  }
+
+  function onReactivar() {
+    correr(() => reactivarNutricionista(nutri.id), "Acceso reactivado.");
+  }
+
+  function onEliminar() {
+    // Doble confirmación con el nombre a la vista: es irreversible y no hay papelera.
+    if (!window.confirm(
+      `Se va a BORRAR a ${nutri.nombre} ${nutri.apellido} y sus pacientes, sin vuelta atrás.\n\n` +
+        "Si sólo querés que no pueda entrar, cancelá y usá \"Desactivar\".",
+    )) return;
+    correr(() => eliminarNutricionista(nutri.id), "Nutricionista eliminada.");
+  }
+
+  function onResetPassword() {
+    const nueva = window.prompt(
+      `Contraseña nueva para ${nutri.email} (mínimo 8 caracteres).\nAvisale por un canal seguro.`,
+    );
+    if (nueva === null) return;
+    if (nueva.trim().length < 8) {
+      setError("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    correr(() => resetearPassword(nutri.id, nueva), "Contraseña actualizada.", false);
+  }
+
   return (
     <Modal title={`${nutri.nombre} ${nutri.apellido}`} onClose={onClose}>
       <form className="detalle" onSubmit={onGuardar}>
@@ -87,6 +124,16 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
           <div>
             <dt>Email</dt>
             <dd>{nutri.email}</dd>
+          </div>
+          <div>
+            <dt>Acceso</dt>
+            <dd>
+              {nutri.activo ? (
+                <span className="badge badge--ok">Activo</span>
+              ) : (
+                <span className="badge badge--off">Sin acceso</span>
+              )}
+            </dd>
           </div>
           <div>
             <dt>Teléfono</dt>
@@ -141,7 +188,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
               min={0}
               max={100}
               step="0.01"
-              placeholder={`Global: ${nutri.descuentoPctEfectivo}`}
+              required
               value={descuento}
               onChange={(e) => setDescuento(e.target.value)}
             />
@@ -153,15 +200,15 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
               min={0}
               max={100}
               step="0.01"
-              placeholder={`Global: ${nutri.comisionPctEfectiva}`}
+              required
               value={comision}
               onChange={(e) => setComision(e.target.value)}
             />
           </label>
         </div>
         <p className="muted" style={{ marginTop: "-0.4rem", fontSize: "0.8rem" }}>
-          Vacío = usa el valor global de Configuración. Los cambios afectan sólo a las recetas
-          futuras: las ya emitidas conservan el porcentaje con el que salieron.
+          Los cambios afectan sólo a las recetas futuras: las ya emitidas conservan el porcentaje
+          con el que salieron.
         </p>
 
         {nutri.estadoValidacion === "RECHAZADA" && nutri.notasValidacion && (
@@ -180,6 +227,36 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
             {busy ? "Guardando…" : pendiente ? "Aprobar" : "Guardar"}
           </button>
         </div>
+
+        {/* Acciones sobre la cuenta, separadas de los datos: no se tocan en la operación diaria. */}
+        {!pendiente && (
+          <>
+            <h3 className="detalle__title">Cuenta</h3>
+            <div className="detalle__actions">
+              <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onResetPassword}>
+                Nueva contraseña
+              </button>
+              {aprobada && nutri.activo && (
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onDesactivar}>
+                  Desactivar
+                </button>
+              )}
+              {aprobada && !nutri.activo && (
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onReactivar}>
+                  Reactivar
+                </button>
+              )}
+              <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onEliminar}>
+                Borrar
+              </button>
+            </div>
+            <p className="muted" style={{ fontSize: "0.8rem" }}>
+              <strong>Desactivar</strong> le saca el acceso y se puede revertir.{" "}
+              <strong>Borrar</strong> la elimina para siempre y sólo funciona si nunca emitió una
+              receta — las que ya emitió forman parte de los cierres.
+            </p>
+          </>
+        )}
       </form>
     </Modal>
   );

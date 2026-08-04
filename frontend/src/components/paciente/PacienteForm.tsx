@@ -1,6 +1,8 @@
 // Form de alta/edición de paciente. email y whatsapp obligatorios (whatsapp en formato E.164).
-// Alta: captura además fechaNacimiento + notas. Edición: solo los 4 campos que el GET devuelve
-// (el backend no retorna fecha/notas todavía → no se pueden precargar sin pisarlos).
+//
+// Fecha de nacimiento y notas se editan igual que el resto: el GET ya las devuelve, así que se
+// pueden precargar sin riesgo de pisarlas. Antes sólo estaban en el alta —el response no las
+// traía— y eso dejaba las notas escritas una vez y nunca más visibles.
 
 import { useState, type FormEvent } from "react";
 import { ApiRequestError } from "../../api/client";
@@ -27,8 +29,8 @@ export function PacienteForm({
   const [apellido, setApellido] = useState(paciente?.apellido ?? "");
   const [email, setEmail] = useState(paciente?.email ?? "");
   const [whatsapp, setWhatsapp] = useState(paciente?.whatsapp ?? "");
-  const [fechaNacimiento, setFechaNacimiento] = useState("");
-  const [notas, setNotas] = useState("");
+  const [fechaNacimiento, setFechaNacimiento] = useState(paciente?.fechaNacimiento ?? "");
+  const [notas, setNotas] = useState(paciente?.notas ?? "");
 
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -55,22 +57,18 @@ export function PacienteForm({
 
     setSaving(true);
     try {
+      const body = {
+        nombre: nombre.trim(),
+        apellido: apellido.trim(),
+        email: email.trim(),
+        whatsapp: whatsapp.trim(),
+        fechaNacimiento: fechaNacimiento || undefined,
+        notas: notas.trim() || undefined,
+      };
       if (isEdit) {
-        await actualizarPaciente(paciente.id, {
-          nombre: nombre.trim(),
-          apellido: apellido.trim(),
-          email: email.trim(),
-          whatsapp: whatsapp.trim(),
-        });
+        await actualizarPaciente(paciente.id, body);
       } else {
-        await crearPaciente({
-          nombre: nombre.trim(),
-          apellido: apellido.trim(),
-          email: email.trim(),
-          whatsapp: whatsapp.trim(),
-          fechaNacimiento: fechaNacimiento || undefined,
-          notas: notas.trim() || undefined,
-        });
+        await crearPaciente(body);
       }
       onSaved();
     } catch (err) {
@@ -110,22 +108,23 @@ export function PacienteForm({
           {errors.whatsapp && <small className="field__err">{errors.whatsapp}</small>}
         </label>
 
-        {!isEdit && (
-          <>
-            <label className="field">
-              <span>Fecha de nacimiento</span>
-              <input
-                type="date"
-                value={fechaNacimiento}
-                onChange={(e) => setFechaNacimiento(e.target.value)}
-              />
-            </label>
-            <label className="field field--full">
-              <span>Notas</span>
-              <textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
-            </label>
-          </>
-        )}
+        <label className="field">
+          <span>Fecha de nacimiento</span>
+          <input
+            type="date"
+            value={fechaNacimiento}
+            onChange={(e) => setFechaNacimiento(e.target.value)}
+          />
+        </label>
+        <label className="field field--full">
+          <span>Notas</span>
+          <textarea
+            rows={3}
+            placeholder="Objetivos, alergias, indicaciones que quieras tener a mano."
+            value={notas}
+            onChange={(e) => setNotas(e.target.value)}
+          />
+        </label>
       </div>
 
       {submitError && <div className="alert alert--error">{submitError}</div>}

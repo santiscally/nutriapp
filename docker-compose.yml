@@ -76,6 +76,7 @@ services:
       # Admin API por service-account (client_credentials) del client confidencial nutriapp-backend.
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-nutriapp-backend}
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-nutriapp-backend-dev-secret-change-me}
+      KEYCLOAK_PUBLIC_CLIENT_ID: ${KEYCLOAK_PUBLIC_CLIENT_ID:-nutriapp-frontend}
       # --- Integraciones (stub|live) ---
       CONTABILIUM_MODE: ${CONTABILIUM_MODE:-stub}
       CONTABILIUM_CLIENT_ID: ${CONTABILIUM_CLIENT_ID:-}

@@ -32,6 +32,87 @@
 
 ## Entradas
 
+## 2026-08-04 — Santi — backend+frontend+db (11 cambios pedidos: parámetros, cuentas, catálogo admin y UI)
+**Qué:** Tanda grande de cambios pedidos por el usuario. `mvn verify` **149 unit + 1 IT**; front `tsc`/`oxlint`/
+`build` verdes. Dos migraciones (`V011`, `V012`). Verificado e2e contra el stack (back `:8088`).
+
+**🔎 El "bug" de la contraseña no era un bug.** Se reportó que un usuario dado de alta no podía loguear
+"porque no le tomaba la contraseña". Reproducido de punta a punta: registro → aprobar → login **funciona**, y
+el usuario en cuestión (`santiscally@gmail.com`) tiene su credencial `password` en Keycloak, `enabled=true` y
+`APROBADA`. Lo que sí muestra Keycloak es **3 intentos fallidos** desde la IP del host — con `failureFactor=30`
+no llegó a bloquearse. Quedan dos explicaciones: un typo, o haber probado **antes de aprobar** (ahí Keycloak
+responde `Account disabled`, que ya está traducido pero no aclara que la contraseña estaba bien).
+**Lo que sí era un agujero real: no existía ninguna forma de recuperar el acceso** — no hay "olvidé mi
+contraseña" ni reset por admin. Quien se equivocaba quedaba afuera para siempre. Eso es lo que se construyó.
+
+**Backend:**
+- **`V011` — se elimina la configuración global de %.** Convivían un global (`configuracion_sistema`) y un
+  override por nutricionista donde `NULL` significaba "usá el global": el mismo dato en dos lugares y dos
+  formas de leerlo, y cualquier lectura que se salteara el resolutor devolvía un número distinto al de la
+  emisión. Ahora cada nutricionista tiene los suyos, obligatorios. La migración **hereda el global vigente**
+  (no un literal 15/10: si el admin lo había cambiado, el valor que estaba aplicando es el suyo) y verificado
+  en la DB real: `ana.test` conservó su 30/8 y el resto quedó en 15/10. Las recetas ya emitidas no se tocan
+  (los % están snapshoteados desde C-01). Se borró el módulo `configuracion` entero y la pantalla del front;
+  `ParametrosNegocioService` se mudó a `modules/nutricionista/`. El descuento ahora viaja en `GET /me`.
+- **`V012` + gestión de cuentas del admin.** Columna `activo` (espejo del `enabled` de Keycloak, para que la
+  bandeja muestre 20 filas sin hacerle 20 requests a Keycloak) y cuatro acciones:
+  `desactivar`/`reactivar` (reversibles, conservan todo), `DELETE` (borra usuario + fila + pacientes +
+  archivos) y `POST /password` (reset). **Borrar se niega con 409 si emitió recetas**: esas recetas alimentan
+  los cierres y borrar a su autora dejaría plata contabilizada sin nadie a quien atribuírsela; el mensaje
+  manda a desactivar. El orden importa — primero Keycloak, después la fila local: al revés quedaría un
+  usuario capaz de loguearse sin perfil (hay test).
+- **`PUT /perfil/password`.** Exige la contraseña actual y la verifica contra Keycloak por ROPC, porque la
+  Admin API pisa credenciales sin conocer la anterior: sin ese chequeo, una sesión abierta y olvidada
+  alcanzaría para quedarse con la cuenta. El reset del admin además **limpia los intentos fallidos** — si
+  alguien llegó a pedirlo es probable que haya reintentado hasta frenarse contra la protección de fuerza bruta,
+  y la contraseña nueva no le serviría hasta que expirara el bloqueo.
+- **La nutricionista deja de ver facturación** (extiende C-02, pedido del usuario a mitad de la tanda): fuera
+  `ordenTotal` de `RecetaResponse.Conversion`, `ventasGeneradas*` del resumen, del cierre mensual y de las
+  estadísticas. El detalle de conversión ahora dice sólo la comisión. **El admin lo conserva** en el cierre
+  consolidado: es con lo que liquida. Se borró `sumVentasEntre`, que quedó sin uso.
+- **`GET /admin/productos` + `/resumen`.** El catálogo con los despublicados incluidos y el motivo resuelto en
+  castellano (`PublicacionPolicy.motivoNoPublicable`). Contra el catálogo real: **2267 productos, 699
+  recetables, 104 sin match del maestro, 484 bloqueados**.
+- **`/productos/filtros` ahora trae `precioMin`/`precioMax`** reales (4.011 – 1.421.999) para los extremos del
+  slider: sin eso el front tendría que inventar un tope.
+
+**Frontend:** pantalla `/catalogo` para el admin con tarjetas y filtro "sin match del maestro"; buscador con
+los filtros **plegados** detrás de un botón (eran 8 controles siempre a la vista tapando la lista) + chips de
+lo aplicado + **slider de precio de doble pulgar**; filtros de recetas alineados (todos con label y 40px de
+alto — antes las fechas iban en un label de dos líneas y quedaban más bajas); `/perfil` en dos columnas con
+form de contraseña; notas y fecha de nacimiento **editables** en pacientes y visibles en el listado; footer
+reducido con la barra de copyright + Simple Apps **fija** al pie; modal con alto acotado al viewport y scroll
+en el cuerpo (el "Más info" de un producto con descripción larga se cortaba y el botón de cerrar quedaba
+fuera de pantalla).
+
+**Problemas:**
+1. **Cualquier ruta inexistente devolvía 500** ("Error interno") en vez de 404 — el catch-all del
+   `GlobalExceptionHandler` se comía `NoResourceFoundException`. Preexistente, pero salta ahora que
+   `/configuracion` dejó de existir y un front desactualizado lo va a seguir pegando. Arreglado.
+2. **`Object[]` de un query con dos agregados viene anidado** (`Object[]{Object[]{min,max}}`) según el caso;
+   hay que desanidar antes de leerlo o el rango de precios sale null.
+3. **El `curl` de Git Bash manda los acentos en cp1252** y el backend responde 400 "JSON malformado". Me hizo
+   creer que el PUT de pacientes ignoraba las notas. Con el body en un archivo UTF-8 anda: verificado el
+   round-trip completo. **Para probar endpoints con texto en castellano: `--data-binary @archivo`, nunca `-d`
+   inline.**
+
+**Verificado e2e:** migraciones aplicadas y `configuracion_sistema` eliminada; desactivar → `Account disabled`
+→ reactivar → login OK; reset de contraseña → login con la nueva; borrado de una nutricionista sin recetas
+(y su login pasa a `Invalid user credentials`); **409 al intentar borrar una con 6 recetas**; cambio de
+contraseña propio (rechaza la actual incorrecta con 409, acepta la correcta con 204); notas de paciente
+round-trip; `/configuracion` → 404.
+
+**Impacto para el otro (Fran):** contrato con **cambios que rompen** — `RecetaResponse.Conversion` pierde
+`ordenTotal`; `DashboardResumen` pierde `ventasGeneradasMesActual`; `CierreMensual` pierde `ventasGeneradas` y
+`Detalle.ordenTotal`; `EstadisticasMes` pierde `ventasGeneradas`; `NutricionistaAdmin` pierde
+`descuentoPctEfectivo`/`comisionPctEfectiva` (ahora `descuentoPct`/`comisionPct` son obligatorios) y suma
+`activo`; `GET /configuracion` **ya no existe** (el descuento sale de `/me`). Todo el front del repo ya quedó
+actualizado.
+**Refs:** `V011__parametros_solo_por_nutricionista.sql`, `V012__nutricionista_activo.sql`,
+`AdminNutricionistaService` (+ test nuevo, 11 casos), `PerfilController`, `KeycloakAdminClient`,
+`ProductoService.searchAdmin`, `PublicacionPolicy.motivoNoPublicable`, `frontend/src/pages/CatalogoAdmin.tsx`,
+`components/receta/RangoPrecio.tsx`, `components/ui/Modal.tsx`, `index.css`.
+
 ## 2026-08-04 — Santi — backend+frontend+db (2.4: WhatsApp por link `wa.me`, se saca la Cloud API)
 **Qué:** Ejecutada la tarea 2.4, que estaba decidida desde el 2026-07-28 y anotada sin tocar código. El envío
 por WhatsApp pasa a ser **manual**: el backend devuelve `waMeUrl` en el `RecetaResponse` y la nutricionista

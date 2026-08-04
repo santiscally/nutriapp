@@ -111,6 +111,7 @@ export function Pacientes() {
                 <th>Nombre</th>
                 <th>Email</th>
                 <th>WhatsApp</th>
+                <th>Notas</th>
                 <th>Alta</th>
                 <th aria-label="acciones" />
               </tr>
@@ -127,7 +128,11 @@ export function Pacientes() {
                     </span>
                   </td>
                   <td>{p.email}</td>
-                  <td className="mono">{p.whatsapp}</td>
+                  {/* Truncadas por CSS: el listado tiene que dejar ver que hay notas y de qué
+                      van, sin deformar la fila. El texto completo está en el form de edición. */}
+                  <td className="muted cell-notas" title={p.notas ?? ""}>
+                    {p.notas || "—"}
+                  </td>
                   <td className="muted">{fecha(p.createdAt)}</td>
                   <td className="table__actions">
                     <button

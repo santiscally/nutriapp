@@ -89,10 +89,6 @@ export function CierreMensual() {
               </div>
             </div>
             <div className="card">
-              <div className="tile__label">Facturado en tienda</div>
-              <div className="tile__value">{money(data.ventasGeneradas)}</div>
-            </div>
-            <div className="card">
               <div className="tile__label">Comisión total</div>
               <div className="tile__value">{money(data.comisionTotal)}</div>
             </div>
@@ -122,7 +118,6 @@ export function CierreMensual() {
                 <tr>
                   <th>Código</th>
                   <th>Paciente</th>
-                  <th className="ta-right">Compra</th>
                   <th className="ta-right">Comisión</th>
                   <th className="ta-right">Pagada</th>
                 </tr>
@@ -132,7 +127,6 @@ export function CierreMensual() {
                   <tr key={d.recetaCodigo}>
                     <td className="mono">{d.recetaCodigo}</td>
                     <td>{d.paciente}</td>
-                    <td className="ta-right">{money(d.ordenTotal)}</td>
                     <td className="ta-right" style={{ fontWeight: 700 }}>
                       {money(d.comisionMonto)}
                     </td>
@@ -142,7 +136,7 @@ export function CierreMensual() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={3} className="muted">
+                  <td colSpan={2} className="muted">
                     {data.recetasAplicadas} recetas aplicadas
                   </td>
                   <td className="ta-right" style={{ fontWeight: 700 }}>

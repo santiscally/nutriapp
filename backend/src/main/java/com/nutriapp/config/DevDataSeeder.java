@@ -68,6 +68,9 @@ public class DevDataSeeder implements ApplicationRunner {
         nutri.setMatricula("MN 12345");
         nutri.setEstadoValidacion(EstadoValidacion.APROBADA);
         nutri.setValidadoAt(Instant.now());
+        // V011: obligatorios. En el seed van los mismos valores que traía el global.
+        nutri.setDescuentoPct(new BigDecimal("15.00"));
+        nutri.setComisionPct(new BigDecimal("10.00"));
         // keycloakUserId se linkea en el primer login (NutricionistaService.findCurrent).
         nutri = nutricionistaRepository.save(nutri);
 
@@ -109,6 +112,9 @@ public class DevDataSeeder implements ApplicationRunner {
             n.setMatricula(matricula);
             n.setEstadoValidacion(EstadoValidacion.APROBADA);
             n.setValidadoAt(Instant.now());
+            // V011: obligatorios. En el seed van los mismos valores que traía el global.
+            n.setDescuentoPct(new BigDecimal("15.00"));
+            n.setComisionPct(new BigDecimal("10.00"));
             log.info("[seed] perfil nutricionista APROBADO creado para {}", email);
             return nutricionistaRepository.save(n);
         });

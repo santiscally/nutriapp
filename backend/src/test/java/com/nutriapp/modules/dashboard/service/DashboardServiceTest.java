@@ -47,7 +47,6 @@ class DashboardServiceTest {
         nutri = new Nutricionista();
         nutri.setId(UUID.randomUUID());
         when(nutricionistaService.getCurrent()).thenReturn(nutri);
-        when(recetaRepository.sumVentasEntre(any(), any(), any())).thenReturn(new BigDecimal("55930.00"));
         when(recetaRepository.sumComisionEntre(any(), any(), any())).thenReturn(new BigDecimal("5593.00"));
         when(recetaRepository.findConvertidasEntre(any(), any(), any())).thenReturn(List.of());
     }
@@ -63,7 +62,6 @@ class DashboardServiceTest {
         assertThat(resp.recetasEmitidas()).isEqualTo(10);
         assertThat(resp.recetasAplicadas()).isEqualTo(3);
         assertThat(resp.tasaConversion()).isEqualByComparingTo("0.30");
-        assertThat(resp.ventasGeneradas()).isEqualByComparingTo("55930.00");
         assertThat(resp.comisionTotal()).isEqualByComparingTo("5593.00");
     }
 
@@ -99,7 +97,6 @@ class DashboardServiceTest {
         assertThat(ultimo.month()).isEqualTo(actual.getMonthValue());
         assertThat(ultimo.recetasEmitidas()).isEqualTo(4);
         assertThat(ultimo.recetasAplicadas()).isEqualTo(2);
-        assertThat(ultimo.ventasGeneradas()).isEqualByComparingTo("55930.00");
         assertThat(ultimo.comisionTotal()).isEqualByComparingTo("5593.00");
         // El primero es (n-1) meses atrás.
         assertThat(resp.meses().get(0).year() * 12 + resp.meses().get(0).month())
@@ -141,7 +138,6 @@ class DashboardServiceTest {
         var d = resp.detalle().get(0);
         assertThat(d.recetaCodigo()).isEqualTo("RX-ABC123");
         assertThat(d.paciente()).isEqualTo("Juan Pérez");
-        assertThat(d.ordenTotal()).isEqualByComparingTo("31500.00");
         assertThat(d.comisionMonto()).isEqualByComparingTo("3150.00");
     }
 }

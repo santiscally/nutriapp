@@ -8,3 +8,10 @@ export const subirFoto = (foto: File) => {
 };
 
 export const borrarFoto = () => api.del<void>("/perfil/foto");
+
+/**
+ * Cambia la propia contraseña. Pide la actual: el backend la verifica contra Keycloak antes de
+ * pisarla, así una sesión abierta y olvidada no alcanza para quedarse con la cuenta.
+ */
+export const cambiarPassword = (passwordActual: string, passwordNueva: string) =>
+  api.put<void>("/perfil/password", { passwordActual, passwordNueva });
