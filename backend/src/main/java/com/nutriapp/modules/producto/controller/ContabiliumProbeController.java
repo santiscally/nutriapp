@@ -1,9 +1,10 @@
 package com.nutriapp.modules.producto.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.nutriapp.integrations.contabilium.ContabiliumClient;
 import com.nutriapp.integrations.contabilium.ContabiliumClient.CompanyInfo;
-import com.nutriapp.integrations.contabilium.ContabiliumClient.Concepto;
-import com.nutriapp.integrations.contabilium.ContabiliumClient.ConceptoPage;
+import com.nutriapp.integrations.contabilium.HttpContabiliumClient;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,32 +37,30 @@ public class ContabiliumProbeController {
     @GetMapping("/probe")
     public Map<String, Object> probe() {
         CompanyInfo info = contabiliumClient.obtenerInfo();
-        ConceptoPage pagina = contabiliumClient.buscarConceptos("", 1);
-        List<Map<String, Object>> muestra = pagina.items().stream()
-                .limit(5)
-                .map(this::resumen)
-                .toList();
-        return Map.of(
-                "empresa", Map.of(
-                        "razonSocial", String.valueOf(info.razonSocial()),
-                        "cuit", String.valueOf(info.cuit())),
-                "totalItems", pagina.totalItems(),
-                "totalPage", pagina.totalPage(),
-                "itemsEnPagina1", pagina.items().size(),
-                "muestra", muestra);
-    }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("empresa", Map.of(
+                "razonSocial", String.valueOf(info.razonSocial()),
+                "cuit", String.valueOf(info.cuit())));
 
-    /** LinkedHashMap (no Map.of): tolera valores null si algún campo del concepto no vino. */
-    private Map<String, Object> resumen(Concepto c) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id", c.id());
-        m.put("tipo", c.tipo());
-        m.put("nombre", c.nombre());
-        m.put("codigo", c.codigo());
-        m.put("estado", c.estado());
-        m.put("precio", c.precio());
-        m.put("precioFinal", c.precioFinal());
-        m.put("stock", c.stock());
-        return m;
+        if (contabiliumClient instanceof HttpContabiliumClient http) {
+            // Raw: todos los campos que trae Contabilium (para analizar candidatos a filtro).
+            JsonNode page = http.rawConceptos(1);
+            JsonNode items = page != null ? page.path("Items") : null;
+            if (items != null && items.isArray() && !items.isEmpty()) {
+                List<String> keys = new ArrayList<>();
+                items.get(0).fieldNames().forEachRemaining(keys::add);
+                out.put("conceptoKeys", keys);
+                List<JsonNode> sample = new ArrayList<>();
+                for (int i = 0; i < Math.min(3, items.size()); i++) {
+                    sample.add(items.get(i));
+                }
+                out.put("conceptoSample", sample);
+            }
+            // Rubros/categorías (candidato principal a filtro).
+            out.put("rubros", http.rawRubros());
+        } else {
+            out.put("modo", "stub (no live) — sin raw");
+        }
+        return out;
     }
 }

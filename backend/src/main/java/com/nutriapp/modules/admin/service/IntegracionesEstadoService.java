@@ -10,6 +10,7 @@ import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.entity.EstadoNotificacion;
 import com.nutriapp.modules.notificacion.repository.NotificacionRepository;
 import com.nutriapp.modules.producto.repository.ProductoRepository;
+import com.nutriapp.modules.producto.service.ProductoSyncService;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +36,7 @@ public class IntegracionesEstadoService {
     private final RecetaRepository recetaRepository;
     private final NotificacionRepository notificacionRepository;
     private final ProductoRepository productoRepository;
+    private final ProductoSyncService productoSyncService;
 
     @Transactional(readOnly = true)
     public IntegracionesEstadoResponse estado() {
@@ -50,14 +52,15 @@ public class IntegracionesEstadoService {
         Health h = health.get(Proveedor.CONTABILIUM);
         // Contabilium es pull (el catálogo se lee bajo demanda), no encola trabajo: pendientes = 0.
         // Su "última sync" durable es la del catálogo, que sobrevive reinicios.
-        return build("contabilium", modo, h, 0, productoRepository.maxLastSyncedAt());
+        return build("contabilium", modo, h, 0, productoRepository.maxLastSyncedAt(),
+                productoSyncService.isSincronizando(), productoSyncService.getUltimoResultado());
     }
 
     private IntegracionEstadoResponse tiendanube() {
         String modo = props.tiendanube().mode();
         Health h = health.get(Proveedor.TIENDANUBE);
         long pendientes = recetaRepository.countResyncables();
-        return build("tiendanube", modo, h, pendientes, h.ultimoExitoAt());
+        return build("tiendanube", modo, h, pendientes, h.ultimoExitoAt(), null, null);
     }
 
     private IntegracionEstadoResponse mail() {
@@ -65,7 +68,7 @@ public class IntegracionesEstadoService {
         Health h = health.get(Proveedor.MAIL);
         long pendientes = notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
                 EstadoNotificacion.QUEUED, CanalNotificacion.EMAIL);
-        return build("mail", modo, h, pendientes, h.ultimoExitoAt());
+        return build("mail", modo, h, pendientes, h.ultimoExitoAt(), null, null);
     }
 
     private IntegracionEstadoResponse whatsapp() {
@@ -73,11 +76,12 @@ public class IntegracionesEstadoService {
         Health h = health.get(Proveedor.WHATSAPP);
         long pendientes = notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
                 EstadoNotificacion.QUEUED, CanalNotificacion.WHATSAPP);
-        return build("whatsapp", modo, h, pendientes, h.ultimoExitoAt());
+        return build("whatsapp", modo, h, pendientes, h.ultimoExitoAt(), null, null);
     }
 
     private IntegracionEstadoResponse build(String proveedor, String modo, Health h,
-                                            long pendientes, java.time.Instant ultimaSync) {
+                                            long pendientes, java.time.Instant ultimaSync,
+                                            Boolean sincronizando, String ultimoResultado) {
         boolean live = IntegrationsProperties.isLive(modo);
         // En stub no hay conexión por diseño → disponible=false. En live lo inferimos del último resultado.
         Boolean disponible = live ? h.disponible() : Boolean.FALSE;
@@ -88,6 +92,8 @@ public class IntegracionesEstadoService {
                 pendientes,
                 h.ultimoError(),
                 h.ultimoErrorAt(),
-                ultimaSync);
+                ultimaSync,
+                sincronizando,
+                ultimoResultado);
     }
 }

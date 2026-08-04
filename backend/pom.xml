@@ -27,6 +27,7 @@
         <springdoc.version>2.6.0</springdoc.version>
         <testcontainers.version>1.20.3</testcontainers.version>
         <wiremock.version>3.9.2</wiremock.version>
+        <fastexcel.version>0.20.2</fastexcel.version>
     </properties>
 
     <dependencies>
@@ -101,6 +102,15 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- Lectura del Excel maestro de artículos de TBC (C-12). fastexcel-reader en vez de Apache POI:
+             es streaming (el maestro son 2225 filas x 126 columnas) y pesa ~200 KB contra los ~12 MB de
+             deps de POI, para leer 9 columnas. Solo lee .xlsx, que es el formato del archivo. -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel-reader</artifactId>
+            <version>${fastexcel.version}</version>
+        </dependency>
+
         <!-- ====== Tests ====== -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -136,6 +146,14 @@
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
             <version>${wiremock.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Escritor de xlsx: solo para fabricar los fixtures del parser del maestro en los tests
+             (no se commitea un Excel de verdad al repo — ver 07-...md §0). -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>${fastexcel.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

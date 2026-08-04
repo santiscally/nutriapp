@@ -22,4 +22,10 @@ public class StubContabiliumClient implements ContabiliumClient {
         log.info("[stub-contabilium] buscarConceptos filtro={} page={} — sin conexión", filtro, page);
         throw new IntegrationUnavailableException("contabilium");
     }
+
+    @Override
+    public RubrosLookup rubrosLookup() {
+        log.info("[stub-contabilium] rubrosLookup — sin conexión");
+        throw new IntegrationUnavailableException("contabilium");
+    }
 }

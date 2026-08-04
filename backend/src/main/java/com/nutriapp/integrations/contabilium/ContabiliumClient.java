@@ -2,6 +2,7 @@ package com.nutriapp.integrations.contabilium;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Port de Contabilium (ERP, solo lectura). Contrato según su colección Postman oficial
@@ -22,6 +23,12 @@ public interface ContabiliumClient {
      */
     ConceptoPage buscarConceptos(String filtro, int page);
 
+    /**
+     * Árbol de rubros/subrubros aplanado a mapas id→nombre, para poblar categoría (rubro) y
+     * marca (subrubro) al sincronizar. En stub degrada con {@link IntegrationUnavailableException}.
+     */
+    RubrosLookup rubrosLookup();
+
     record CompanyInfo(String razonSocial, String cuit) {}
 
     /** Subset del "concepto" (producto) que usamos para conciliar. Nombre/Código vienen en MAYÚSCULAS. */
@@ -30,12 +37,23 @@ public interface ContabiliumClient {
             String tipo,
             String nombre,
             String codigo,
+            /** {@code CodigoBarras} — Gon pidió mostrarlo (mail 2026-08-03); 2009 de 2225 lo tienen. */
+            String codigoBarras,
             String descripcion,
             String estado,
             BigDecimal precio,
             BigDecimal precioFinal,
-            Integer stock
+            Integer stock,
+            String idRubro,
+            String idSubrubro
     ) {}
+
+    /** Mapas id→nombre de rubros y subrubros (Contabilium: rubro=categoría, subrubro=marca/línea). */
+    record RubrosLookup(Map<String, String> rubros, Map<String, String> subrubros) {
+        public static RubrosLookup vacio() {
+            return new RubrosLookup(Map.of(), Map.of());
+        }
+    }
 
     /** Página del envelope de {@code /conceptos/search}. */
     record ConceptoPage(List<Concepto> items, int totalPage, int totalItems) {}

@@ -2,6 +2,7 @@ package com.nutriapp.integrations.contabilium;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
@@ -12,7 +13,9 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +99,62 @@ public class HttpContabiliumClient implements ContabiliumClient {
         return new ConceptoPage(items, nz(dto == null ? null : dto.totalPage()), nz(dto == null ? null : dto.totalItems()));
     }
 
+    @Override
+    public RubrosLookup rubrosLookup() {
+        JsonNode arr = rawRubros();
+        if (arr == null || !arr.isArray()) {
+            return RubrosLookup.vacio();
+        }
+        Map<String, String> rubros = new HashMap<>();
+        Map<String, String> subrubros = new HashMap<>();
+        for (JsonNode r : arr) {
+            String rid = r.path("Id").asText(null);
+            if (rid != null) {
+                rubros.put(rid, r.path("Nombre").asText(null));
+            }
+            JsonNode subs = r.path("SubRubros");
+            if (subs.isArray()) {
+                for (JsonNode s : subs) {
+                    String sid = s.path("Id").asText(null);
+                    if (sid != null) {
+                        subrubros.put(sid, s.path("Nombre").asText(null));
+                    }
+                }
+            }
+        }
+        return new RubrosLookup(rubros, subrubros);
+    }
+
+    // --- Diagnóstico raw (dev): devuelven el JSON crudo para inspeccionar campos disponibles ---
+
+    /** Página cruda de {@code /api/conceptos/search} (todos los campos, sin mapear a DTO). */
+    public JsonNode rawConceptos(int page) {
+        return authedGetRaw(uri -> uri.path("/api/conceptos/search")
+                .queryParam("filtro", "").queryParam("page", page).build());
+    }
+
+    /** Rubros/categorías crudos de {@code /api/conceptos/rubros}. */
+    public JsonNode rawRubros() {
+        return authedGetRaw(uri -> uri.path("/api/conceptos/rubros")
+                .queryParam("includeChilds", true).build());
+    }
+
+    private JsonNode authedGetRaw(Function<UriBuilder, URI> uriFn) {
+        try {
+            byte[] raw = withTokenRetry(() -> {
+                throttle.acquire();
+                return http.get().uri(uriFn)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token())
+                        .retrieve().body(byte[].class);
+            });
+            return (raw == null || raw.length == 0) ? null : mapper.readTree(raw);
+        } catch (ResourceAccessException ex) {
+            throw new IntegrationUnavailableException("contabilium");
+        } catch (IOException ex) {
+            throw new UncheckedIOException("Contabilium: respuesta no parseable", ex);
+        }
+    }
+
     // --- HTTP interno ---
 
     private <T> T authedGet(String path, Class<T> type) {
@@ -177,8 +236,8 @@ public class HttpContabiliumClient implements ContabiliumClient {
     }
 
     private static Concepto toConcepto(ConceptoDto d) {
-        return new Concepto(d.id(), d.tipo(), d.nombre(), d.codigo(), d.descripcion(),
-                d.estado(), d.precio(), d.precioFinal(), d.stock());
+        return new Concepto(d.id(), d.tipo(), d.nombre(), d.codigo(), d.codigoBarras(), d.descripcion(),
+                d.estado(), d.precio(), d.precioFinal(), d.stock(), d.idRubro(), d.idSubrubro());
     }
 
     private static int nz(Integer v) {
@@ -201,11 +260,14 @@ public class HttpContabiliumClient implements ContabiliumClient {
             @JsonProperty("Tipo") String tipo,
             @JsonProperty("Nombre") String nombre,
             @JsonProperty("Codigo") String codigo,
+            @JsonProperty("CodigoBarras") String codigoBarras,
             @JsonProperty("Descripcion") String descripcion,
             @JsonProperty("Estado") String estado,
             @JsonProperty("Precio") BigDecimal precio,
             @JsonProperty("PrecioFinal") BigDecimal precioFinal,
-            @JsonProperty("Stock") Integer stock) {}
+            @JsonProperty("Stock") Integer stock,
+            @JsonProperty("IdRubro") String idRubro,
+            @JsonProperty("IdSubrubro") String idSubrubro) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ConceptoPageDto(

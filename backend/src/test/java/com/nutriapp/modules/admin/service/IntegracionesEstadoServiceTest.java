@@ -16,6 +16,7 @@ import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.entity.EstadoNotificacion;
 import com.nutriapp.modules.notificacion.repository.NotificacionRepository;
 import com.nutriapp.modules.producto.repository.ProductoRepository;
+import com.nutriapp.modules.producto.service.ProductoSyncService;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,7 @@ class IntegracionesEstadoServiceTest {
     @Mock RecetaRepository recetaRepository;
     @Mock NotificacionRepository notificacionRepository;
     @Mock ProductoRepository productoRepository;
+    @Mock ProductoSyncService productoSyncService;
 
     private final IntegrationHealthRegistry health = new IntegrationHealthRegistry();
 
@@ -43,7 +45,7 @@ class IntegracionesEstadoServiceTest {
                 new Mail(mailMode, "", ""),
                 new WhatsApp(whatsappMode, "", "", ""));
         return new IntegracionesEstadoService(
-                props, health, recetaRepository, notificacionRepository, productoRepository);
+                props, health, recetaRepository, notificacionRepository, productoRepository, productoSyncService);
     }
 
     private IntegracionEstadoResponse porProveedor(IntegracionesEstadoResponse resp, String proveedor) {

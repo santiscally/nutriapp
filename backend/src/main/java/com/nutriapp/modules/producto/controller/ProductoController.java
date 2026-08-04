@@ -4,6 +4,8 @@ import com.nutriapp.common.dto.PageResponse;
 import com.nutriapp.modules.producto.dto.ProductoFiltrosResponse;
 import com.nutriapp.modules.producto.dto.ProductoResponse;
 import com.nutriapp.modules.producto.service.ProductoService;
+import com.nutriapp.modules.producto.service.ProductoService.ProductoFiltro;
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -22,16 +24,28 @@ public class ProductoController {
 
     private final ProductoService service;
 
+    /**
+     * Buscador del emisor. {@code q} matchea nombre, descripción, SKU, código de barras y tags del
+     * maestro, con ranking (nombre &gt; descripción &gt; tag). Los filtros de departamento,
+     * categoría, subcategoría y laboratorio salen del maestro de artículos (C-11).
+     */
     @GetMapping
     @PreAuthorize("hasAuthority('productos:read')")
     public PageResponse<ProductoResponse> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String marca,
+            @RequestParam(required = false) String departamento,
+            @RequestParam(required = false) String categoria,
+            @RequestParam(required = false) String subcategoria,
             @RequestParam(required = false) String laboratorio,
-            @RequestParam(required = false) String principioActivo,
-            @RequestParam(required = false) String presentacion,
+            @RequestParam(required = false) String tag,
+            @RequestParam(defaultValue = "false") boolean conStock,
+            @RequestParam(required = false) BigDecimal precioMin,
+            @RequestParam(required = false) BigDecimal precioMax,
             @PageableDefault(size = 20) Pageable pageable) {
-        return PageResponse.of(service.search(q, marca, laboratorio, principioActivo, presentacion, pageable));
+        ProductoFiltro filtro = new ProductoFiltro(q, marca, departamento, categoria, subcategoria,
+                laboratorio, tag, conStock, precioMin, precioMax);
+        return PageResponse.of(service.search(filtro, pageable));
     }
 
     @GetMapping("/filtros")

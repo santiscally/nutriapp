@@ -13,6 +13,8 @@ import java.time.Instant;
  * @param ultimoError  mensaje del último error registrado; null si nunca falló
  * @param ultimoErrorAt momento del último error; null si nunca falló
  * @param ultimaSync   momento de la última interacción exitosa (o última sync de catálogo)
+ * @param sincronizando true si hay una sincronización en curso ahora (solo contabilium); null si no aplica
+ * @param ultimoResultado resumen del último sync ("revisados=.. creados=.." o "error: ..") — solo contabilium; null si no aplica
  */
 public record IntegracionEstadoResponse(
         String proveedor,
@@ -21,5 +23,7 @@ public record IntegracionEstadoResponse(
         long pendientes,
         String ultimoError,
         Instant ultimoErrorAt,
-        Instant ultimaSync
+        Instant ultimaSync,
+        Boolean sincronizando,
+        String ultimoResultado
 ) {}

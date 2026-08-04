@@ -2,11 +2,12 @@ package com.nutriapp.modules.admin.controller;
 
 import com.nutriapp.modules.admin.dto.IntegracionesEstadoResponse;
 import com.nutriapp.modules.admin.service.IntegracionesEstadoService;
-import com.nutriapp.modules.producto.dto.SyncProductosResponse;
 import com.nutriapp.modules.producto.service.ProductoSyncService;
 import com.nutriapp.modules.receta.dto.ResyncCuponesResponse;
 import com.nutriapp.modules.receta.service.CuponSyncService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,10 +42,21 @@ public class AdminIntegracionesController {
         return cuponSyncService.resync();
     }
 
-    /** 2.9 — Fuerza la sync del catálogo desde Contabilium. En stub → 503 "Contabilium no conectada". */
+    /**
+     * 2.9 — Dispara la sync del catálogo desde Contabilium. **Asíncrono**: responde 202 al toque y
+     * corre en background (~2266 productos, puede tardar hasta un minuto). El progreso/resultado se
+     * ve en {@code GET /integraciones/estado} (campos {@code sincronizando} + {@code ultimoResultado}).
+     * En stub la sync interna degrada con 503 y el resultado queda como "error: ...".
+     */
     @PostMapping("/contabilium/sync-productos")
     @PreAuthorize("hasAuthority('admin:manage')")
-    public SyncProductosResponse syncProductos() {
-        return productoSyncService.sync();
+    public ResponseEntity<Map<String, Object>> syncProductos() {
+        boolean yaCorria = productoSyncService.isSincronizando();
+        productoSyncService.syncAsync();
+        return ResponseEntity.accepted().body(Map.of(
+                "estado", yaCorria ? "en_curso" : "iniciada",
+                "mensaje", yaCorria
+                        ? "Ya hay una sincronización en curso."
+                        : "Sincronización iniciada; puede tardar hasta un minuto. Seguí el progreso en el estado de integraciones."));
     }
 }

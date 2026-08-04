@@ -14,6 +14,8 @@ import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.repository.NutricionistaRepository;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.paciente.repository.PacienteRepository;
+import com.nutriapp.modules.producto.entity.OrigenProducto;
+import com.nutriapp.modules.producto.entity.Producto;
 import com.nutriapp.modules.producto.repository.ProductoRepository;
 import com.nutriapp.modules.webhook.service.TiendaNubeWebhookService;
 import java.math.BigDecimal;
@@ -71,8 +73,18 @@ class RecetaFlowIT extends PostgresITBase {
         p.setWhatsapp("+5491100000000");
         pacienteId = pacienteRepository.save(p).getId();
 
-        // Un producto sembrado por la migración V003.
-        productoId = productoRepository.findAll().get(0).getId();
+        // El producto lo crea el test. Antes se tomaba el primero del seed de `V003`, pero ese seed se
+        // vació el 2026-07-28 (el catálogo se puebla sincronizando Contabilium, no con datos inventados)
+        // y el IT quedó dependiendo de una fila que ya no existe. Creándolo acá el test no depende de
+        // ninguna migración de datos.
+        Producto prod = new Producto();
+        prod.setOrigen(OrigenProducto.CONTABILIUM);
+        prod.setSku("IT-" + sub.substring(0, 8));
+        prod.setNombre("Producto de test");
+        prod.setPrecio(new BigDecimal("10000.00"));
+        prod.setStock(50);
+        prod.setPublicado(true);
+        productoId = productoRepository.save(prod).getId();
     }
 
     private RequestPostProcessor nutriJwt() {
