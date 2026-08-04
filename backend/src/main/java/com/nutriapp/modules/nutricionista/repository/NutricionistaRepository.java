@@ -16,6 +16,9 @@ public interface NutricionistaRepository extends JpaRepository<Nutricionista, UU
 
     Optional<Nutricionista> findByEmailIgnoreCaseAndDeletedAtIsNull(String email);
 
+    /** C-08: guard de duplicados por DNI en el registro público. */
+    Optional<Nutricionista> findByDniAndDeletedAtIsNull(String dni);
+
     /**
      * Bandeja de validación admin: filtro opcional por estado y búsqueda sin tilde
      * (unaccent) sobre nombre/apellido/email. `estado`/`q` null → sin filtrar.

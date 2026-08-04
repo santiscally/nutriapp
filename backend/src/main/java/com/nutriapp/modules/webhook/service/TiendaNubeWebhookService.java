@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ConfiguracionService;
+import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
@@ -53,7 +53,7 @@ public class TiendaNubeWebhookService {
     private final TiendaNubeClient tiendaNubeClient;
     private final HmacVerifier hmacVerifier;
     private final IntegrationsProperties integrationsProps;
-    private final ConfiguracionService configuracionService;
+    private final ParametrosNegocioService parametrosNegocioService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -190,7 +190,8 @@ public class TiendaNubeWebhookService {
     private void aplicar(Receta receta, TiendaNubeClient.Order order) {
         Instant paidAt = order.paidAt() != null ? order.paidAt() : Instant.now();
         BigDecimal total = order.total() != null ? order.total() : BigDecimal.ZERO;
-        BigDecimal comisionPct = configuracionService.getComisionPct();
+        // C-01: comisión propia de la nutricionista si la tiene, si no la global.
+        BigDecimal comisionPct = parametrosNegocioService.comisionPctDe(receta.getNutricionistaId());
         BigDecimal comisionMonto = total.multiply(comisionPct).divide(CIEN, 2, RoundingMode.HALF_UP);
 
         receta.setEstado(EstadoReceta.APLICADA);

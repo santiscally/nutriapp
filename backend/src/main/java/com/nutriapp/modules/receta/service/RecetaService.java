@@ -4,7 +4,7 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ConfiguracionService;
+import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
 import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
@@ -54,7 +54,7 @@ public class RecetaService {
     private final TiendaNubeClient tiendaNubeClient;
     private final CuponSyncService cuponSyncService;
     private final RecetaProperties props;
-    private final ConfiguracionService configuracionService;
+    private final ParametrosNegocioService parametrosNegocioService;
 
     @Transactional(readOnly = true)
     public Page<RecetaResponse> search(EstadoReceta estado, Pageable pageable) {
@@ -89,8 +89,10 @@ public class RecetaService {
         receta.setNutricionistaId(nutri.getId());
         receta.setPacienteId(paciente.getId());
         receta.setEstado(EstadoReceta.PENDIENTE);
-        // Descuento fijo global: lo define el admin (ConfiguracionService), el nutricionista no lo elige.
-        receta.setDescuentoPct(configuracionService.getDescuentoPct());
+        // El descuento lo define el admin, nunca la nutricionista. C-01: usa el % propio de ella
+        // si lo tiene seteado, y si no el global. Se snapshotea acá — cambiar el % después no
+        // reescribe las recetas ya emitidas.
+        receta.setDescuentoPct(parametrosNegocioService.descuentoPctDe(nutri));
         Instant now = Instant.now();
         receta.setEmitidaAt(now);
         receta.setVenceAt(LocalDate.now(AR).plusDays(props.vigenciaDias()));
@@ -207,18 +209,19 @@ public class RecetaService {
                         productos.get(i.getProductoId()) != null
                                 ? productoMapper.toResponse(productos.get(i.getProductoId())) : null,
                         i.getCantidad(),
-                        i.getPrecioLista(),
                         i.getIndicaciones()))
                 .toList();
 
+        // C-05: LIQUIDADA también convirtió — tiene que seguir mostrando su conversión.
         RecetaResponse.Conversion conversion = null;
-        if (receta.getEstado() == EstadoReceta.APLICADA) {
+        if (receta.getEstado().esConvertida()) {
             conversion = new RecetaResponse.Conversion(
                     receta.getOrdenNumero(),
                     receta.getOrdenTotal(),
                     receta.getOrdenPaidAt(),
                     receta.getComisionPct(),
-                    receta.getComisionMonto());
+                    receta.getComisionMonto(),
+                    receta.getLiquidadaAt());
         }
 
         return new RecetaResponse(

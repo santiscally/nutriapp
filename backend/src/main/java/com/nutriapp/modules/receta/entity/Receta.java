@@ -63,6 +63,9 @@ public class Receta extends BaseEntity {
 
     private BigDecimal comisionMonto;
 
+    /** C-05: cuándo el admin liquidó (pagó) la comisión de esta receta. null = todavía no. */
+    private Instant liquidadaAt;
+
     @OneToMany(mappedBy = "receta", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RecetaItem> items = new ArrayList<>();
 

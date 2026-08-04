@@ -49,13 +49,13 @@ class DashboardServiceTest {
         when(nutricionistaService.getCurrent()).thenReturn(nutri);
         when(recetaRepository.sumVentasEntre(any(), any(), any())).thenReturn(new BigDecimal("55930.00"));
         when(recetaRepository.sumComisionEntre(any(), any(), any())).thenReturn(new BigDecimal("5593.00"));
-        when(recetaRepository.findAplicadasEntre(any(), any(), any())).thenReturn(List.of());
+        when(recetaRepository.findConvertidasEntre(any(), any(), any())).thenReturn(List.of());
     }
 
     @Test
     void cierreMensual_calculaTasaConversion() {
         when(recetaRepository.countEmitidasEntre(eq(nutri.getId()), any(), any())).thenReturn(10L);
-        when(recetaRepository.countAplicadasEntre(eq(nutri.getId()), eq(EstadoReceta.APLICADA), any(), any()))
+        when(recetaRepository.countConvertidasEntre(eq(nutri.getId()), any(), any()))
                 .thenReturn(3L);
 
         var resp = service.cierreMensual(2026, 7);
@@ -70,7 +70,7 @@ class DashboardServiceTest {
     @Test
     void cierreMensual_sinEmitidas_tasaCero_sinDivisionPorCero() {
         when(recetaRepository.countEmitidasEntre(eq(nutri.getId()), any(), any())).thenReturn(0L);
-        when(recetaRepository.countAplicadasEntre(any(), any(), any(), any())).thenReturn(0L);
+        when(recetaRepository.countConvertidasEntre(any(), any(), any())).thenReturn(0L);
 
         var resp = service.cierreMensual(2026, 7);
 
@@ -86,7 +86,7 @@ class DashboardServiceTest {
     @Test
     void estadisticas_devuelveSerieCronologicaDeNMeses() {
         when(recetaRepository.countEmitidasEntre(any(), any(), any())).thenReturn(4L);
-        when(recetaRepository.countAplicadasEntre(any(), eq(EstadoReceta.APLICADA), any(), any()))
+        when(recetaRepository.countConvertidasEntre(any(), any(), any()))
                 .thenReturn(2L);
 
         var resp = service.estadisticas(6);
@@ -109,7 +109,7 @@ class DashboardServiceTest {
     @Test
     void estadisticas_acotaElRangoDeMeses() {
         when(recetaRepository.countEmitidasEntre(any(), any(), any())).thenReturn(0L);
-        when(recetaRepository.countAplicadasEntre(any(), any(), any(), any())).thenReturn(0L);
+        when(recetaRepository.countConvertidasEntre(any(), any(), any())).thenReturn(0L);
 
         assertThat(service.estadisticas(0).meses()).hasSize(6); // <=0 → default 6
         assertThat(service.estadisticas(1).meses()).hasSize(1); // mínimo
@@ -131,8 +131,8 @@ class DashboardServiceTest {
         r.setOrdenPaidAt(Instant.parse("2026-07-10T12:00:00Z"));
 
         when(recetaRepository.countEmitidasEntre(any(), any(), any())).thenReturn(1L);
-        when(recetaRepository.countAplicadasEntre(any(), any(), any(), any())).thenReturn(1L);
-        when(recetaRepository.findAplicadasEntre(eq(nutri.getId()), any(), any())).thenReturn(List.of(r));
+        when(recetaRepository.countConvertidasEntre(any(), any(), any())).thenReturn(1L);
+        when(recetaRepository.findConvertidasEntre(eq(nutri.getId()), any(), any())).thenReturn(List.of(r));
         when(pacienteRepository.findById(juan.getId())).thenReturn(Optional.of(juan));
 
         var resp = service.cierreMensual(2026, 7);

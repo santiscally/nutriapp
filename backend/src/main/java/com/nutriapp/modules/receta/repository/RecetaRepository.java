@@ -67,18 +67,27 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
 
     List<Receta> findTop8ByNutricionistaIdAndDeletedAtIsNullOrderByEmitidaAtDesc(UUID nutricionistaId);
 
-    /** Recetas del nutricionista en un estado con aplicada/emitida dentro de una ventana. */
+    /**
+     * Recetas convertidas del nutricionista en una ventana.
+     *
+     * <p><b>C-04:</b> la ventana es por {@code ordenPaidAt} — la fecha en que el paciente pagó en
+     * TiendaNube — y no por emisión ni por cuándo procesamos el webhook. Una receta emitida el 29/07
+     * y pagada en agosto comisiona en el cierre de <b>agosto</b> (call 51:33).
+     *
+     * <p><b>C-05:</b> cuenta APLICADA y LIQUIDADA: liquidar es haberle pagado a la nutricionista, no
+     * deshace la conversión. Los cierres históricos tienen que seguir mostrando la receta.
+     */
     @Query("""
             SELECT COUNT(r) FROM Receta r
             WHERE r.nutricionistaId = :nutricionistaId
               AND r.deletedAt IS NULL
-              AND r.estado = :estado
-              AND r.aplicadaAt >= :desde AND r.aplicadaAt < :hasta
+              AND r.estado IN (com.nutriapp.modules.receta.entity.EstadoReceta.APLICADA,
+                               com.nutriapp.modules.receta.entity.EstadoReceta.LIQUIDADA)
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
             """)
-    long countAplicadasEntre(@Param("nutricionistaId") UUID nutricionistaId,
-                             @Param("estado") EstadoReceta estado,
-                             @Param("desde") Instant desde,
-                             @Param("hasta") Instant hasta);
+    long countConvertidasEntre(@Param("nutricionistaId") UUID nutricionistaId,
+                               @Param("desde") Instant desde,
+                               @Param("hasta") Instant hasta);
 
     @Query("""
             SELECT COUNT(r) FROM Receta r
@@ -91,23 +100,25 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
                             @Param("desde") java.time.LocalDate desde,
                             @Param("hasta") java.time.LocalDate hasta);
 
+    /** Comisión de las convertidas en la ventana (mismas reglas C-04/C-05 que arriba). */
     @Query("""
             SELECT COALESCE(SUM(r.comisionMonto), 0) FROM Receta r
             WHERE r.nutricionistaId = :nutricionistaId
               AND r.deletedAt IS NULL
-              AND r.estado = 'APLICADA'
-              AND r.aplicadaAt >= :desde AND r.aplicadaAt < :hasta
+              AND r.estado IN ('APLICADA','LIQUIDADA')
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
             """)
     BigDecimal sumComisionEntre(@Param("nutricionistaId") UUID nutricionistaId,
                                 @Param("desde") Instant desde,
                                 @Param("hasta") Instant hasta);
 
+    /** Ventas generadas: total REAL pagado en TiendaNube (C-03), nunca el precio de Contabilium. */
     @Query("""
             SELECT COALESCE(SUM(r.ordenTotal), 0) FROM Receta r
             WHERE r.nutricionistaId = :nutricionistaId
               AND r.deletedAt IS NULL
-              AND r.estado = 'APLICADA'
-              AND r.aplicadaAt >= :desde AND r.aplicadaAt < :hasta
+              AND r.estado IN ('APLICADA','LIQUIDADA')
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
             """)
     BigDecimal sumVentasEntre(@Param("nutricionistaId") UUID nutricionistaId,
                               @Param("desde") Instant desde,
@@ -124,16 +135,51 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
                             @Param("desde") Instant desde,
                             @Param("hasta") Instant hasta);
 
-    /** Cierre mensual: detalle de las aplicadas (convertidas) en la ventana. */
+    /** Cierre mensual: detalle de las convertidas en la ventana. */
     @Query("""
             SELECT r FROM Receta r
             WHERE r.nutricionistaId = :nutricionistaId
               AND r.deletedAt IS NULL
-              AND r.estado = 'APLICADA'
-              AND r.aplicadaAt >= :desde AND r.aplicadaAt < :hasta
-            ORDER BY r.aplicadaAt DESC
+              AND r.estado IN ('APLICADA','LIQUIDADA')
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
+            ORDER BY r.ordenPaidAt DESC
             """)
-    List<Receta> findAplicadasEntre(@Param("nutricionistaId") UUID nutricionistaId,
-                                    @Param("desde") Instant desde,
-                                    @Param("hasta") Instant hasta);
+    List<Receta> findConvertidasEntre(@Param("nutricionistaId") UUID nutricionistaId,
+                                      @Param("desde") Instant desde,
+                                      @Param("hasta") Instant hasta);
+
+    /**
+     * C-05 — pendientes de liquidar: recetas ya convertidas a las que todavía no se les pagó la
+     * comisión. Global (todas las nutricionistas), acotado por fecha de pago en TiendaNube.
+     * Es lo que alimenta el cierre consolidado del admin (C-06).
+     */
+    @Query("""
+            SELECT r FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND r.estado = com.nutriapp.modules.receta.entity.EstadoReceta.APLICADA
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
+            ORDER BY r.nutricionistaId, r.ordenPaidAt
+            """)
+    List<Receta> findLiquidables(@Param("nutricionistaId") UUID nutricionistaId,
+                                 @Param("desde") Instant desde,
+                                 @Param("hasta") Instant hasta);
+
+    /** Liquidación por lote: trae sólo las que existen y siguen vivas. */
+    List<Receta> findByIdInAndDeletedAtIsNull(java.util.Collection<UUID> ids);
+
+    /**
+     * C-06 — todas las recetas convertidas de la ventana, de todas las nutricionistas, para el
+     * cierre consolidado del admin. Mismas reglas que el cierre individual: ventana por
+     * {@code ordenPaidAt} (C-04) y cuenta APLICADA + LIQUIDADA (C-05).
+     */
+    @Query("""
+            SELECT r FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND r.estado IN ('APLICADA','LIQUIDADA')
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
+            ORDER BY r.nutricionistaId, r.ordenPaidAt
+            """)
+    List<Receta> findConvertidasEntreTodas(@Param("desde") Instant desde,
+                                           @Param("hasta") Instant hasta);
 }

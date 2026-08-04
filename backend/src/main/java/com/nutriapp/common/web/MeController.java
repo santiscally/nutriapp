@@ -2,6 +2,7 @@ package com.nutriapp.common.web;
 
 import com.nutriapp.common.auth.AuthUtils;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
+import com.nutriapp.modules.nutricionista.service.ArchivoService;
 import com.nutriapp.modules.nutricionista.service.NutricionistaService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
 
     private final NutricionistaService nutricionistaService;
+    private final ArchivoService archivoService;
 
     @GetMapping
     public MeResponse me() {
@@ -36,6 +38,12 @@ public class MeController {
         String apellido = nutricionistaService.findCurrent().map(Nutricionista::getApellido)
                 .orElse(AuthUtils.currentJwt().map(j -> j.getClaimAsString("family_name")).orElse(null));
 
+        // C-17: la foto va embebida como data URI. Es un thumbnail de pocos KB y evita que el
+        // front tenga que hacer un segundo request con Bearer sólo para pintar el avatar.
+        String foto = nutricionistaService.findCurrent()
+                .map(n -> archivoService.fotoDataUri(n.getId()))
+                .orElse(null);
+
         return new MeResponse(
                 AuthUtils.currentUserId().map(Object::toString).orElse(null),
                 nombre,
@@ -43,7 +51,8 @@ public class MeController {
                 AuthUtils.currentEmail().orElse(null),
                 AuthUtils.currentRoles(),
                 authorities,
-                estadoValidacion);
+                estadoValidacion,
+                foto);
     }
 
     public record MeResponse(
@@ -53,6 +62,8 @@ public class MeController {
             String email,
             List<String> roles,
             List<String> authorities,
-            String estadoValidacion
+            String estadoValidacion,
+            /** C-17: data URI del avatar, o null si no cargó foto. */
+            String foto
     ) {}
 }

@@ -40,6 +40,7 @@ public class DevDataSeeder implements ApplicationRunner {
 
     private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
     private static final String DEMO_EMAIL = "nutri@nutriapp.dev";
+    private static final String ADMIN_EMAIL = "admin@nutriapp.dev";
 
     private final NutricionistaRepository nutricionistaRepository;
     private final PacienteRepository pacienteRepository;
@@ -49,6 +50,11 @@ public class DevDataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        // El admin también opera como nutricionista (acceso completo a la app): perfil APROBADO,
+        // sin pacientes/recetas demo (arranca su propio espacio). Idempotente e independiente del
+        // guard del demo de abajo → se crea también en una DB ya seedeada al reiniciar el backend.
+        ensureNutriAprobado(ADMIN_EMAIL, "Admin", "NutriApp", "+5491100000000", "MN 00000");
+
         if (nutricionistaRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(DEMO_EMAIL).isPresent()) {
             log.info("[seed] nutricionista demo ya existe, skip");
             return;
@@ -89,6 +95,23 @@ public class DevDataSeeder implements ApplicationRunner {
         anulada(nutri, maria, omega, "RX-DEMO06");
 
         log.info("[seed] nutricionista demo + 4 pacientes + 6 recetas creados");
+    }
+
+    /** Crea (si no existe) un nutricionista APROBADO para el email dado. Idempotente. */
+    private Nutricionista ensureNutriAprobado(String email, String nombre, String apellido,
+                                              String telefono, String matricula) {
+        return nutricionistaRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(email).orElseGet(() -> {
+            Nutricionista n = new Nutricionista();
+            n.setNombre(nombre);
+            n.setApellido(apellido);
+            n.setEmail(email);
+            n.setTelefono(telefono);
+            n.setMatricula(matricula);
+            n.setEstadoValidacion(EstadoValidacion.APROBADA);
+            n.setValidadoAt(Instant.now());
+            log.info("[seed] perfil nutricionista APROBADO creado para {}", email);
+            return nutricionistaRepository.save(n);
+        });
     }
 
     private Paciente paciente(Nutricionista nutri, String nombre, String apellido, String email, String wa) {

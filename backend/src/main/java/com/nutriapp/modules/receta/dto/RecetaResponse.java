@@ -24,10 +24,15 @@ public record RecetaResponse(
         List<NotificacionResponse> notificaciones,
         Conversion conversion
 ) {
+    /**
+     * C-02 (call 53:35): la receta emitida <b>no expone precios</b> — sólo producto y cantidad.
+     * El precio de lista se sigue guardando en {@code receta_items} (auditoría), pero no sale por
+     * la API: lo que el paciente termina pagando en TiendaNube es otro número, y no queremos que
+     * la nutricionista calcule su comisión con un valor que va a ser falso.
+     */
     public record Item(
             ProductoResponse producto,
             int cantidad,
-            BigDecimal precioLista,
             String indicaciones
     ) {}
 
@@ -36,6 +41,8 @@ public record RecetaResponse(
             BigDecimal ordenTotal,
             Instant paidAt,
             BigDecimal comisionPct,
-            BigDecimal comisionMonto
+            BigDecimal comisionMonto,
+            /** C-05: cuándo el admin pagó esta comisión. null = convertida pero todavía impaga. */
+            Instant liquidadaAt
     ) {}
 }

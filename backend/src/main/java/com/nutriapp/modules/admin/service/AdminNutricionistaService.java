@@ -5,9 +5,13 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
 import com.nutriapp.modules.admin.dto.NutricionistaResponse;
+import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
+import com.nutriapp.modules.nutricionista.entity.TipoArchivo;
+import com.nutriapp.modules.nutricionista.service.ArchivoService;
 import com.nutriapp.modules.nutricionista.repository.NutricionistaRepository;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +33,8 @@ public class AdminNutricionistaService {
 
     private final NutricionistaRepository repository;
     private final KeycloakAdminClient keycloak;
+    private final ParametrosNegocioService parametros;
+    private final ArchivoService archivoService;
 
     @Transactional(readOnly = true)
     public Page<NutricionistaResponse> listar(EstadoValidacion estado, String q, Pageable pageable) {
@@ -84,6 +90,23 @@ public class AdminNutricionistaService {
         return AuthUtils.currentUserId().map(UUID::toString).orElse(null);
     }
 
+    /**
+     * C-01 — setea (o limpia) el % de descuento y de comisión propios de una nutricionista.
+     * {@code null} en un campo = vuelve al valor global. Se puede llamar sobre cualquier estado:
+     * el admin fija los porcentajes al aprobar (C-09) y los edita después.
+     */
+    @Transactional
+    public NutricionistaResponse actualizarParametros(UUID id, BigDecimal descuentoPct, BigDecimal comisionPct) {
+        Nutricionista n = repository.findById(id)
+                .filter(x -> !x.isDeleted())
+                .orElseThrow(() -> new NotFoundException("Nutricionista no encontrado"));
+        n.setDescuentoPct(descuentoPct);
+        n.setComisionPct(comisionPct);
+        log.info("Parámetros de {} actualizados: descuento={} comisión={} (null = global)",
+                n.getEmail(), descuentoPct, comisionPct);
+        return toResponse(repository.save(n));
+    }
+
     private NutricionistaResponse toResponse(Nutricionista n) {
         return new NutricionistaResponse(
                 n.getId(),
@@ -92,9 +115,17 @@ public class AdminNutricionistaService {
                 n.getEmail(),
                 n.getTelefono(),
                 n.getMatricula(),
+                n.getDni(),
+                n.getCuit(),
+                n.getCondicionFiscal(),
+                archivoService.buscar(n.getId(), TipoArchivo.MATRICULA).isPresent(),
                 n.getEstadoValidacion().name(),
                 n.getValidadoAt(),
                 n.getNotasValidacion(),
-                n.getCreatedAt());
+                n.getCreatedAt(),
+                n.getDescuentoPct(),
+                n.getComisionPct(),
+                parametros.descuentoPctDe(n),
+                parametros.comisionPctDe(n));
     }
 }

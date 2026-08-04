@@ -4,10 +4,13 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
+import com.nutriapp.modules.nutricionista.entity.TipoArchivo;
+import com.nutriapp.modules.nutricionista.service.ArchivoService;
 import com.nutriapp.modules.nutricionista.repository.NutricionistaRepository;
 import com.nutriapp.modules.registro.dto.RegistroRequest;
 import com.nutriapp.modules.registro.dto.RegistroResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,12 +27,18 @@ public class RegistroService {
 
     private final NutricionistaRepository repository;
     private final KeycloakAdminClient keycloak;
+    private final ArchivoService archivoService;
 
     @Transactional
-    public RegistroResponse registrar(RegistroRequest req) {
+    public RegistroResponse registrar(RegistroRequest req, MultipartFile matricula) {
         // Mensaje idéntico al del backstop de Keycloak: no diferenciar filtra existencia (enumeración).
         repository.findByEmailIgnoreCaseAndDeletedAtIsNull(req.email()).ifPresent(n -> {
             throw new ConflictException("Ese email ya está registrado");
+        });
+
+        // C-08: el DNI es justamente para detectar a la misma persona dos veces (Gon, 40:40).
+        repository.findByDniAndDeletedAtIsNull(req.dni()).ifPresent(n -> {
+            throw new ConflictException("Ese DNI ya está registrado");
         });
 
         // Keycloak es la fuente de verdad de identidad: crea el usuario deshabilitado + rol.
@@ -45,8 +54,17 @@ public class RegistroService {
             n.setEmail(req.email());
             n.setTelefono(req.telefono());
             n.setMatricula(req.matricula());
+            n.setDni(req.dni());
+            n.setCuit(req.cuitNormalizado());
+            n.setCondicionFiscal(req.condicionFiscal());
             n.setEstadoValidacion(EstadoValidacion.PENDIENTE);
             Nutricionista saved = repository.save(n);
+            // El adjunto es parte del alta: si falla, falla el registro entero y se compensa
+            // Keycloak igual que con cualquier otro error — no queremos una solicitud sin respaldo
+            // que el admin no pueda validar.
+            if (matricula != null && !matricula.isEmpty()) {
+                archivoService.guardar(saved.getId(), TipoArchivo.MATRICULA, matricula);
+            }
             log.info("Registro de nutricionista {} (keycloak {}) — PENDIENTE de aprobación",
                     saved.getEmail(), keycloakUserId);
             return new RegistroResponse(saved.getId(), saved.getEstadoValidacion().name());

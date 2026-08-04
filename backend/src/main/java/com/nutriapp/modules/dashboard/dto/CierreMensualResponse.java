@@ -23,6 +23,8 @@ public record CierreMensualResponse(
             String paciente,
             BigDecimal ordenTotal,
             BigDecimal comisionMonto,
-            Instant paidAt
+            Instant paidAt,
+            /** C-05: cuándo se le pagó esta comisión. null = todavía no liquidada. */
+            Instant liquidadaAt
     ) {}
 }

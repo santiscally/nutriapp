@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,7 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.modules.configuracion.service.ConfiguracionService;
+import com.nutriapp.modules.configuracion.service.ParametrosNegocioService;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
@@ -42,7 +43,7 @@ class TiendaNubeWebhookServiceTest {
     @Mock WebhookEventRepository eventRepo;
     @Mock RecetaRepository recetaRepository;
     @Mock TiendaNubeClient tiendaNubeClient;
-    @Mock ConfiguracionService configuracionService;
+    @Mock ParametrosNegocioService parametrosNegocioService;
 
     private final HmacVerifier hmacVerifier = new HmacVerifier();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -58,9 +59,13 @@ class TiendaNubeWebhookServiceTest {
                 new IntegrationsProperties.Mail("stub", null, null),
                 new IntegrationsProperties.WhatsApp("stub", null, null, null));
         service = new TiendaNubeWebhookService(
-                eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, configuracionService, objectMapper);
+                eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, parametrosNegocioService, objectMapper);
         when(recetaRepository.save(any(Receta.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(configuracionService.getComisionPct()).thenReturn(new BigDecimal("10"));
+        // C-01: la comisión ahora se resuelve por nutricionista (con fallback al global).
+        // any() sin tipo: matchea también nutricionistaId null (las recetas de estos
+        // fixtures no lo setean), que es justo el caso de "caé al global".
+        when(parametrosNegocioService.comisionPctDe(nullable(java.util.UUID.class)))
+                .thenReturn(new BigDecimal("10"));
     }
 
     private byte[] body(String event, long id) {

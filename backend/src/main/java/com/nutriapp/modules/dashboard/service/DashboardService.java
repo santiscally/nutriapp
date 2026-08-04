@@ -53,8 +53,7 @@ public class DashboardService {
 
         long pendientes = recetaRepository
                 .countByNutricionistaIdAndEstadoAndDeletedAtIsNull(nutriId, EstadoReceta.PENDIENTE);
-        long aplicadasMes = recetaRepository
-                .countAplicadasEntre(nutriId, EstadoReceta.APLICADA, desde, hasta);
+        long aplicadasMes = recetaRepository.countConvertidasEntre(nutriId, desde, hasta);
         long vencidasMes = recetaRepository
                 .countVencidasEntre(nutriId, inicioMes, inicioMesSiguiente);
 
@@ -86,14 +85,14 @@ public class DashboardService {
         Instant hasta = ym.plusMonths(1).atDay(1).atStartOfDay(AR).toInstant();
 
         long emitidas = recetaRepository.countEmitidasEntre(nutriId, desde, hasta);
-        long aplicadas = recetaRepository.countAplicadasEntre(nutriId, EstadoReceta.APLICADA, desde, hasta);
+        long aplicadas = recetaRepository.countConvertidasEntre(nutriId, desde, hasta);
         BigDecimal ventas = recetaRepository.sumVentasEntre(nutriId, desde, hasta);
         BigDecimal comision = recetaRepository.sumComisionEntre(nutriId, desde, hasta);
         BigDecimal tasa = emitidas == 0
                 ? BigDecimal.ZERO
                 : BigDecimal.valueOf(aplicadas).divide(BigDecimal.valueOf(emitidas), 2, RoundingMode.HALF_UP);
 
-        List<Receta> convertidas = recetaRepository.findAplicadasEntre(nutriId, desde, hasta);
+        List<Receta> convertidas = recetaRepository.findConvertidasEntre(nutriId, desde, hasta);
         Map<UUID, Paciente> pacientes = new LinkedHashMap<>();
         List<CierreMensualResponse.Detalle> detalle = convertidas.stream()
                 .map(r -> {
@@ -101,7 +100,8 @@ public class DashboardService {
                             pid -> pacienteRepository.findById(pid).orElse(null));
                     String nombre = p != null ? (p.getNombre() + " " + p.getApellido()) : "—";
                     return new CierreMensualResponse.Detalle(
-                            r.getCodigo(), nombre, r.getOrdenTotal(), r.getComisionMonto(), r.getOrdenPaidAt());
+                            r.getCodigo(), nombre, r.getOrdenTotal(), r.getComisionMonto(),
+                            r.getOrdenPaidAt(), r.getLiquidadaAt());
                 })
                 .toList();
 
@@ -130,7 +130,7 @@ public class DashboardService {
                     ym.getYear(),
                     ym.getMonthValue(),
                     recetaRepository.countEmitidasEntre(nutriId, desde, hasta),
-                    recetaRepository.countAplicadasEntre(nutriId, EstadoReceta.APLICADA, desde, hasta),
+                    recetaRepository.countConvertidasEntre(nutriId, desde, hasta),
                     recetaRepository.sumVentasEntre(nutriId, desde, hasta),
                     recetaRepository.sumComisionEntre(nutriId, desde, hasta)));
         }
