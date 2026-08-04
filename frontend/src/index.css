@@ -1784,3 +1784,66 @@ html, body { overflow-x: hidden; }
   margin: 0;
 }
 .perfil__datos dd { margin: 0; font-weight: 700; text-align: right; }
+
+/* ---- Tabla con filas expandibles (catálogo del admin) ---- */
+.tabla-expandible .celda-chevron { width: 34px; padding-right: 0; color: var(--subtle); }
+.chevron { display: inline-flex; transition: transform 0.15s ease; }
+.chevron--abierto { transform: rotate(180deg); color: var(--primary); }
+/* La fila de detalle no debe reaccionar al hover de la tabla: es contenido, no una fila más. */
+.fila-detalle > td { background: var(--surface-2); padding: 0; }
+.tabla-expandible tbody tr.fila-detalle:hover > td { background: var(--surface-2); }
+
+.prod-admin { display: flex; gap: 1.35rem; padding: 1.25rem 1.15rem; align-items: flex-start; }
+.prod-admin__img {
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  flex: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem;
+}
+.prod-admin__cuerpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.1rem; }
+.prod-admin__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+  gap: 0.9rem 1.4rem;
+  margin: 0;
+}
+.prod-admin__datos dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--subtle);
+  margin-bottom: 0.2rem;
+}
+.prod-admin__datos dd { margin: 0; font-size: 0.88rem; }
+.prod-admin__texto {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--muted);
+  white-space: pre-line;
+}
+.prod-admin__tags { display: flex; flex-direction: column; gap: 0.5rem; }
+.prod-admin__tags-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--subtle);
+}
+.prod-admin__sin-tags { margin: 0; font-size: 0.82rem; color: var(--muted); }
+
+/* Burbujas de tag — sólo lectura (en el buscador de recetas la versión clickeable es .tag-chip). */
+.burbujas { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.burbuja {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.22rem 0.7rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}

@@ -78,6 +78,10 @@ export interface ProductoAdmin {
   bloqueadoMaestro: boolean;
   maestroSyncedAt?: string | null;
   lastSyncedAt?: string | null;
+  /** Contexto del ERP: no viaja al emisor, pero explica por qué entró o no al catálogo. */
+  tipoErp?: string | null;
+  activoErp: boolean;
+  rubro?: string | null;
   /** Por qué no aparece en el buscador, ya resuelto en castellano. null si está publicado. */
   motivoNoPublicado?: string | null;
 }

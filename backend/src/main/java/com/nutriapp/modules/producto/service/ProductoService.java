@@ -78,6 +78,9 @@ public class ProductoService {
                 p.isBloqueadoMaestro(),
                 p.getMaestroSyncedAt(),
                 p.getLastSyncedAt(),
+                p.getTipoErp(),
+                p.isActivoErp(),
+                p.getRubro(),
                 p.isPublicado() ? null : publicacionPolicy.motivoNoPublicable(p));
     }
 

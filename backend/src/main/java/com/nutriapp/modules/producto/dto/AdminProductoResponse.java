@@ -18,6 +18,11 @@ public record AdminProductoResponse(
         boolean bloqueadoMaestro,
         Instant maestroSyncedAt,
         Instant lastSyncedAt,
+        // Campos del ERP que no viajan al emisor —a la nutricionista no le dicen nada— pero acá son
+        // el contexto de por qué un producto entró o quedó afuera del catálogo recetable.
+        String tipoErp,
+        boolean activoErp,
+        String rubro,
         /**
          * Por qué no aparece en el buscador, en castellano y ya resuelto. null si está publicado.
          * Es la diferencia entre "hay 26 despublicados" y saber cuál arreglar.

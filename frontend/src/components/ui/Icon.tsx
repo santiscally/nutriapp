@@ -17,9 +17,12 @@ export type IconName =
   | "pill"
   | "send"
   | "x-circle"
+  | "chevron"
   | "download";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  // Apunta hacia abajo; las filas expandibles lo rotan 180° por CSS al abrirse.
+  chevron: <polyline points="6 9 12 15 18 9" />,
   download: (
     <>
       <path d="M12 3v12" />

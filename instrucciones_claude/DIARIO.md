@@ -32,6 +32,34 @@
 
 ## Entradas
 
+## 2026-08-04 — Santi — frontend+backend (detalle expandible del catálogo del admin, con los tags)
+**Qué:** Pedido: "traer los tags del maestro y que filtren en la búsqueda, y poder expandir el
+producto viendo más detalles con los tags como burbujas".
+
+**La mitad ya estaba hecha desde la Ola 3 y lo verifiqué antes de tocar nada:** el importador ya lee
+la columna TAGS y la aplica (**8447 tags sobre 539 productos** en la DB actual), y el buscador ya
+filtra por ellos — `q=veganos` devuelve 15 resultados, `q=fertilidad` 6, `q=magnesio` 54. No hacía
+falta cambiar el script.
+
+**Lo que sí faltaba, y es lo que se hizo:** la pantalla `/catalogo` del admin listaba productos pero
+no mostraba tags ni dejaba ver el detalle. Ahora cada fila se expande (chevron + click en la fila) y
+abajo aparece: imagen, los 9 datos de las dos fuentes (código de barras, taxonomía, laboratorio,
+rubro y tipo del ERP, estado en el ERP, fechas de sync e import), la descripción web y **los tags
+como burbujas**. Sólo lectura, como se pidió: el catálogo lo escriben el sync y el import, no esta
+pantalla. En el buscador de recetas los tags siguen siendo clickeables (filtran) — son dos usos
+distintos y por eso son dos estilos distintos (`.burbuja` vs `.tag-chip`).
+
+Cuando un producto no tiene tags el detalle explica **por qué**, que es lo accionable: "el maestro lo
+tocó pero no le cargó tags" si matcheó, o "no está en el maestro: sin tags no se lo encuentra por
+palabra clave" si no. La columna Tags de la tabla muestra el conteo, así se ve de un vistazo dónde
+falta carga.
+
+**Backend:** `AdminProductoResponse` suma `tipoErp`, `activoErp` y `rubro` — no viajan al emisor
+(a la nutricionista no le dicen nada) pero son el contexto de por qué un producto entró o quedó
+afuera del catálogo recetable. `mvn test` 149 verde; front `tsc`/`oxlint`/`build` verdes.
+**Refs:** `pages/CatalogoAdmin.tsx`, `components/ui/Icon.tsx` (ícono `chevron`), `index.css`,
+`AdminProductoResponse`, `ProductoService.toAdminResponse`.
+
 ## 2026-08-04 — Santi — frontend (diálogos propios, ficha del admin y arreglos de la tanda anterior)
 **Qué:** Cuatro cosas que salieron de mirar la app en vivo. `tsc`/`oxlint`/`build` verdes.
 

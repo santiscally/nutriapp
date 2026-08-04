@@ -1,12 +1,16 @@
 // Catálogo visto por el admin. Es el reverso del buscador de recetas: ahí se ve lo que se puede
 // recetar, acá lo que NO y por qué.
 //
-// El caso que motivó la pantalla: después de importar el maestro quedaron 62 artículos sin match
+// El caso que motivó la pantalla: después de importar el maestro quedaron artículos sin match
 // contra Contabilium. Ese número aparecía en el reporte del import y se perdía al cerrar el modal;
-// sin poder listarlos, "62 sin match" no era accionable. Ahora son un filtro.
+// sin poder listarlos, "104 sin match" no era accionable. Ahora son un filtro.
+//
+// Cada fila se expande para ver el detalle completo, incluidos los tags del maestro. Es sólo
+// lectura: el catálogo lo escriben el sync de Contabilium y el import del Excel, no esta pantalla.
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { getCatalogoResumen, listarProductosAdmin } from "../api/productos";
+import { Icon } from "../components/ui/Icon";
 import { useDebounce } from "../hooks/useDebounce";
 import { useFetch } from "../hooks/useFetch";
 import { fecha, money } from "../lib/format";
@@ -43,10 +47,76 @@ function Etiquetas({ p }: { p: ProductoAdmin }) {
   );
 }
 
+/** Detalle que se abre debajo de la fila. Sólo visualización. */
+function Detalle({ p }: { p: ProductoAdmin }) {
+  const prod = p.producto;
+  const datos: { label: string; valor: ReactNode }[] = [
+    { label: "Código de barras", valor: prod.codigoBarras || "—" },
+    { label: "Departamento", valor: prod.departamento || "—" },
+    { label: "Subcategoría", valor: prod.subcategoria || "—" },
+    { label: "Laboratorio", valor: prod.laboratorio || "—" },
+    { label: "Rubro (ERP)", valor: p.rubro || "—" },
+    { label: "Tipo (ERP)", valor: p.tipoErp || "—" },
+    { label: "Estado en el ERP", valor: p.activoErp ? "Activo" : "Inactivo" },
+    { label: "Último sync", valor: p.lastSyncedAt ? fecha(p.lastSyncedAt) : "nunca" },
+    {
+      label: "Maestro",
+      valor: p.maestroSyncedAt ? `importado el ${fecha(p.maestroSyncedAt)}` : "sin match",
+    },
+  ];
+
+  return (
+    <div className="prod-admin">
+      {prod.imagenUrl && (
+        <img className="prod-admin__img" src={prod.imagenUrl} alt="" loading="lazy" />
+      )}
+
+      <div className="prod-admin__cuerpo">
+        <dl className="prod-admin__datos">
+          {datos.map((d) => (
+            <div key={d.label}>
+              <dt>{d.label}</dt>
+              <dd>{d.valor}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {prod.descripcionWeb && <p className="prod-admin__texto">{prod.descripcionWeb}</p>}
+
+        {/* Los tags son la vía de búsqueda por propiedad ("magnesio", "vegano", "sin TACC"): el
+            catálogo no tiene esos campos como columnas, los cubre el maestro con esta lista. Acá
+            van sólo para ver qué quedó cargado — en el buscador de recetas sí son clickeables. */}
+        <div className="prod-admin__tags">
+          <span className="prod-admin__tags-label">
+            Tags del maestro
+            {prod.tags && prod.tags.length > 0 ? ` (${prod.tags.length})` : ""}
+          </span>
+          {prod.tags && prod.tags.length > 0 ? (
+            <div className="burbujas">
+              {prod.tags.map((tag) => (
+                <span key={tag} className="burbuja">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="prod-admin__sin-tags">
+              {p.enMaestro
+                ? "El maestro lo tocó pero no le cargó tags."
+                : "No está en el maestro: sin tags no se lo encuentra por palabra clave."}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CatalogoAdmin() {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [page, setPage] = useState(0);
+  const [abierto, setAbierto] = useState<string | null>(null);
   const qDebounced = useDebounce(q, 300);
 
   const resumenFetcher = useCallback((s: AbortSignal) => getCatalogoResumen(s), []);
@@ -70,6 +140,7 @@ export function CatalogoAdmin() {
   function cambiarFiltro(f: Filtro) {
     setFiltro(f);
     setPage(0);
+    setAbierto(null);
   }
 
   return (
@@ -78,8 +149,8 @@ export function CatalogoAdmin() {
         <div>
           <h1 className="page-title">Productos</h1>
           <p className="muted">
-            Todo lo que bajó de Contabilium, incluido lo que no se puede recetar. El catálogo se
-            actualiza desde <strong>Integraciones</strong>.
+            Todo lo que bajó de Contabilium, incluido lo que no se puede recetar. Tocá una fila para
+            ver el detalle. El catálogo se actualiza desde <strong>Integraciones</strong>.
           </p>
         </div>
       </div>
@@ -147,44 +218,62 @@ export function CatalogoAdmin() {
 
       {data && data.content.length > 0 && (
         <>
-          <table className="table">
+          <table className="table tabla-expandible">
             <thead>
               <tr>
+                <th aria-label="expandir" />
                 <th>Producto</th>
                 <th>SKU</th>
                 <th>Categoría</th>
                 <th className="ta-right">Precio</th>
                 <th className="ta-right">Stock</th>
                 <th>Estado</th>
-                <th>Sincronizado</th>
+                <th className="ta-right">Tags</th>
               </tr>
             </thead>
             <tbody>
-              {data.content.map((p) => (
-                <tr key={p.producto.id}>
-                  <td>
-                    <strong>{p.producto.nombre}</strong>
-                    {p.producto.marca && (
-                      <>
-                        <br />
-                        <span className="muted" style={{ fontSize: "0.8rem" }}>
-                          {p.producto.marca}
-                        </span>
-                      </>
-                    )}
-                  </td>
-                  <td className="mono">{p.producto.sku}</td>
-                  <td className="muted">{p.producto.categoria || "—"}</td>
-                  <td className="ta-right">{money(p.producto.precio)}</td>
-                  <td className="ta-right">{p.producto.stock}</td>
-                  <td>
-                    <Etiquetas p={p} />
-                  </td>
-                  <td className="muted" style={{ fontSize: "0.8rem" }}>
-                    {p.lastSyncedAt ? fecha(p.lastSyncedAt) : "—"}
-                  </td>
-                </tr>
-              ))}
+              {data.content.map((p) => {
+                const expandido = abierto === p.producto.id;
+                return [
+                  <tr
+                    key={p.producto.id}
+                    className="row-click"
+                    onClick={() => setAbierto(expandido ? null : p.producto.id)}
+                  >
+                    <td className="celda-chevron">
+                      <span className={"chevron" + (expandido ? " chevron--abierto" : "")}>
+                        <Icon name="chevron" size={16} />
+                      </span>
+                    </td>
+                    <td>
+                      <strong>{p.producto.nombre}</strong>
+                      {p.producto.marca && (
+                        <>
+                          <br />
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>
+                            {p.producto.marca}
+                          </span>
+                        </>
+                      )}
+                    </td>
+                    <td className="mono">{p.producto.sku}</td>
+                    <td className="muted">{p.producto.categoria || "—"}</td>
+                    <td className="ta-right">{money(p.producto.precio)}</td>
+                    <td className="ta-right">{p.producto.stock}</td>
+                    <td>
+                      <Etiquetas p={p} />
+                    </td>
+                    <td className="ta-right muted">{p.producto.tags?.length || "—"}</td>
+                  </tr>,
+                  expandido ? (
+                    <tr key={`${p.producto.id}-detalle`} className="fila-detalle">
+                      <td colSpan={8}>
+                        <Detalle p={p} />
+                      </td>
+                    </tr>
+                  ) : null,
+                ];
+              })}
             </tbody>
           </table>
 
