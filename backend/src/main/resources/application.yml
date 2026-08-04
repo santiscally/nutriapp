@@ -6,6 +6,13 @@ spring:
   jackson:
     time-zone: ${TZ:America/Argentina/Buenos_Aires}
     default-property-inclusion: non_null
+  servlet:
+    multipart:
+      # El default de Spring Boot es 1 MB y el maestro de artículos pesa ~1,5 MB: con el default,
+      # el import de C-12 fallaría siempre. El tope real de negocio lo pone nutriapp.catalogo.import-max-bytes
+      # (mensaje de error claro); esto es solo el límite del contenedor.
+      max-file-size: ${MULTIPART_MAX_FILE_SIZE:25MB}
+      max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:30MB}
   mail:
     # SMTP del proveedor de mail (Fase 2). Con MAIL_SMTP_HOST vacio no se autoconfigura.
     host: ${MAIL_SMTP_HOST:}
@@ -74,14 +81,32 @@ management:
 
 app:
   cors:
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    # 5173 es el default de Vite; 5174 es el fallback cuando el 5173 está ocupado por otro proyecto
+    # (en la máquina de Santi lo toma imedba). En prod esto se setea por env y queda solo el dominio real.
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
 
 nutriapp:
+  catalogo:
+    # Qué entra al catálogo recetable (mail de Gon 2026-08-03 + C-13/C-14).
+    # rubros-permitidos: IdRubro de Contabilium que cuentan como "producto terminado". Hoy tenemos
+    #   uno solo; Gon quedó en pasar la lista completa (call 34:26). Vacío = sin filtro de rubro.
+    rubros-permitidos: ${CATALOGO_RUBROS_PERMITIDOS:144331}
+    # Tipos del ERP que se recetean. El mail de Gon dice "solo quedarnos con Producto", pero ese campo
+    # tiene TRES valores en la cuenta de TBC —Producto (2004), Combo (209) y Servicio (54)— y los Combo
+    # son los packs x2/x3 y los exhibidores de la línea ON-ROLL propia. Su intención era sacar los
+    # servicios, no los packs, así que van los dos: se venden en TiendaNube como cualquier artículo y el
+    # cupón les aplica igual. **A confirmar con Gon**; para volver a su instrucción literal alcanza con
+    # CATALOGO_TIPOS_ERP=Producto (el catálogo recetable pasa de 702 a 496). Vacío = sin filtro.
+    tipos-erp-permitidos: ${CATALOGO_TIPOS_ERP:Producto,Combo}
+    # Umbral de precio irrisorio: tienen ~1000 artículos cargados a $1 (call 44:52).
+    precio-minimo: ${CATALOGO_PRECIO_MINIMO:100}
+    # Tope del Excel maestro que sube el admin (el real pesa ~1,5 MB).
+    import-max-bytes: ${CATALOGO_IMPORT_MAX_BYTES:20971520}
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
     # Los % de descuento y comisión ya NO viven acá: son configurables por el admin en runtime
     # (tabla configuracion_sistema, seed inicial 15/10 en la migración V004).
-    max-items: ${RECETA_MAX_ITEMS:1}
+    max-items: ${RECETA_MAX_ITEMS:10}
     # Cron del job de vencimiento (diario 03:00 AR). Catch-up adicional al arrancar.
     vencimiento-cron: ${RECETA_VENCIMIENTO_CRON:0 0 3 * * *}
   cupones:

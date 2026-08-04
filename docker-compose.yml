@@ -68,7 +68,7 @@ services:
       # En dev NO validamos iss (mismatch localhost:8081 vs keycloak:8080 interno).
       # Spring valida firma via JWK; alcanza para dev local. Prod si setea issuer-uri.
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:8080/realms/nutriapp/protocol/openid-connect/certs}
-      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:5174}
       TZ: ${TZ:-America/Argentina/Buenos_Aires}
       # --- Keycloak Admin API (registro/aprobación de nutricionistas) ---
       KEYCLOAK_BASE_URL: ${KEYCLOAK_BASE_URL:-http://keycloak:8080}
@@ -81,6 +81,10 @@ services:
       CONTABILIUM_CLIENT_ID: ${CONTABILIUM_CLIENT_ID:-}
       CONTABILIUM_CLIENT_SECRET: ${CONTABILIUM_CLIENT_SECRET:-}
       CONTABILIUM_BASE_URL: ${CONTABILIUM_BASE_URL:-https://rest.contabilium.com}
+      # --- Catálogo recetable (ver .env.example: ojo con Combo) ---
+      CATALOGO_RUBROS_PERMITIDOS: ${CATALOGO_RUBROS_PERMITIDOS:-144331}
+      CATALOGO_TIPOS_ERP: ${CATALOGO_TIPOS_ERP:-Producto,Combo}
+      CATALOGO_PRECIO_MINIMO: ${CATALOGO_PRECIO_MINIMO:-100}
       TIENDANUBE_MODE: ${TIENDANUBE_MODE:-stub}
       TIENDANUBE_BASE_URL: ${TIENDANUBE_BASE_URL:-https://api.tiendanube.com/2025-03}
       TIENDANUBE_STORE_ID: ${TIENDANUBE_STORE_ID:-}

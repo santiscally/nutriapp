@@ -6,6 +6,11 @@
 # Material confidencial del cliente (contrato/presupuesto firmado): no va al repo público
 presupuesto_nutriapp.pdf
 
+# Maestro de artículos de TBC: además de las 9 columnas que usa nutriapp trae costos, márgenes,
+# comisiones y precios por proveedor de 2225 artículos. El análisis (sin números) va en
+# instrucciones_claude/07-maestro-articulos-y-catalogo.md; el archivo crudo se comparte aparte.
+instrucciones_claude/maestro-articulos-tbc-*.xlsx
+
 # Java / Maven
 backend/target/
 *.class
