@@ -13,6 +13,10 @@ export interface IntegracionEstado {
   ultimoError?: string;
   ultimoErrorAt?: string;
   ultimaSync?: string;
+  /** Solo contabilium: sync del catálogo en curso ahora mismo. */
+  sincronizando?: boolean | null;
+  /** Solo contabilium: resumen del último sync ("revisados=.. creados=.." o "error: ..."). */
+  ultimoResultado?: string | null;
 }
 
 export interface IntegracionesEstado {
@@ -26,11 +30,9 @@ export interface ResyncCuponesResponse {
   pendientes: number;
 }
 
-/** POST /admin/contabilium/sync-productos (en stub responde 503) */
-export interface SyncProductosResponse {
-  revisados: number;
-  creados: number;
-  actualizados: number;
-  sinCambios: number;
-  syncedAt: string;
+/** POST /admin/contabilium/sync-productos → 202: la sync corre en background. El resultado
+ *  se sigue por el estado (sincronizando + ultimoResultado). */
+export interface SyncIniciadaResponse {
+  estado: "iniciada" | "en_curso";
+  mensaje: string;
 }

@@ -6,13 +6,30 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
 import { registrar } from "../api/registro";
+import { CONDICIONES_FISCALES } from "../types/registro";
 import { Icon } from "../components/ui/Icon";
 
 const E164 = /^\+[1-9]\d{7,14}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Field = "nombre" | "apellido" | "email" | "telefono" | "matricula" | "password" | "password2";
-type Errors = Partial<Record<Field | "terms", string>>;
+type Field =
+  | "nombre"
+  | "apellido"
+  | "email"
+  | "telefono"
+  | "matricula"
+  | "dni"
+  | "cuit"
+  | "condicionFiscal"
+  | "password"
+  | "password2";
+type Errors = Partial<Record<Field | "terms" | "archivo", string>>;
+
+const DNI = /^[0-9]{7,9}$/;
+const CUIT = /^[0-9]{2}-?[0-9]{8}-?[0-9]$/;
+/** Lo que acepta el backend para la matrícula (C-08). */
+const TIPOS_MATRICULA = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+const MAX_MB = 5;
 
 export function Registro() {
   const [f, setF] = useState<Record<Field, string>>({
@@ -21,17 +38,22 @@ export function Registro() {
     email: "",
     telefono: "",
     matricula: "",
+    dni: "",
+    cuit: "",
+    condicionFiscal: "",
     password: "",
     password2: "",
   });
+  const [archivo, setArchivo] = useState<File | null>(null);
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
 
-  const set = (k: Field) => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setF((prev) => ({ ...prev, [k]: e.target.value }));
+  const set =
+    (k: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setF((prev) => ({ ...prev, [k]: e.target.value }));
 
   function validate(): Errors {
     const e: Errors = {};
@@ -42,6 +64,15 @@ export function Registro() {
     if (!f.telefono.trim()) e.telefono = "Requerido.";
     else if (!E164.test(f.telefono.trim())) e.telefono = "Formato E.164, ej. +5491133334444.";
     if (!f.matricula.trim()) e.matricula = "Requerido.";
+    if (!f.dni.trim()) e.dni = "Requerido.";
+    else if (!DNI.test(f.dni.trim())) e.dni = "Sólo números, sin puntos.";
+    if (!f.cuit.trim()) e.cuit = "Requerido.";
+    else if (!CUIT.test(f.cuit.trim())) e.cuit = "11 dígitos, ej. 27-12345678-4.";
+    if (!f.condicionFiscal) e.condicionFiscal = "Elegí una opción.";
+    // El adjunto es lo que el admin mira para validar la matrícula: sin eso no hay solicitud.
+    if (!archivo) e.archivo = "Subí tu matrícula o título.";
+    else if (!TIPOS_MATRICULA.includes(archivo.type)) e.archivo = "Tiene que ser un PDF o una imagen.";
+    else if (archivo.size > MAX_MB * 1024 * 1024) e.archivo = `El archivo supera los ${MAX_MB} MB.`;
     if (!f.password) e.password = "Requerido.";
     else if (f.password.length < 8) e.password = "Mínimo 8 caracteres.";
     if (f.password2 !== f.password) e.password2 = "Las contraseñas no coinciden.";
@@ -58,14 +89,20 @@ export function Registro() {
 
     setSaving(true);
     try {
-      await registrar({
-        nombre: f.nombre.trim(),
-        apellido: f.apellido.trim(),
-        email: f.email.trim(),
-        telefono: f.telefono.trim(),
-        matricula: f.matricula.trim(),
-        password: f.password,
-      });
+      await registrar(
+        {
+          nombre: f.nombre.trim(),
+          apellido: f.apellido.trim(),
+          email: f.email.trim(),
+          telefono: f.telefono.trim(),
+          matricula: f.matricula.trim(),
+          dni: f.dni.trim(),
+          cuit: f.cuit.trim(),
+          condicionFiscal: f.condicionFiscal,
+          password: f.password,
+        },
+        archivo!,
+      );
       setDone(true);
     } catch (err) {
       setSubmitError(
@@ -130,13 +167,16 @@ export function Registro() {
         <p className="auth__note">Tus datos se usan solo para la validación profesional.</p>
       </aside>
 
-      {/* Panel derecho: formulario */}
+      {/* Panel derecho: formulario.
+          El orden de los campos está pensado para que la grilla de 3 columnas cierre en filas
+          completas y el form entre en una pantalla sin scroll: los cortos van de a tres, y email y
+          adjunto ocupan el ancho completo. */}
       <main className="auth__panel">
-        <form className="auth__card auth__card--wide" onSubmit={onSubmit} noValidate>
+        <form className="auth__card auth__card--registro" onSubmit={onSubmit} noValidate>
           <h1 className="auth__title">Solicitar acceso</h1>
           <p className="auth__subtitle">Todos los campos son obligatorios.</p>
 
-          <div className="form-grid">
+          <div className="form-grid form-grid--registro">
             <label className="field">
               <span>Nombre</span>
               <input value={f.nombre} onChange={set("nombre")} autoFocus />
@@ -147,20 +187,42 @@ export function Registro() {
               <input value={f.apellido} onChange={set("apellido")} />
               {errors.apellido && <small className="auth__err">{errors.apellido}</small>}
             </label>
-            <label className="field field--full">
-              <span>Email profesional</span>
-              <input type="email" value={f.email} onChange={set("email")} />
-              {errors.email && <small className="auth__err">{errors.email}</small>}
-            </label>
             <label className="field">
               <span>Teléfono</span>
               <input placeholder="+5491133334444" value={f.telefono} onChange={set("telefono")} />
               {errors.telefono && <small className="auth__err">{errors.telefono}</small>}
             </label>
+            <label className="field field--span2">
+              <span>Email profesional</span>
+              <input type="email" value={f.email} onChange={set("email")} />
+              {errors.email && <small className="auth__err">{errors.email}</small>}
+            </label>
+            <label className="field">
+              <span>DNI</span>
+              <input placeholder="30111222" value={f.dni} onChange={set("dni")} inputMode="numeric" />
+              {errors.dni && <small className="auth__err">{errors.dni}</small>}
+            </label>
             <label className="field">
               <span>Matrícula nacional</span>
               <input placeholder="MN 12.483" value={f.matricula} onChange={set("matricula")} />
               {errors.matricula && <small className="auth__err">{errors.matricula}</small>}
+            </label>
+            <label className="field">
+              <span>CUIT</span>
+              <input placeholder="27-30111222-4" value={f.cuit} onChange={set("cuit")} />
+              {errors.cuit && <small className="auth__err">{errors.cuit}</small>}
+            </label>
+            <label className="field">
+              <span>Condición fiscal</span>
+              <select value={f.condicionFiscal} onChange={set("condicionFiscal")}>
+                <option value="">Elegí una opción…</option>
+                {CONDICIONES_FISCALES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {errors.condicionFiscal && <small className="auth__err">{errors.condicionFiscal}</small>}
             </label>
             <label className="field">
               <span>Contraseña</span>
@@ -181,6 +243,17 @@ export function Registro() {
                 onChange={set("password2")}
               />
               {errors.password2 && <small className="auth__err">{errors.password2}</small>}
+            </label>
+            <label className="field field--full field--file">
+              <span>
+                Matrícula o título <small className="muted">· PDF o imagen, hasta {MAX_MB} MB</small>
+              </span>
+              <input
+                type="file"
+                accept=".pdf,image/jpeg,image/png,image/webp"
+                onChange={(e) => setArchivo(e.target.files?.[0] ?? null)}
+              />
+              {errors.archivo && <small className="auth__err">{errors.archivo}</small>}
             </label>
           </div>
 

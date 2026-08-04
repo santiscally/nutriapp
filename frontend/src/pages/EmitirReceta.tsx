@@ -199,10 +199,19 @@ export function EmitirReceta() {
                 <span>−{money(subtotal - totalConDescuento)}</span>
               </div>
               <div className="resumen__total">
-                <span>Total</span>
+                <span>Total estimado</span>
                 <span>{money(totalConDescuento)}</span>
               </div>
             </div>
+
+            {/* C-02 (call 24:35): la nutricionista necesita una referencia de precio para
+                responderle al paciente, pero el valor final lo define la tienda — puede tener
+                promos que se acumulan con este descuento. La receta que recibe el paciente y el
+                historial NO llevan importes: sólo se ven acá. */}
+            <p className="resumen__disclaimer">
+              Valores aproximados. El precio final lo define la tienda al momento de la compra y
+              puede cambiar sin previo aviso.
+            </p>
 
             {error && <div className="alert alert--error">{error}</div>}
 

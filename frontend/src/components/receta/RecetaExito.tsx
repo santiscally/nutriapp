@@ -1,14 +1,12 @@
-// Pantalla de éxito tras emitir: código de cupón + descuento/vigencia + total + estado de sync.
+// Pantalla de éxito tras emitir: código de cupón + descuento/vigencia + estado de sync.
+// C-02: sin importes — una vez emitida, la receta no muestra precios en ningún lado.
 
 import { Link } from "react-router-dom";
-import { fecha, money } from "../../lib/format";
+import { fecha } from "../../lib/format";
 import { Icon } from "../ui/Icon";
 import type { RecetaResponse } from "../../types/receta";
 
 export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNueva: () => void }) {
-  const subtotal = receta.items.reduce((acc, it) => acc + it.precioLista * it.cantidad, 0);
-  const total = subtotal * (1 - receta.descuentoPct / 100);
-
   return (
     <section className="exito">
       <div className="card exito__card">
@@ -41,15 +39,9 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
               <span>
                 {it.cantidad}× {it.producto.nombre}
               </span>
-              <span className="mono">{money(it.precioLista * it.cantidad)}</span>
             </li>
           ))}
         </ul>
-        <div className="exito__total">
-          <span>Total para el paciente</span>
-          <span className="mono">{money(total)}</span>
-        </div>
-
         <div className="exito__actions">
           <button className="btn btn--primary" onClick={onNueva}>
             Emitir otra receta

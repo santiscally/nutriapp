@@ -13,12 +13,6 @@ import { TableSkeleton, TilesSkeleton } from "../components/ui/Skeleton";
 import { useFetch } from "../hooks/useFetch";
 import { fecha, money } from "../lib/format";
 import type { DashboardResumen, Estadisticas } from "../types/dashboard";
-import type { RecetaResponse } from "../types/receta";
-
-const totalReceta = (r: RecetaResponse) => {
-  const subtotal = r.items.reduce((acc, i) => acc + i.precioLista * i.cantidad, 0);
-  return subtotal * (1 - r.descuentoPct / 100);
-};
 
 export function Dashboard() {
   const { me } = useAuth();
@@ -130,7 +124,9 @@ export function Dashboard() {
                   <th>Estado</th>
                   <th>Emitida</th>
                   <th>Vence</th>
-                  <th className="ta-right">Total</th>
+                  {/* C-02/C-03: el único importe honesto es lo que la persona pagó de verdad
+                      en TiendaNube. Mientras no convierta, no hay monto que mostrar. */}
+                  <th className="ta-right">Venta</th>
                 </tr>
               </thead>
               <tbody>
@@ -145,7 +141,9 @@ export function Dashboard() {
                     </td>
                     <td className="muted">{fecha(r.emitidaAt)}</td>
                     <td className="muted">{fecha(r.venceAt)}</td>
-                    <td className="ta-right">{money(totalReceta(r))}</td>
+                    <td className="ta-right">
+                      {r.conversion ? money(r.conversion.ordenTotal) : <span className="muted">—</span>}
+                    </td>
                   </tr>
                 ))}
               </tbody>

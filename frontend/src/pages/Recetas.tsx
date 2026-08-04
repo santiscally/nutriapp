@@ -14,7 +14,7 @@ import { fecha } from "../lib/format";
 import type { EstadoReceta } from "../types/receta";
 
 const PAGE_SIZE = 10;
-const ESTADOS: EstadoReceta[] = ["PENDIENTE", "APLICADA", "VENCIDA", "ANULADA"];
+const ESTADOS: EstadoReceta[] = ["PENDIENTE", "APLICADA", "LIQUIDADA", "VENCIDA", "ANULADA"];
 
 export function Recetas() {
   const [estado, setEstado] = useState<EstadoReceta | "">("");

@@ -9,4 +9,6 @@ export interface Me {
   roles: string[]; // ["NUTRICIONISTA"] | ["ADMIN"]
   authorities: string[]; // ["recetas:write", ...] namespace resource_access.nutriapp-backend
   estadoValidacion: EstadoValidacion;
+  /** C-17: avatar como data URI. Ausente si no cargó foto. */
+  foto?: string | null;
 }

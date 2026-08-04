@@ -7,6 +7,7 @@ import { Navigate } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
 import { getIntegracionesEstado, resyncCupones, syncProductos } from "../api/integraciones";
 import { useAuth } from "../auth/AuthContext";
+import { MaestroImportCard } from "../components/admin/MaestroImportCard";
 import { useToast } from "../components/ui/Toast";
 import { fechaHora } from "../lib/format";
 import type { IntegracionEstado } from "../types/integraciones";
@@ -70,17 +71,33 @@ export function Integraciones() {
   async function onSyncProductos() {
     setAccion("contabilium");
     try {
-      const r = await syncProductos();
-      toast.success(
-        `Catálogo: ${r.creados} nuevos · ${r.actualizados} actualizados · ${r.sinCambios} sin cambios.`,
-      );
-      await cargar();
+      const r = await syncProductos(); // 202: la sync corre en background
+      toast.success(r.mensaje);
     } catch (e) {
-      // En stub esto devuelve 503 con el mensaje explícito por proveedor; lo mostramos tal cual.
-      toast.error(e instanceof ApiRequestError ? e.message : "No se pudo sincronizar el catálogo.");
-    } finally {
+      // En stub esto degrada; el mensaje explícito por proveedor se surfacea tal cual.
+      toast.error(e instanceof ApiRequestError ? e.message : "No se pudo iniciar la sincronización.");
       setAccion(null);
+      return;
     }
+    // Seguimos el progreso: refrescamos el estado cada 3s hasta que `sincronizando` pase a false.
+    await cargar();
+    for (let i = 0; i < 80; i++) {
+      await new Promise((res) => setTimeout(res, 3000));
+      try {
+        const est = await getIntegracionesEstado();
+        setItems(est.integraciones);
+        const c = est.integraciones.find((x) => x.proveedor === "contabilium");
+        if (!c?.sincronizando) {
+          const res = c?.ultimoResultado ?? "";
+          if (res.startsWith("error")) toast.error("Sincronización finalizada con error: " + res.slice(7).trim());
+          else toast.success("Catálogo sincronizado. " + res);
+          break;
+        }
+      } catch {
+        // error transitorio al pollear: seguimos intentando
+      }
+    }
+    setAccion(null);
   }
 
   return (
@@ -126,6 +143,12 @@ export function Integraciones() {
                     </span>
                   </div>
                 )}
+                {it.proveedor === "contabilium" && it.ultimoResultado && (
+                  <div className="integracion__meta-row">
+                    <span className="muted">Último sync</span>
+                    <span>{it.ultimoResultado}</span>
+                  </div>
+                )}
               </div>
 
               {it.proveedor === "tiendanube" && (
@@ -141,13 +164,17 @@ export function Integraciones() {
                 <button
                   className="btn btn--primary btn--sm integracion__action"
                   onClick={onSyncProductos}
-                  disabled={accion !== null}
+                  disabled={accion !== null || it.sincronizando === true}
                 >
-                  {accion === "contabilium" ? "Sincronizando…" : "Sincronizar catálogo"}
+                  {accion === "contabilium" || it.sincronizando ? "Sincronizando…" : "Sincronizar catálogo"}
                 </button>
               )}
             </article>
           ))}
+          {/* No es una "integración" con estado propio como las otras cuatro (no hay conexión que
+              monitorear, es un archivo que sube el admin), pero va acá porque es el mismo trabajo:
+              refrescar el catálogo, y se hace justo después de sincronizar Contabilium. */}
+          <MaestroImportCard disabled={accion !== null} />
         </div>
       )}
     </section>

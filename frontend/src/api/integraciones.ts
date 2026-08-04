@@ -1,7 +1,7 @@
 import type {
   IntegracionesEstado,
   ResyncCuponesResponse,
-  SyncProductosResponse,
+  SyncIniciadaResponse,
 } from "../types/integraciones";
 import { api } from "./client";
 
@@ -13,6 +13,7 @@ export const getIntegracionesEstado = (signal?: AbortSignal) =>
 export const resyncCupones = () =>
   api.post<ResyncCuponesResponse>("/admin/tiendanube/resync-cupones");
 
-/** Fuerza la sync del catálogo desde Contabilium (2.9). En stub → 503. Solo admin. */
+/** Dispara la sync del catálogo desde Contabilium (2.9). Asíncrona: responde 202 al toque; el
+ *  progreso se sigue por getIntegracionesEstado (sincronizando + ultimoResultado). Solo admin. */
 export const syncProductos = () =>
-  api.post<SyncProductosResponse>("/admin/contabilium/sync-productos");
+  api.post<SyncIniciadaResponse>("/admin/contabilium/sync-productos");

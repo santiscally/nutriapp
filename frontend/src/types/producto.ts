@@ -1,34 +1,66 @@
-// Espejo de ProductoResponse (GET /productos) + filtros. Shape verificado contra el backend seeded.
+// Espejo de ProductoResponse (GET /productos) + filtros. Shape verificado contra el backend.
 export interface Producto {
   id: string;
   sku: string;
+  /** Código de barras del ERP. Es buscable: se puede escanear o pegar en el buscador. */
+  codigoBarras?: string | null;
   nombre: string;
   descripcion: string;
+  /** Descripción larga del maestro de TBC — la que se muestra en "más info". */
+  descripcionWeb?: string | null;
   precio: number;
   stock: number;
-  imagenUrl?: string; // puede no venir en el seed
-  marca: string;
-  laboratorio: string;
-  principioActivo: string;
-  presentacion: string;
+  /** Link a la imagen en el CDN de TiendaNube. Solo ~1 de cada 4 productos la tiene. */
+  imagenUrl?: string | null;
+  /** Marca = Subrubro de Contabilium. */
+  marca?: string | null;
+  // --- Los cuatro de abajo vienen del maestro de artículos de TBC: null si el producto no está ahí.
+  departamento?: string | null;
+  /** OJO: antes traía el Rubro de Contabilium ("Producto terminado"); ahora, la categoría del maestro. */
+  categoria?: string | null;
+  subcategoria?: string | null;
+  laboratorio?: string | null;
+  /** Tags del maestro. Son la vía de búsqueda por propiedad/principio activo ("magnesio"). */
+  tags?: string[];
   publicado: boolean;
-  origen: string; // SEED | TIENDANUBE | ...
+  origen: string; // SEED | CONTABILIUM | TIENDANUBE | ...
+}
+
+/** Nodo del árbol de la taxonomía del maestro (para encadenar los dropdowns). */
+export interface TaxonomiaCategoria {
+  nombre: string;
+  subcategorias: string[];
+}
+
+export interface TaxonomiaDepartamento {
+  nombre: string;
+  categorias: TaxonomiaCategoria[];
 }
 
 // GET /productos/filtros — valores distintos para poblar los dropdowns de búsqueda.
 export interface ProductoFiltros {
   marcas: string[];
+  categorias: string[];
+  departamentos: string[];
+  subcategorias: string[];
   laboratorios: string[];
-  presentaciones: string[];
+  /** Solo las combinaciones que existen de verdad: sirve para filtrar en cascada. */
+  taxonomia: TaxonomiaDepartamento[];
 }
 
 // Query params de GET /productos.
 export interface ProductoQuery {
   q?: string;
   marca?: string;
+  departamento?: string;
+  categoria?: string;
+  subcategoria?: string;
   laboratorio?: string;
-  principioActivo?: string;
-  presentacion?: string;
+  /** Tag exacto (click en un tag), a diferencia de `q` que busca parcial. */
+  tag?: string;
+  conStock?: boolean;
+  precioMin?: number;
+  precioMax?: number;
   page?: number;
   size?: number;
 }

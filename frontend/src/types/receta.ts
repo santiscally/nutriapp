@@ -2,7 +2,8 @@
 import type { Paciente } from "./paciente";
 import type { Producto } from "./producto";
 
-export type EstadoReceta = "PENDIENTE" | "APLICADA" | "VENCIDA" | "ANULADA";
+// LIQUIDADA (C-05): el admin ya le pagó la comisión a la nutricionista. Estado terminal.
+export type EstadoReceta = "PENDIENTE" | "APLICADA" | "VENCIDA" | "ANULADA" | "LIQUIDADA";
 
 // --- Request de emisión ---
 export interface RecetaItemInput {
@@ -18,10 +19,11 @@ export interface RecetaCreateRequest {
 }
 
 // --- Response ---
+// C-02: la receta emitida NO trae precios — sólo producto y cantidad. Los precios se ven
+// únicamente en el buscador/carrito de la pantalla de emisión, y son aproximados.
 export interface RecetaItem {
   producto: Producto;
   cantidad: number;
-  precioLista: number;
   indicaciones?: string;
 }
 
@@ -37,6 +39,8 @@ export interface RecetaConversion {
   paidAt: string;
   comisionPct: number;
   comisionMonto: number;
+  // C-05: cuándo se liquidó (pagó) esta comisión. Ausente/null = convertida pero impaga.
+  liquidadaAt?: string | null;
 }
 
 export interface RecetaResponse {

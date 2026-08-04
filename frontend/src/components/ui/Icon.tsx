@@ -16,9 +16,17 @@ export type IconName =
   | "leaf"
   | "pill"
   | "send"
-  | "x-circle";
+  | "x-circle"
+  | "download";
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  download: (
+    <>
+      <path d="M12 3v12" />
+      <path d="M7 11l5 5 5-5" />
+      <path d="M4 20h16" />
+    </>
+  ),
   grid: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

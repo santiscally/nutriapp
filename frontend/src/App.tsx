@@ -2,14 +2,18 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import { RequireAuth } from "./components/layout/RequireAuth";
+import { RequireRol } from "./components/layout/RequireRol";
 import { ToastProvider } from "./components/ui/Toast";
+import { CierreConsolidado } from "./pages/CierreConsolidado";
 import { CierreMensual } from "./pages/CierreMensual";
 import { Configuracion } from "./pages/Configuracion";
 import { Dashboard } from "./pages/Dashboard";
 import { EmitirReceta } from "./pages/EmitirReceta";
 import { Integraciones } from "./pages/Integraciones";
 import { Login } from "./pages/Login";
+import { Nutricionistas } from "./pages/Nutricionistas";
 import { Pacientes } from "./pages/Pacientes";
+import { Perfil } from "./pages/Perfil";
 import { Recetas } from "./pages/Recetas";
 import { Registro } from "./pages/Registro";
 
@@ -31,13 +35,19 @@ export default function App() {
               </RequireAuth>
             }
           >
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/recetas/nueva" element={<EmitirReceta />} />
-            <Route path="/recetas" element={<Recetas />} />
-            <Route path="/pacientes" element={<Pacientes />} />
-            <Route path="/cierre-mensual" element={<CierreMensual />} />
-            <Route path="/configuracion" element={<Configuracion />} />
-            <Route path="/integraciones" element={<Integraciones />} />
+            {/* Sólo nutricionista — el admin no emite recetas (C-07). */}
+            <Route path="/dashboard" element={<RequireRol rol="NUTRICIONISTA"><Dashboard /></RequireRol>} />
+            <Route path="/recetas/nueva" element={<RequireRol rol="NUTRICIONISTA"><EmitirReceta /></RequireRol>} />
+            <Route path="/recetas" element={<RequireRol rol="NUTRICIONISTA"><Recetas /></RequireRol>} />
+            <Route path="/pacientes" element={<RequireRol rol="NUTRICIONISTA"><Pacientes /></RequireRol>} />
+            <Route path="/cierre-mensual" element={<RequireRol rol="NUTRICIONISTA"><CierreMensual /></RequireRol>} />
+            <Route path="/perfil" element={<RequireRol rol="NUTRICIONISTA"><Perfil /></RequireRol>} />
+
+            {/* Sólo admin. */}
+            <Route path="/nutricionistas" element={<RequireRol rol="ADMIN"><Nutricionistas /></RequireRol>} />
+            <Route path="/cierres" element={<RequireRol rol="ADMIN"><CierreConsolidado /></RequireRol>} />
+            <Route path="/configuracion" element={<RequireRol rol="ADMIN"><Configuracion /></RequireRol>} />
+            <Route path="/integraciones" element={<RequireRol rol="ADMIN"><Integraciones /></RequireRol>} />
           </Route>
 
           {/* Fallback */}

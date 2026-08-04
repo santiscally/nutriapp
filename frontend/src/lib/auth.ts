@@ -54,6 +54,28 @@ export function isAuthenticated(): boolean {
   return read() !== null;
 }
 
+/**
+ * Traduce el `error_description` de Keycloak, que viene siempre en inglés.
+ *
+ * El caso que importa es "Account disabled": una nutricionista recién registrada tiene el usuario
+ * deshabilitado hasta que el admin la aprueba, así que ese mensaje es el que más van a ver — y
+ * mostrarlo crudo la deja sin entender que su cuenta está en revisión, no rota.
+ */
+function mensajeDeError(desc?: string): string {
+  switch (desc) {
+    case "Invalid user credentials":
+      return "Usuario o contraseña incorrectos.";
+    case "Account disabled":
+      return "Tu cuenta todavía no está habilitada: el administrador tiene que aprobar tu solicitud de acceso.";
+    case "Account temporarily disabled":
+      return "Demasiados intentos fallidos. Esperá unos minutos y volvé a probar.";
+    case "Invalid client credentials":
+      return "No se pudo validar la aplicación. Avisale al equipo técnico.";
+    default:
+      return desc ?? "No se pudo iniciar sesión.";
+  }
+}
+
 /** Login ROPC. Lanza Error con mensaje legible si las credenciales fallan. */
 export async function login(username: string, password: string): Promise<void> {
   const body = new URLSearchParams({
@@ -63,20 +85,21 @@ export async function login(username: string, password: string): Promise<void> {
     password,
   });
 
-  const res = await fetch(tokenEndpoint(), {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  let res: Response;
+  try {
+    res = await fetch(tokenEndpoint(), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  } catch {
+    // fetch sólo rechaza por red/CORS: sin esto el usuario ve "Failed to fetch".
+    throw new Error("No pudimos conectarnos con el servidor. Revisá tu conexión e intentá de nuevo.");
+  }
 
   const data = (await res.json()) as KeycloakTokenResponse;
   if (!res.ok) {
-    // Keycloak devuelve error_description tipo "Invalid user credentials"
-    throw new Error(
-      data.error_description === "Invalid user credentials"
-        ? "Usuario o contraseña incorrectos."
-        : data.error_description ?? "No se pudo iniciar sesión.",
-    );
+    throw new Error(mensajeDeError(data.error_description));
   }
   store(data);
 }

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { homeDe } from "../lib/home";
 import { Icon } from "../components/ui/Icon";
 
 export function Login() {
@@ -13,15 +14,16 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!initializing && me) return <Navigate to="/dashboard" replace />;
+  // C-07: cada rol arranca en su propia pantalla (el admin no tiene panel de recetas).
+  if (!initializing && me) return <Navigate to={homeDe(me)} replace />;
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
     try {
-      await login(email, password);
-      navigate("/dashboard", { replace: true });
+      const sesion = await login(email, password);
+      navigate(homeDe(sesion), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
     } finally {
@@ -42,20 +44,6 @@ export function Login() {
 
         <div className="auth__value">
           <h2 className="auth__headline">Recetas digitales con descuento, en dos minutos.</h2>
-          <p className="auth__lead">
-            Emitís la receta, el paciente recibe su código por mail y WhatsApp, y ves el cierre de
-            comisiones del mes sin planillas.
-          </p>
-          <div className="auth__stats">
-            <div>
-              <div className="auth__stat-num">30 días</div>
-              <div className="auth__stat-label">de vigencia por receta</div>
-            </div>
-            <div>
-              <div className="auth__stat-num">Mail + WhatsApp</div>
-              <div className="auth__stat-label">entrega al paciente</div>
-            </div>
-          </div>
         </div>
 
         <p className="auth__note">

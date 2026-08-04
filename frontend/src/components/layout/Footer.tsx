@@ -39,6 +39,16 @@ export function Footer() {
             © {new Date().getFullYear()} NutriApp — plataforma interna. Todos los datos son
             confidenciales.
           </span>
+          <a
+            className="powered-by"
+            href="https://simpleapps.com.ar"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="powered by Simple Apps"
+          >
+            <span className="powered-text">powered by</span>
+            <span className="powered-logo">{"<s/a>"}</span>
+          </a>
         </div>
       </div>
     </footer>

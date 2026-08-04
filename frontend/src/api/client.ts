@@ -43,12 +43,15 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   const hasBody = opts.body !== undefined;
-  if (hasBody) headers["Content-Type"] = "application/json";
+  // FormData (subida de archivos, C-08/C-17) va tal cual: si le seteamos el Content-Type a mano,
+  // pisamos el boundary que genera el browser y el server no puede parsear las partes.
+  const esFormData = hasBody && opts.body instanceof FormData;
+  if (hasBody && !esFormData) headers["Content-Type"] = "application/json";
 
   const res = await fetch(buildUrl(path, opts.params), {
     method: opts.method ?? "GET",
     headers,
-    body: hasBody ? JSON.stringify(opts.body) : undefined,
+    body: hasBody ? (esFormData ? (opts.body as FormData) : JSON.stringify(opts.body)) : undefined,
     signal: opts.signal,
   });
 

@@ -10,8 +10,11 @@ interface AuthState {
   me: Me | null;
   /** true mientras se resuelve la sesión inicial (evita parpadeo del login). */
   initializing: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /** Devuelve la sesión ya cargada: el caller la necesita para saber a dónde navegar (C-07). */
+  login: (username: string, password: string) => Promise<Me>;
   logout: () => void;
+  /** Vuelve a leer /me. Lo usa el perfil tras cambiar la foto (C-17). */
+  refrescar: () => Promise<Me>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -23,6 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadMe = useCallback(async () => {
     const fresh = await api.get<Me>("/me");
     setMe(fresh);
+    return fresh;
   }, []);
 
   // Al montar: si hay token guardado, resolver /me; si falla, sesión inválida.
@@ -42,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (username: string, password: string) => {
       await auth.login(username, password);
-      await loadMe();
+      return loadMe();
     },
     [loadMe],
   );
@@ -53,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ me, initializing, login, logout }}>
+    <AuthContext.Provider value={{ me, initializing, login, logout, refrescar: loadMe }}>
       {children}
     </AuthContext.Provider>
   );
