@@ -21,6 +21,12 @@ public record RecetaResponse(
         String cuponSyncEstado,
         /** Mensaje humano de degradación del cupón (2.7). null cuando sincronizó bien. */
         String cuponSyncMensaje,
+        /**
+         * Link {@code wa.me} para que la nutricionista mande la receta por su propio WhatsApp
+         * (2.4). null cuando no corresponde: receta que ya no es PENDIENTE o paciente sin
+         * teléfono utilizable. El envío por WhatsApp es manual — el canal automático es el email.
+         */
+        String waMeUrl,
         List<NotificacionResponse> notificaciones,
         Conversion conversion
 ) {

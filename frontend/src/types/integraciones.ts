@@ -4,11 +4,11 @@
 export type ModoIntegracion = "stub" | "live";
 
 export interface IntegracionEstado {
-  proveedor: string; // contabilium | tiendanube | mail | whatsapp
+  proveedor: string; // contabilium | tiendanube | mail
   modo: ModoIntegracion;
   /** false en stub (sin conexión por diseño), null en live sin interacción aún, true/false según último resultado. */
   disponible: boolean | null;
-  /** Trabajo acumulado por caída: cupones sin sync (tiendanube) / notifs QUEUED (mail·whatsapp) / 0 (contabilium). */
+  /** Trabajo acumulado por caída: cupones sin sync (tiendanube) / notifs QUEUED (mail) / 0 (contabilium). */
   pendientes: number;
   ultimoError?: string;
   ultimoErrorAt?: string;

@@ -16,9 +16,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class IntegrationHealthRegistry {
 
-    /** Proveedores externos observados. */
+    /** Proveedores externos observados. (WhatsApp no está: es un link manual, no una API — 2.4.) */
     public enum Proveedor {
-        CONTABILIUM, TIENDANUBE, MAIL, WHATSAPP
+        CONTABILIUM, TIENDANUBE, MAIL
     }
 
     /** Foto del último éxito/error de un proveedor. Todos los campos pueden ser null (nunca interactuó). */

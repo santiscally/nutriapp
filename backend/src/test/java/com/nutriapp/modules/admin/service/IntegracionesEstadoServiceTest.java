@@ -7,7 +7,6 @@ import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.integrations.IntegrationsProperties.Contabilium;
 import com.nutriapp.integrations.IntegrationsProperties.Mail;
 import com.nutriapp.integrations.IntegrationsProperties.TiendaNube;
-import com.nutriapp.integrations.IntegrationsProperties.WhatsApp;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry.Proveedor;
 import com.nutriapp.modules.admin.dto.IntegracionEstadoResponse;
@@ -38,12 +37,11 @@ class IntegracionesEstadoServiceTest {
     private final IntegrationHealthRegistry health = new IntegrationHealthRegistry();
 
     private IntegracionesEstadoService service(String contabiliumMode, String tiendanubeMode,
-                                               String mailMode, String whatsappMode) {
+                                               String mailMode) {
         IntegrationsProperties props = new IntegrationsProperties(
                 new Contabilium(contabiliumMode, "", "", ""),
                 new TiendaNube(tiendanubeMode, "", "", "", "", "", "", ""),
-                new Mail(mailMode, "", ""),
-                new WhatsApp(whatsappMode, "", "", ""));
+                new Mail(mailMode, "", ""));
         return new IntegracionesEstadoService(
                 props, health, recetaRepository, notificacionRepository, productoRepository, productoSyncService);
     }
@@ -60,13 +58,12 @@ class IntegracionesEstadoServiceTest {
         when(recetaRepository.countResyncables()).thenReturn(3L);
         when(notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
                 EstadoNotificacion.QUEUED, CanalNotificacion.EMAIL)).thenReturn(2L);
-        when(notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
-                EstadoNotificacion.QUEUED, CanalNotificacion.WHATSAPP)).thenReturn(1L);
         when(productoRepository.maxLastSyncedAt()).thenReturn(ultimaSyncCatalogo);
 
-        IntegracionesEstadoResponse resp = service("stub", "stub", "stub", "stub").estado();
+        IntegracionesEstadoResponse resp = service("stub", "stub", "stub").estado();
 
-        assertThat(resp.integraciones()).hasSize(4);
+        // 2.4: whatsapp ya no es una integración (es un link manual) → quedan 3.
+        assertThat(resp.integraciones()).hasSize(3);
 
         IntegracionEstadoResponse tn = porProveedor(resp, "tiendanube");
         assertThat(tn.modo()).isEqualTo("stub");
@@ -74,7 +71,6 @@ class IntegracionesEstadoServiceTest {
         assertThat(tn.pendientes()).isEqualTo(3L);
 
         assertThat(porProveedor(resp, "mail").pendientes()).isEqualTo(2L);
-        assertThat(porProveedor(resp, "whatsapp").pendientes()).isEqualTo(1L);
 
         IntegracionEstadoResponse cb = porProveedor(resp, "contabilium");
         assertThat(cb.pendientes()).isZero();
@@ -84,17 +80,17 @@ class IntegracionesEstadoServiceTest {
     @Test
     void estado_live_disponibleSegunUltimoResultado() {
         IntegracionEstadoResponse antes = porProveedor(
-                service("stub", "live", "stub", "stub").estado(), "tiendanube");
+                service("stub", "live", "stub").estado(), "tiendanube");
         assertThat(antes.modo()).isEqualTo("live");
         assertThat(antes.disponible()).isNull(); // live pero sin interacción todavía
 
         health.registrarExito(Proveedor.TIENDANUBE);
-        assertThat(porProveedor(service("stub", "live", "stub", "stub").estado(), "tiendanube")
+        assertThat(porProveedor(service("stub", "live", "stub").estado(), "tiendanube")
                 .disponible()).isTrue();
 
         health.registrarError(Proveedor.TIENDANUBE, "timeout");
         IntegracionEstadoResponse caido = porProveedor(
-                service("stub", "live", "stub", "stub").estado(), "tiendanube");
+                service("stub", "live", "stub").estado(), "tiendanube");
         assertThat(caido.disponible()).isFalse();
         assertThat(caido.ultimoError()).isEqualTo("timeout");
         assertThat(caido.ultimoErrorAt()).isNotNull();

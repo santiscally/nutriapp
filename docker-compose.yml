@@ -100,10 +100,6 @@ services:
       MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@nutriapp.local}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-NutriApp}
-      WHATSAPP_MODE: ${WHATSAPP_MODE:-stub}
-      WHATSAPP_BASE_URL: ${WHATSAPP_BASE_URL:-https://graph.facebook.com/v21.0}
-      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
-      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     networks: [nutriapp-net]

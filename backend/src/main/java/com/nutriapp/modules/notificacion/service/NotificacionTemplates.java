@@ -7,9 +7,12 @@ import java.time.format.DateTimeFormatter;
 import org.springframework.stereotype.Component;
 
 /**
- * Arma asunto/cuerpo de las notificaciones de receta. Texto plano por ahora
- * (el HTML del mail y el template aprobado de WhatsApp se definen en Fase 2 con el
- * proveedor real). El código de cupón y la vigencia son los datos accionables.
+ * Arma asunto/cuerpo de las notificaciones de receta. Texto plano por ahora (el HTML del mail se
+ * define en Fase 2 con el proveedor real). El código de cupón y la vigencia son los datos
+ * accionables.
+ *
+ * <p>El texto de WhatsApp se mudó a {@code WaMeLinkBuilder} cuando ese canal dejó de ser una
+ * notificación automática y pasó a ser un link que abre la nutricionista (2.4).
  */
 @Component
 public class NotificacionTemplates {
@@ -28,13 +31,6 @@ public class NotificacionTemplates {
                 + "Válido hasta: " + FECHA.format(receta.getVenceAt()) + "\n\n"
                 + "Usá el código al finalizar tu compra en la tienda online.\n\n"
                 + "Saludos,\nNutriApp";
-    }
-
-    public String cuerpoWhatsApp(Receta receta, Paciente paciente) {
-        return "Hola " + paciente.getNombre() + "! 🌱 Tu receta con " + pct(receta.getDescuentoPct())
-                + " de descuento ya está lista. Código: *" + receta.getCodigo() + "* "
-                + "(válido hasta el " + FECHA.format(receta.getVenceAt()) + "). "
-                + "Usalo al comprar en la tienda online.";
     }
 
     private String pct(BigDecimal descuento) {

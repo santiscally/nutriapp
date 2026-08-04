@@ -104,7 +104,7 @@ APLICADA + $$$ en dashboard. Sirve para validar UX y cerrar las preguntas abiert
 | 2.1 | App TiendaNube en Partner Portal + tienda demo + OAuth → token persistido. Flip `tiendanube.mode=live` contra la demo: sync productos, cupones reales, webhook registrado (HTTPS: túnel en dev, dominio en prod) |
 | 2.2 | Contabilium live: validación credenciales (`obtenerinfo`), conciliación catálogo por SKU, sync nightly |
 | 2.3 | Email live: definir proveedor con Gon (recomendación: SES SMTP), DNS (DKIM/SPF), salir de sandbox, template real |
-| 2.4 | **WhatsApp por link `wa.me` (decisión 2026-07-28)** — el nutri manda el mensaje a mano desde su WhatsApp; **NO** Cloud API (sin WABA ni template de Meta). Pendiente (cuando haya tiempo): **sacar** la integración real (`integrations/whatsapp/` + canal `WHATSAPP` de la cola + config `WHATSAPP_*` + estado de integración) y **agregar** `waMeUrl` en `RecetaResponse` + botón en el front. Detalle en DIARIO 2026-07-28. |
+| 2.4 | ✅ **HECHO (2026-08-04) — WhatsApp por link `wa.me`** (decisión 2026-07-28): el nutri manda el mensaje a mano desde su WhatsApp; **NO** Cloud API (sin WABA ni template de Meta). Se sacaron `integrations/whatsapp/`, el canal `WHATSAPP` de la cola (migración `V010`), la config `WHATSAPP_*` y el proveedor del panel de integraciones; se agregó `waMeUrl` en `RecetaResponse` (`WaMeLinkBuilder`) + botón en receta emitida y en el detalle. El único canal automático es el email. |
 | 2.5 | Switch a la tienda TBC real + prueba end-to-end real (receta → mail/wa → compra de prueba → APLICADA) |
 | 2.6 | Fran (desde el 12): pulido de las pantallas con data real, admin integraciones, F.6 si quedó pendiente |
 

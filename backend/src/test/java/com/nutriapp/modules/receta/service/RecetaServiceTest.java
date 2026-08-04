@@ -53,6 +53,7 @@ class RecetaServiceTest {
     @Mock CuponSyncService cuponSyncService;
     @Mock RecetaProperties props;
     @Mock ConfiguracionService configuracionService;
+    @Mock WaMeLinkBuilder waMeLinkBuilder;
 
     @InjectMocks RecetaService service;
 
@@ -136,6 +137,17 @@ class RecetaServiceTest {
         service.reenviar(recetaId);
 
         verify(notificacionService).reencolar(r, paciente);
+    }
+
+    /** 2.4: el link de WhatsApp viaja en el response — es la vía de envío manual del cupón. */
+    @Test
+    void elResponse_exponeElLinkWaMe() {
+        Receta r = receta(EstadoReceta.PENDIENTE);
+        Paciente paciente = new Paciente();
+        when(pacienteRepository.findById(pacienteId)).thenReturn(Optional.of(paciente));
+        when(waMeLinkBuilder.forReceta(r, paciente)).thenReturn("https://wa.me/5491144443333?text=hola");
+
+        assertThat(service.get(recetaId).waMeUrl()).isEqualTo("https://wa.me/5491144443333?text=hola");
     }
 
     @Test

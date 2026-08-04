@@ -56,8 +56,7 @@ class TiendaNubeWebhookServiceTest {
         IntegrationsProperties props = new IntegrationsProperties(
                 new IntegrationsProperties.Contabilium("stub", null, null, null),
                 new IntegrationsProperties.TiendaNube("stub", null, null, null, null, null, null, SECRET),
-                new IntegrationsProperties.Mail("stub", null, null),
-                new IntegrationsProperties.WhatsApp("stub", null, null, null));
+                new IntegrationsProperties.Mail("stub", null, null));
         service = new TiendaNubeWebhookService(
                 eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, parametrosNegocioService, objectMapper);
         when(recetaRepository.save(any(Receta.class))).thenAnswer(inv -> inv.getArgument(0));

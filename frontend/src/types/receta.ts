@@ -27,8 +27,10 @@ export interface RecetaItem {
   indicaciones?: string;
 }
 
+// 2.4: EMAIL es el único canal automático. WhatsApp no se encola: sale por el link wa.me
+// (waMeUrl) que la nutricionista abre para mandar el mensaje ella misma.
 export interface RecetaNotificacion {
-  canal: "EMAIL" | "WHATSAPP";
+  canal: "EMAIL";
   estado: string; // QUEUED | SENT | FAILED
   sentAt: string | null;
 }
@@ -53,6 +55,9 @@ export interface RecetaResponse {
   emitidaAt: string;
   venceAt: string;
   cuponSyncEstado: string; // PENDIENTE mientras la integración esté en stub
+  // 2.4: link wa.me con el mensaje ya armado, para mandar la receta por WhatsApp a mano.
+  // null cuando no corresponde: receta que ya no está PENDIENTE o paciente sin teléfono.
+  waMeUrl?: string | null;
   notificaciones?: RecetaNotificacion[];
   conversion?: RecetaConversion | null;
 }

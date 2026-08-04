@@ -15,7 +15,8 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
         </div>
         <h1>Receta emitida</h1>
         <p className="muted">
-          {receta.paciente.nombre} {receta.paciente.apellido} recibe el código por mail y WhatsApp.
+          {receta.paciente.nombre} {receta.paciente.apellido} recibe el código por mail.
+          {receta.waMeUrl && " Mandáselo también por WhatsApp desde el botón de abajo."}
         </p>
 
         <div className="exito__codigo">
@@ -43,7 +44,20 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
           ))}
         </ul>
         <div className="exito__actions">
-          <button className="btn btn--primary" onClick={onNueva}>
+          {/* 2.4: el WhatsApp lo manda la nutricionista, no el sistema — por eso es la acción
+              principal de esta pantalla y no una opción escondida en el detalle. */}
+          {receta.waMeUrl && (
+            <a
+              className="btn btn--whatsapp"
+              href={receta.waMeUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Icon name="send" size={16} />
+              Enviar por WhatsApp
+            </a>
+          )}
+          <button className="btn btn--ghost" onClick={onNueva}>
             Emitir otra receta
           </button>
           <Link className="btn btn--ghost" to="/recetas">
@@ -68,9 +82,9 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
           <Icon name="send" size={18} />
         </span>
         <p className="muted" style={{ margin: 0 }}>
-          El código se envía al paciente por <strong style={{ color: "var(--text)" }}>mail</strong> y{" "}
-          <strong style={{ color: "var(--text)" }}>WhatsApp</strong>. Podés reenviarlas desde el
-          detalle de la receta.
+          El <strong style={{ color: "var(--text)" }}>mail</strong> sale solo (podés reenviarlo desde
+          el detalle de la receta). El <strong style={{ color: "var(--text)" }}>WhatsApp</strong> lo
+          mandás vos: el botón abre el chat con el paciente y el mensaje ya escrito.
         </p>
       </div>
     </section>

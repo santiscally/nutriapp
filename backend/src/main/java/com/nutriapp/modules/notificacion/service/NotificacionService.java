@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Alta, consulta y control de estado de las notificaciones de receta. El envío real (I/O de
- * mail/WhatsApp) lo hace el {@link NotificacionDispatcher} FUERA de transacción; acá viven
+ * Alta, consulta y control de estado de las notificaciones de receta. El envío real (I/O de mail)
+ * lo hace el {@link NotificacionDispatcher} FUERA de transacción; acá viven
  * las operaciones de DB, cada una en su transacción corta. La emisión de receta sólo se acopla
  * al insert de estas filas (misma tx, respeta la FK), nunca a las integraciones externas.
  */
@@ -29,12 +29,16 @@ public class NotificacionService {
     private final NotificacionRepository repo;
     private final NotificacionTemplates templates;
 
-    /** Encola EMAIL + WhatsApp para una receta recién emitida. Idempotente por (receta, canal). */
+    /**
+     * Encola el email de una receta recién emitida. Idempotente por (receta, canal).
+     *
+     * <p>El email es el único canal automático: WhatsApp lo manda la nutricionista a mano por un
+     * link {@code wa.me} (2.4), así que no hay nada que encolar ni que reintentar.
+     */
     @Transactional
     public void encolarEmisionReceta(Receta receta, Paciente paciente) {
         List<Notificacion> existentes = repo.findByRecetaIdAndDeletedAtIsNullOrderByCanalAsc(receta.getId());
         upsertQueued(existentes, receta, paciente, CanalNotificacion.EMAIL);
-        upsertQueued(existentes, receta, paciente, CanalNotificacion.WHATSAPP);
     }
 
     /** Reenviar: vuelve a poner en cola (reset de intentos) reusando las filas por (receta, canal). */
@@ -68,15 +72,9 @@ public class NotificacionService {
 
         n.setRecetaId(receta.getId());
         n.setCanal(canal);
-        if (canal == CanalNotificacion.EMAIL) {
-            n.setDestinatario(paciente.getEmail());
-            n.setAsunto(templates.asuntoEmail(receta));
-            n.setCuerpo(templates.cuerpoEmail(receta, paciente));
-        } else {
-            n.setDestinatario(paciente.getWhatsapp());
-            n.setAsunto(null);
-            n.setCuerpo(templates.cuerpoWhatsApp(receta, paciente));
-        }
+        n.setDestinatario(paciente.getEmail());
+        n.setAsunto(templates.asuntoEmail(receta));
+        n.setCuerpo(templates.cuerpoEmail(receta, paciente));
         n.setEstado(EstadoNotificacion.QUEUED);
         n.setIntentos(0);
         n.setLastError(null);

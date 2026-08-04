@@ -9,9 +9,6 @@ import com.nutriapp.integrations.mail.StubMailSender;
 import com.nutriapp.integrations.tiendanube.HttpTiendaNubeClient;
 import com.nutriapp.integrations.tiendanube.StubTiendaNubeClient;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
-import com.nutriapp.integrations.whatsapp.CloudApiWhatsAppSender;
-import com.nutriapp.integrations.whatsapp.StubWhatsAppSender;
-import com.nutriapp.integrations.whatsapp.WhatsAppSender;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +16,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 /**
  * Registra el adapter de cada integración según {@code nutriapp.integrations.<x>.mode}:
+ * (WhatsApp ya no está: se manda por link {@code wa.me}, no por API — tarea 2.4.)
  * {@code stub} (default) o {@code live}. Flip por env sin tocar código de negocio (CLAUDE.md
  * "Regla de oro"). Las impls {@code Http*}/{@code Smtp*}/{@code CloudApi*} sólo se instancian en
  * modo {@code live}: en {@code stub} nunca se construyen (evita exigir credenciales/SMTP en dev).
@@ -55,13 +53,5 @@ public class IntegrationsConfig {
             return new SmtpMailSender(delegate, props.mail());
         }
         return new StubMailSender();
-    }
-
-    @Bean
-    public WhatsAppSender whatsAppSender(IntegrationsProperties props) {
-        if (IntegrationsProperties.isLive(props.whatsapp().mode())) {
-            return new CloudApiWhatsAppSender(props.whatsapp());
-        }
-        return new StubWhatsAppSender();
     }
 }

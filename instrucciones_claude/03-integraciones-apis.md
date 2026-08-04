@@ -15,7 +15,6 @@ nutriapp:
     contabilium: { mode: ${CONTABILIUM_MODE:stub}, client-id: ${CONTABILIUM_CLIENT_ID:}, client-secret: ${CONTABILIUM_CLIENT_SECRET:} }
     tiendanube:  { mode: ${TIENDANUBE_MODE:stub}, store-id: ${TIENDANUBE_STORE_ID:}, access-token: ${TIENDANUBE_ACCESS_TOKEN:}, client-secret: ${TIENDANUBE_CLIENT_SECRET:} }
     mail:        { mode: ${MAIL_MODE:stub}, ... }
-    whatsapp:    { mode: ${WHATSAPP_MODE:stub}, ... }
 ```
 
 - Interfaz (port) + `Http<X>Client` (real) + `Stub<X>Client` (lanza `IntegrationUnavailableException` con
@@ -136,17 +135,25 @@ Leaky bucket 40 req / drenaje 2 req/s. Headers `x-rate-limit-*`; ante 429 backof
 - Template de receta: HTML con logo inline por **CID** (no data-URI — Gmail los bloquea; lección imedba),
   datos de la receta, código de descuento grande, link a la tienda, vencimiento.
 
-## 4. WhatsApp (canal de entrega de recetas)
+## 4. WhatsApp (canal de entrega de recetas) — **RESUELTO: link `wa.me`, no API**
 
-- Proveedor **TBD — a cargo del cliente**. Opciones (decidir con Gon en Fase 0/1):
-  1. **Meta WhatsApp Business Cloud API** (oficial, requiere WABA + número verificado + template pre-aprobado;
-     gratis hasta cierto volumen, luego por conversación) ← recomendada.
-  2. Twilio WhatsApp (más caro, onboarding más simple).
-  3. **Fallback sin costo/aprobación**: link `wa.me/<nro>?text=<receta>` que el nutricionista toca para
-     mandarlo él mismo desde su WhatsApp (patrón imedba: "WhatsApp SIEMPRE manual"). Sirve de plan B si el
-     WABA se demora — el envío automático es lo presupuestado, pero este fallback desbloquea la demo.
-- Diseño: port `WhatsAppSender.send(to, templateParams)` + `CloudApiWhatsAppSender` + `StubWhatsAppSender`.
-  El mensaje va como **template** (los mensajes iniciados por negocio requieren template aprobado por Meta).
+**Decisión 2026-07-28, implementada el 2026-08-04 (tarea 2.4).** El envío por WhatsApp es **manual**:
+el backend devuelve `waMeUrl` en el `RecetaResponse` y la nutricionista toca el botón, que le abre el
+chat con la paciente con el mensaje ya escrito (código, descuento y vencimiento). Es la opción 3 de las
+que estaban sobre la mesa, y quedó como definitiva:
+
+- **No hace falta WABA**, ni número de empresa verificado, ni template aprobado por Meta, ni el costo por
+  conversación. Nada de eso dependía de nosotros: dependía de trámites del cliente.
+- El mensaje sale del número que la paciente ya conoce, que es como venían trabajando.
+- El costo es que el envío **deja de ser garantizable por el sistema**: no hay acuse ni reintento. Por eso
+  WhatsApp ya no es un canal de la cola de notificaciones ni una integración con estado — lo que no se
+  envía solo, no se encola. El canal automático (con cola, reintentos y estado) es el **email**.
+
+Implementación: `WaMeLinkBuilder` (`modules/receta/service/`) arma
+`https://wa.me/<E164 sin +>?text=<mensaje url-encoded>`. Sólo devuelve link para recetas **PENDIENTE**
+(una anulada o vencida daría un código muerto) y con teléfono utilizable. Se borraron
+`integrations/whatsapp/**`, el valor `WHATSAPP` de `CanalNotificacion` (migración `V010`) y la config
+`WHATSAPP_*`.
 
 ## 5. Resumen de modos por fase
 
@@ -156,4 +163,4 @@ Leaky bucket 40 req / drenaje 2 req/s. Headers `x-rate-limit-*`; ante 429 backof
 | Cupón por receta | código local, `cupon_sync=PENDIENTE` | POST /coupons real + `CuponSyncJob` drena pendientes |
 | Detección de compra | (nada llega; se puede simular insertando en `webhook_events`) | webhook `order/paid` + polling respaldo |
 | Email | cola `QUEUED`, stub loguea | SMTP SES (o el proveedor que elija el cliente) |
-| WhatsApp | cola `QUEUED`, stub loguea | Cloud API con template aprobado (o fallback wa.me) |
+| WhatsApp | — | link `wa.me` en el response, envío manual de la nutricionista (2.4). Sin cola ni proveedor |

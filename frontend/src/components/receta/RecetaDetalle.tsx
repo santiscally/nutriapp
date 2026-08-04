@@ -123,18 +123,30 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
 
           {esPendiente && (
             <div className="detalle__actions">
+              {/* 2.4: "Reenviar" sólo reencola el mail. El WhatsApp lo manda la nutricionista
+                  desde su teléfono, así que acá va el link, no un botón que dispare un envío. */}
+              {data.waMeUrl && (
+                <a
+                  className="btn btn--sm btn--whatsapp"
+                  href={data.waMeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Enviar por WhatsApp
+                </a>
+              )}
               <button
                 className="btn btn--sm btn--ghost"
                 disabled={busy}
                 onClick={() =>
                   run(
                     reenviarReceta,
-                    "¿Reenviar las notificaciones de esta receta?",
-                    "Notificaciones reenviadas.",
+                    "¿Reenviar el mail de esta receta?",
+                    "Mail reenviado.",
                   )
                 }
               >
-                Reenviar
+                Reenviar mail
               </button>
               <button
                 className="btn btn--sm btn--danger"

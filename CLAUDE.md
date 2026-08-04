@@ -2,8 +2,9 @@
 
 Webapp de **recetas digitales para nutricionistas**: el nutricionista emite una receta con descuento
 sobre productos del catálogo del cliente (ERP Contabilium / tienda TiendaNube), el paciente la recibe
-por mail + WhatsApp con un código de descuento único, compra en la tienda online y la receta queda
-trazada (pendiente → aplicada / vencida). Cliente: Gon (jeianell / tienda TBC).
+por mail —y por WhatsApp, que se lo manda la nutricionista con un link `wa.me`— con un código de
+descuento único, compra en la tienda online y la receta queda trazada (pendiente → aplicada /
+vencida). Cliente: Gon (jeianell / tienda TBC).
 
 ## Propiedad del repo
 
@@ -21,14 +22,14 @@ Si una tarea implica modificar `frontend/` sin pedido explícito, **parar y avis
 - Auth: Keycloak 25 (OIDC/JWT). Realm `nutriapp`. Clients `nutriapp-frontend` (public SPA) y `nutriapp-backend` (confidential resource server).
 - Frontend: React 19 / TypeScript / Vite (propiedad de Fran). Sin librería de estado ni cliente HTTP externo: fetch nativo envuelto en `api/client.ts` + hook `useFetch` (patrón imedba).
 - Infra: Docker + Docker Compose (dev) + override prod con nginx TLS. Hosting a cargo del cliente.
-- Integraciones: Contabilium (ERP), TiendaNube (tienda + cupones + webhooks), email (proveedor TBD), WhatsApp (proveedor TBD). **Todas detrás de adapters con modo stub** — ver regla de oro.
+- Integraciones: Contabilium (ERP), TiendaNube (tienda + cupones + webhooks), email (proveedor TBD). **Todas detrás de adapters con modo stub** — ver regla de oro. WhatsApp **no** es una integración: es un link `wa.me` que abre la nutricionista (decisión 2026-07-28, tarea 2.4).
 
 ## Regla de oro: nada mockeado
 
 1. **Datos**: NUNCA datos hardcodeados en memoria ni fixtures en el front. Si la info no existe todavía,
    se carga en la DB por migración Flyway de seed o script SQL. El front SIEMPRE pega al backend real
    (no existe `VITE_USE_MOCK` en este proyecto — decisión explícita).
-2. **APIs externas**: cada integración (Contabilium, TiendaNube, email, WhatsApp) se implementa completa
+2. **APIs externas**: cada integración (Contabilium, TiendaNube, email) se implementa completa
    contra su API documentada (cliente HTTP real, DTOs, manejo de errores), pero se activa por configuración:
    - `stub` (default en dev): el adapter responde un error controlado tipo "integración no conectada"
      y el flujo degrada elegante — el cupón queda `PENDIENTE_SYNC`, la notificación queda `QUEUED`.
@@ -75,7 +76,7 @@ Plan completo en `instrucciones_claude/04-plan-de-fases.md`. Resumen:
 
 0. Cimientos (17–21 jul): infra + contrato API + esqueleto back con seeds + **sprint frontend de Fran pre-vacaciones** ← **en curso**
 1. Backend completo con stubs (21 jul – 8 ago, Santi solo — Fran de vacaciones hasta ~12 ago)
-2. Integraciones reales (11 – 22 ago): TiendaNube, Contabilium, email, WhatsApp
+2. Integraciones reales (11 – 22 ago): TiendaNube, Contabilium, email (WhatsApp ✅ resuelto por link `wa.me`)
 3. Pulido + hardening + deploy (24 ago – 11 sep)
 
 ## Coordinación entre los dos Claudes (Santi + Fran)

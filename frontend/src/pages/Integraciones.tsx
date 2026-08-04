@@ -16,7 +16,6 @@ const NOMBRE: Record<string, string> = {
   contabilium: "Contabilium · ERP",
   tiendanube: "TiendaNube · tienda",
   mail: "Email",
-  whatsapp: "WhatsApp",
 };
 
 function DisponibleBadge({ disponible }: { disponible: boolean | null }) {

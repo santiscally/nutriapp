@@ -14,8 +14,27 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-03** — Ola 3 (maestro de artículos) hecha del lado backend; ver el bloque
-🆕 más abajo. Documento nuevo: `07-maestro-articulos-y-catalogo.md`.
+**Última actualización: 2026-08-04** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)** y **commiteadas
+las Olas 1–3**, que estaban enteras en el working tree (5 commits temáticos, sin push).
+
+**🆕 2.4 — WhatsApp por link `wa.me` CERRADA (2026-08-04), back y front.** El envío por WhatsApp pasa a ser
+**manual**: `RecetaResponse` trae `waMeUrl` y la nutricionista toca un botón que le abre el chat con la
+paciente con el mensaje ya escrito. Se **sacó** WhatsApp como integración: `integrations/whatsapp/**`, el
+canal `WHATSAPP` de la cola (migración **`V010`**, borra las filas y deja el CHECK en `EMAIL`), la config
+`WHATSAPP_*` y el proveedor del panel (`/admin/integraciones/estado` devuelve **3**). **El único canal
+automático es el email.** `mvn verify` **147 unit + 1 IT**; front `tsc`/`oxlint`/`build` verdes. Verificado e2e contra
+el stack: migración aplicada, link correcto en PENDIENTE y ausente en las demás, emisión nueva con una sola
+notificación EMAIL. Motivo: el envío automático exigía WABA + template aprobado por Meta (trámites del
+cliente) y costo por conversación. Detalle y decisiones en DIARIO; `03-integraciones-apis.md §4` reescrito.
+
+**⚠️ Contrato — Fran tiene que espejar:** `RecetaResponse` suma **`waMeUrl?: string | null`** (aditivo),
+`RecetaNotificacion.canal` ya sólo puede ser `"EMAIL"`, y el panel de integraciones tiene 3 proveedores.
+Las pantallas y los types del front ya quedaron actualizados de mi lado.
+
+**📦 Git:** las Olas 1, 2 y 3 estaban **sin commitear** (127 archivos). Quedaron en 5 commits temáticos
+(backend olas 1-2 / backend ola 3 / frontend / infra / docs) + el de 2.4. **Sin push todavía.** Lo único
+que sigue fuera de git es la transcripción de la call (`transcripcion-2026-07-31-call-gon-leo.pdf|.txt`):
+material del cliente, misma política que el presupuesto y el Excel maestro — decidir si se commitea.
 
 **Fase actual:** Fase 1 — Backend completo con stubs. **✅ COMPLETA (1.1–1.8), 2026-07-27.** Núcleo + webhook (1.4) + clientes HTTP reales (1.6) + estadísticas + config de negocio por admin + **integración Testcontainers (1.7)** + **CI (1.8)**. Arrancada Fase 2: **resiliencia 2.7–2.9 en stub (2026-07-27)**. `mvn verify` = **72 unit + 1 IT, BUILD SUCCESS**.
 

@@ -18,7 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Arma el estado de las 4 integraciones externas para el panel de admin (tarea 2.7). Combina:
+ * Arma el estado de las 3 integraciones externas para el panel de admin (tarea 2.7; WhatsApp salió
+ * de la lista al pasar a link manual — 2.4). Combina:
  * <ul>
  *   <li>modo (stub/live) de {@link IntegrationsProperties},</li>
  *   <li>trabajo pendiente durable desde la DB (cupones sin sync / notifs QUEUED),</li>
@@ -43,8 +44,7 @@ public class IntegracionesEstadoService {
         return new IntegracionesEstadoResponse(List.of(
                 contabilium(),
                 tiendanube(),
-                mail(),
-                whatsapp()));
+                mail()));
     }
 
     private IntegracionEstadoResponse contabilium() {
@@ -69,14 +69,6 @@ public class IntegracionesEstadoService {
         long pendientes = notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
                 EstadoNotificacion.QUEUED, CanalNotificacion.EMAIL);
         return build("mail", modo, h, pendientes, h.ultimoExitoAt(), null, null);
-    }
-
-    private IntegracionEstadoResponse whatsapp() {
-        String modo = props.whatsapp().mode();
-        Health h = health.get(Proveedor.WHATSAPP);
-        long pendientes = notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
-                EstadoNotificacion.QUEUED, CanalNotificacion.WHATSAPP);
-        return build("whatsapp", modo, h, pendientes, h.ultimoExitoAt(), null, null);
     }
 
     private IntegracionEstadoResponse build(String proveedor, String modo, Health h,

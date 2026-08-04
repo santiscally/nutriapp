@@ -55,6 +55,7 @@ public class RecetaService {
     private final CuponSyncService cuponSyncService;
     private final RecetaProperties props;
     private final ParametrosNegocioService parametrosNegocioService;
+    private final WaMeLinkBuilder waMeLinkBuilder;
 
     @Transactional(readOnly = true)
     public Page<RecetaResponse> search(EstadoReceta estado, Pageable pageable) {
@@ -70,7 +71,7 @@ public class RecetaService {
     /**
      * Emisión de receta. En Fase 0 crea la receta + items + código único e intenta registrar
      * el cupón en TiendaNube; en modo stub la excepción se captura y el cupón queda PENDIENTE
-     * de sync (la receta se emite igual). Notificaciones (mail/WhatsApp) y webhook: Fase 1.
+     * de sync (la receta se emite igual). Notificaciones (mail) y webhook: Fase 1.
      */
     @Transactional
     public RecetaResponse emitir(RecetaCreateRequest req) {
@@ -114,7 +115,7 @@ public class RecetaService {
         Receta saved = repo.save(receta);
         // Encolar sólo inserta filas de notificación (misma tx, respeta la FK a recetas). El
         // desacople de las integraciones externas lo da el dispatcher async, NO este insert:
-        // ninguna llamada a mail/WhatsApp/TiendaNube ocurre en la ruta de emisión.
+        // ninguna llamada a mail/TiendaNube ocurre en la ruta de emisión.
         notificacionService.encolarEmisionReceta(saved, paciente);
         log.info("Receta {} emitida por nutri {} (cupon: {}) — notificaciones encoladas",
                 saved.getCodigo(), nutri.getEmail(), saved.getCuponSyncEstado());
@@ -235,6 +236,7 @@ public class RecetaService {
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),
                 receta.getCuponSyncEstado().mensajeDegradacion(),
+                waMeLinkBuilder.forReceta(receta, paciente),
                 conNotificaciones ? notificacionService.forReceta(receta.getId()) : null,
                 conversion);
     }

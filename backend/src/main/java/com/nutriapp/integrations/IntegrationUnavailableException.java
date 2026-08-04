@@ -31,7 +31,6 @@ public class IntegrationUnavailableException extends RuntimeException {
                     + "Lo pendiente se reintenta automáticamente.";
             case "contabilium" -> "El ERP (Contabilium) no está conectado en este momento.";
             case "mail" -> "El servicio de email no está disponible en este momento.";
-            case "whatsapp" -> "El servicio de WhatsApp no está disponible en este momento.";
             default -> "La integración " + proveedor + " no está disponible en este momento.";
         };
     }

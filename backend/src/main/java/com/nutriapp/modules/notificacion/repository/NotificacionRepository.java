@@ -17,6 +17,6 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, UUID
     List<Notificacion> findByEstadoAndIntentosLessThanAndDeletedAtIsNullOrderByCreatedAtAsc(
             EstadoNotificacion estado, int maxIntentos, Pageable pageable);
 
-    /** Pendientes por canal para el estado de integraciones (2.7): notifs QUEUED de mail/WhatsApp. */
+    /** Pendientes por canal para el estado de integraciones (2.7): notifs QUEUED de mail. */
     long countByEstadoAndCanalAndDeletedAtIsNull(EstadoNotificacion estado, CanalNotificacion canal);
 }

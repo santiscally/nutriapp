@@ -855,6 +855,19 @@ select {
 .btn--danger { background: transparent; border-color: #feb2b2; color: var(--danger); }
 .btn--danger:hover:not(:disabled) { background: #fff5f5; }
 
+/* 2.4: enviar la receta por WhatsApp es un paso manual de la nutricionista, no algo que hace el
+   sistema. Va con el verde de la marca para que se reconozca de un vistazo y no se saltee. El
+   texto va oscuro: blanco sobre este verde no llega al contraste mínimo. */
+.btn--whatsapp {
+  background: #25d366;
+  color: #07351d;
+  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.28);
+}
+.btn--whatsapp:hover:not(:disabled) {
+  background: #1eb958;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.34);
+}
+
 /* Detalle receta */
 .detalle__head {
   display: flex;

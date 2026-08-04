@@ -171,11 +171,6 @@ nutriapp:
       # Remitente del SmtpMailSender (Fase 2). El SMTP en sí va en spring.mail.* (arriba).
       from-address: ${MAIL_FROM_ADDRESS:no-reply@nutriapp.local}
       from-name: ${MAIL_FROM_NAME:NutriApp}
-    whatsapp:
-      mode: ${WHATSAPP_MODE:stub}
-      base-url: ${WHATSAPP_BASE_URL:https://graph.facebook.com/v21.0}
-      phone-number-id: ${WHATSAPP_PHONE_NUMBER_ID:}
-      access-token: ${WHATSAPP_ACCESS_TOKEN:}
 
 springdoc:
   swagger-ui:

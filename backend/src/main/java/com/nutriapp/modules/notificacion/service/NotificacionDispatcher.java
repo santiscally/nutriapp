@@ -4,9 +4,7 @@ import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry.Proveedor;
 import com.nutriapp.integrations.mail.MailSender;
-import com.nutriapp.integrations.whatsapp.WhatsAppSender;
 import com.nutriapp.modules.notificacion.NotificacionProperties;
-import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.service.NotificacionService.NotificacionPendiente;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +13,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Drena la cola de notificaciones QUEUED contra los ports de mail/WhatsApp.
+ * Drena la cola de notificaciones QUEUED contra el port de mail (único canal automático desde
+ * que WhatsApp pasó a ser un link manual — ver {@code WaMeLinkBuilder}).
  * <ul>
  *   <li>Éxito → SENT.</li>
  *   <li>{@link IntegrationUnavailableException} (stub/proveedor caído) → sigue QUEUED,
@@ -33,7 +32,6 @@ public class NotificacionDispatcher {
 
     private final NotificacionService service;
     private final MailSender mailSender;
-    private final WhatsAppSender whatsAppSender;
     private final NotificacionProperties props;
     private final IntegrationHealthRegistry health;
 
@@ -48,23 +46,18 @@ public class NotificacionDispatcher {
 
         int enviadas = 0, sinConexion = 0, fallidas = 0;
         for (NotificacionPendiente n : lote) {
-            Proveedor proveedor = n.canal() == CanalNotificacion.EMAIL ? Proveedor.MAIL : Proveedor.WHATSAPP;
             try {
-                if (n.canal() == CanalNotificacion.EMAIL) {
-                    mailSender.send(n.destinatario(), n.asunto(), n.cuerpo());
-                } else {
-                    whatsAppSender.send(n.destinatario(), n.cuerpo());
-                }
+                mailSender.send(n.destinatario(), n.asunto(), n.cuerpo());
                 service.marcarEnviada(n.id());
-                health.registrarExito(proveedor);
+                health.registrarExito(Proveedor.MAIL);
                 enviadas++;
             } catch (IntegrationUnavailableException ex) {
                 service.marcarSinConexion(n.id(), ex.getMessage());
-                health.registrarError(proveedor, ex.getMessage());
+                health.registrarError(Proveedor.MAIL, ex.getMessage());
                 sinConexion++;
             } catch (Exception ex) {
                 service.marcarFallo(n.id(), ex.getMessage(), props.maxIntentos());
-                health.registrarError(proveedor, ex.getMessage());
+                health.registrarError(Proveedor.MAIL, ex.getMessage());
                 fallidas++;
             }
         }

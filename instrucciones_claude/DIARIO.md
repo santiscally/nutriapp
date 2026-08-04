@@ -32,6 +32,58 @@
 
 ## Entradas
 
+## 2026-08-04 — Santi — backend+frontend+db (2.4: WhatsApp por link `wa.me`, se saca la Cloud API)
+**Qué:** Ejecutada la tarea 2.4, que estaba decidida desde el 2026-07-28 y anotada sin tocar código. El envío
+por WhatsApp pasa a ser **manual**: el backend devuelve `waMeUrl` en el `RecetaResponse` y la nutricionista
+toca un botón que le abre el chat con la paciente con el mensaje ya escrito. `mvn verify` **147 unit + 1 IT**
+(141 → +8 del builder, +1 de wiring, −3 del test de la Cloud API que se borró); el IT confirma además que las
+10 migraciones aplican limpias sobre una Postgres nueva. Front `tsc`/`oxlint`/`build` verdes.
+
+**Por qué:** el envío automático exigía WABA, número de empresa verificado y template aprobado por Meta —
+trámites del cliente, no trabajo nuestro— más costo por conversación. El link no necesita nada de eso y el
+mensaje sale del número que la paciente ya conoce.
+
+**Lo que se sacó** (WhatsApp dejó de existir como integración, no sólo como adapter):
+- `integrations/whatsapp/**` (port + `CloudApiWhatsAppSender` + stub) y su test.
+- El valor `WHATSAPP` de `CanalNotificacion`, la rama del `NotificacionDispatcher` y el encolado en
+  `NotificacionService`. **El único canal automático es el email.**
+- El proveedor `whatsapp` de `GET /admin/integraciones/estado` (quedan 3), `IntegrationsProperties.WhatsApp`,
+  el `Proveedor.WHATSAPP` del health registry y la config `WHATSAPP_*` de `application.yml`/compose/`.env.example`.
+- **Migración `V010`**: borra las filas `canal='WHATSAPP'` y deja el CHECK en `('EMAIL')`.
+
+**Decisiones que vale la pena registrar:**
+1. **El borrado de las notificaciones WHATSAPP es físico**, contra la regla de soft-delete del proyecto. Una
+   fila soft-deleted con un valor que el enum ya no tiene igual revienta cualquier lectura que no filtre por
+   `deleted_at` (`findById`, `findAll`): la bomba queda armada esperando. Es una cola operativa, no un
+   registro de negocio, y en stub nunca salió un mensaje. La receta, que es el dato real, no se toca.
+2. **`waMeUrl` sólo viene si la receta está `PENDIENTE`** y el paciente tiene teléfono utilizable. Una
+   ANULADA o VENCIDA daría un código muerto. El front decide mostrar el botón por la presencia del campo,
+   sin repetir la regla de estados.
+3. **Espacios como `%20`, no como `+`.** `URLEncoder` es form-encoding y manda `+`; algunos clientes de
+   WhatsApp lo muestran literal en el mensaje. Hay un test que lo fija.
+4. **El botón es la acción principal de la pantalla de éxito** (verde de marca), y "Emitir otra receta" bajó
+   a secundaria: mandar el WhatsApp dejó de ser algo que hace el sistema y pasó a ser un paso que si la
+   nutricionista se saltea, no ocurre. En el detalle de receta el botón convive con "Reenviar mail"
+   (renombrado: reenviar ya no manda WhatsApp).
+
+**Verificado e2e** contra el stack real (back `:8088`): `V010` aplicada (`success=t`), CHECK quedó en
+`canal = 'EMAIL'`, 0 filas WHATSAPP; una receta PENDIENTE devuelve el link y las LIQUIDADAS no; el mensaje
+decodificado sale correcto con acentos y emoji ("Hola Lucía! 🌱 … Código: *RX-HVUBRK* (válido hasta el
+30/08/2026)"); emisión nueva → `waMeUrl` + una sola notificación EMAIL; el panel de integraciones devuelve
+3 proveedores.
+
+**Pendiente menor:** el mensaje no lleva link a la tienda (no hay URL del storefront configurada en ningún
+lado; el mail tiene el mismo hueco). Se cierra en Fase 2 cuando esté la tienda real.
+
+**Impacto para el otro (Fran):** `RecetaResponse` suma **`waMeUrl?: string | null`** (aditivo);
+`RecetaNotificacion.canal` ya sólo puede ser `"EMAIL"`; `GET /admin/integraciones/estado` devuelve 3
+proveedores. Los types espejo y las pantallas (`RecetaExito`, `RecetaDetalle`, `Integraciones`) ya quedaron
+actualizados.
+**Refs:** `modules/receta/service/WaMeLinkBuilder.java` (nuevo) + su test, `V010__notificaciones_solo_email.sql`,
+`RecetaResponse`, `NotificacionService`/`Dispatcher`/`Templates`, `IntegrationsConfig`/`Properties`,
+`IntegracionesEstadoService`, `frontend/src/components/receta/RecetaExito.tsx` + `RecetaDetalle.tsx`,
+`03-integraciones-apis.md §4`.
+
 ## 2026-08-03 — Santi — frontend+infra (CORS del puerto 5174 + registro en una sola pantalla)
 **Qué:** Dos cosas que salieron de probar la app en vivo. Front `tsc`/`oxlint`/`build` verdes.
 

@@ -48,26 +48,22 @@ class NotificacionServiceTest {
         paciente.setWhatsapp("+5491144443333");
         when(templates.asuntoEmail(any())).thenReturn("asunto");
         when(templates.cuerpoEmail(any(), any())).thenReturn("cuerpo mail");
-        when(templates.cuerpoWhatsApp(any(), any())).thenReturn("cuerpo wa");
     }
 
+    /** 2.4: el único canal automático es el email — WhatsApp lo manda la nutricionista por wa.me. */
     @Test
-    void encolar_creaEmailYWhatsappEnQueued() {
+    void encolar_creaSoloElEmailEnQueued() {
         when(repo.findByRecetaIdAndDeletedAtIsNullOrderByCanalAsc(recetaId)).thenReturn(List.of());
 
         service.encolarEmisionReceta(receta, paciente);
 
         ArgumentCaptor<Notificacion> cap = ArgumentCaptor.forClass(Notificacion.class);
-        verify(repo, times(2)).save(cap.capture());
-        List<Notificacion> saved = cap.getAllValues();
-        assertThat(saved).extracting(Notificacion::getCanal)
-                .containsExactlyInAnyOrder(CanalNotificacion.EMAIL, CanalNotificacion.WHATSAPP);
-        assertThat(saved).allMatch(n -> n.getEstado() == EstadoNotificacion.QUEUED);
-        assertThat(saved).allMatch(n -> n.getRecetaId().equals(recetaId));
-        Notificacion email = saved.stream().filter(n -> n.getCanal() == CanalNotificacion.EMAIL).findFirst().orElseThrow();
+        verify(repo, times(1)).save(cap.capture());
+        Notificacion email = cap.getValue();
+        assertThat(email.getCanal()).isEqualTo(CanalNotificacion.EMAIL);
+        assertThat(email.getEstado()).isEqualTo(EstadoNotificacion.QUEUED);
+        assertThat(email.getRecetaId()).isEqualTo(recetaId);
         assertThat(email.getDestinatario()).isEqualTo("juan@example.com");
-        Notificacion wa = saved.stream().filter(n -> n.getCanal() == CanalNotificacion.WHATSAPP).findFirst().orElseThrow();
-        assertThat(wa.getDestinatario()).isEqualTo("+5491144443333");
     }
 
     @Test
@@ -84,8 +80,8 @@ class NotificacionServiceTest {
         // La fila EMAIL existente se reusa (mismo objeto), vuelta a QUEUED con intentos 0.
         assertThat(existenteEmail.getEstado()).isEqualTo(EstadoNotificacion.QUEUED);
         assertThat(existenteEmail.getIntentos()).isZero();
-        // Sólo se crea la de WhatsApp además de reusar la de email → 2 saves.
-        verify(repo, times(2)).save(any());
+        // Se reusa, no se crea otra fila → un solo save.
+        verify(repo, times(1)).save(any());
     }
 
     @Test
@@ -94,7 +90,7 @@ class NotificacionServiceTest {
         queued.setCanal(CanalNotificacion.EMAIL);
         queued.setEstado(EstadoNotificacion.QUEUED);
         Notificacion sent = new Notificacion();
-        sent.setCanal(CanalNotificacion.WHATSAPP);
+        sent.setCanal(CanalNotificacion.EMAIL);
         sent.setEstado(EstadoNotificacion.SENT);
         when(repo.findByRecetaIdAndDeletedAtIsNullOrderByCanalAsc(recetaId))
                 .thenReturn(List.of(queued, sent));

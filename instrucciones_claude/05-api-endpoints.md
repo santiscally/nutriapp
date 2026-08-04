@@ -105,11 +105,11 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 
 | Método | Path | Notas |
 |---|---|---|
-| POST | `/recetas` | emite: crea receta+items, cupón (o lo deja PENDIENTE de sync), encola mail+whatsapp |
+| POST | `/recetas` | emite: crea receta+items, cupón (o lo deja PENDIENTE de sync), encola el mail. WhatsApp no se encola: viene `waMeUrl` para mandarlo a mano |
 | GET | `/recetas?estado=&pacienteId=&desde=&hasta=&q=&page=&size=` | `q` busca por código o nombre de paciente |
 | GET | `/recetas/{id}` | detalle con items + notificaciones + datos de conversión |
 | POST | `/recetas/{id}/anular` | solo PENDIENTE; intenta borrar el cupón en TiendaNube |
-| POST | `/recetas/{id}/reenviar` | re-encola las notificaciones (solo PENDIENTE) |
+| POST | `/recetas/{id}/reenviar` | re-encola el mail (solo PENDIENTE). No manda WhatsApp: eso es el link `waMeUrl` |
 
 ```json
 // RecetaCreateRequest — el % de descuento NO viaja: es fijo global, lo define el admin (ver Configuración).
@@ -121,8 +121,10 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
   "items": [ { "producto": { ...ProductoResponse }, "cantidad": 1, "precioLista": 45000.00, "indicaciones": "..." } ],
   "descuentoPct": 30.0, "emitidaAt": "2026-07-17T15:30:00-03:00", "venceAt": "2026-08-16",
   "cuponSyncEstado": "PENDIENTE",
-  "notificaciones": [ { "canal": "EMAIL", "estado": "QUEUED", "sentAt": null },
-                       { "canal": "WHATSAPP", "estado": "QUEUED", "sentAt": null } ],
+  // 2.4: link para que la nutricionista mande la receta por SU WhatsApp. null si la receta ya no
+  // está PENDIENTE o el paciente no tiene teléfono utilizable. El único canal automático es el mail.
+  "waMeUrl": "https://wa.me/5491144443333?text=Hola%20Juan%21%20...",
+  "notificaciones": [ { "canal": "EMAIL", "estado": "QUEUED", "sentAt": null } ],
   "conversion": null }
 // cuando APLICADA:
 // "conversion": { "ordenNumero": 306, "ordenTotal": 31500.00, "paidAt": "...", "comisionPct": 10.0, "comisionMonto": 3150.00 }
@@ -181,7 +183,7 @@ Los % de **descuento** (fijo global, el nutricionista no lo elige) y **comisión
 
 | Método | Path | Notas |
 |---|---|---|
-| GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (4 proveedores: contabilium/tiendanube/mail/whatsapp). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail·whatsapp) / 0 (contabilium) |
+| GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (3 proveedores: contabilium/tiendanube/mail — whatsapp salió en 2.4, es un link manual). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail) / 0 (contabilium) |
 | POST | `/admin/tiendanube/resync-cupones` | reintenta el registro de cupones de recetas PENDIENTES sin sync → `{ "intentados":n, "sincronizados":n, "pendientes":n }`. En stub siguen pendientes |
 | POST | `/admin/contabilium/sync-productos` | fuerza la sync del catálogo por SKU → `{ "revisados":n, "creados":n, "actualizados":n, "sinCambios":n, "syncedAt":ts }`. **En stub → 503 "Contabilium no conectada"** |
 

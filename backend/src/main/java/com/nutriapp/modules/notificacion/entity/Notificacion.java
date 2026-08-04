@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Notificación encolada de una receta hacia el paciente (mail / WhatsApp).
+ * Notificación encolada de una receta hacia el paciente (hoy sólo mail).
  * Se crea en QUEUED al emitir; el {@code NotificacionDispatcher} la drena contra el
  * port correspondiente. En modo stub el envío degrada y la notificación sigue QUEUED
  * (se reintenta al pasar la integración a live) — nunca aborta la emisión de la receta.
