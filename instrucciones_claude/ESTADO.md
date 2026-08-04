@@ -202,7 +202,7 @@ día. Ahora crea su propio producto.)
   import no pisó nada del maestro.
 - **`categoria` cambió de significado**: antes era el Rubro de Contabilium ("Producto terminado" para el
   99,8 %), ahora es la del maestro (23 valores). El rubro se mudó a `rubro`/`rubro_id`.
-- **Buscador C-10 rankeado**: nombre → descripción → tag, y `q` también matchea código de barras.
+- **Buscador C-10 rankeado**: nombre → SKU → código de barras → descripción → tags (los tags al final, 2026-08-04).
   **C-11**: filtros de departamento/categoría/subcategoría/laboratorio + `taxonomia` en cascada.
 
 - **Frontend hecho** (`tsc`/`oxlint`/`build` verdes): card de import en `/integraciones` (examinar +

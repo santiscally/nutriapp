@@ -73,7 +73,7 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 
 | Método | Path | Notas |
 |---|---|---|
-| GET | `/productos?q=&marca=&departamento=&categoria=&subcategoria=&laboratorio=&tag=&conStock=&precioMin=&precioMax=&page=&size=` | `q` texto libre sobre nombre + descripción + SKU + **código de barras** + **tags** (unaccent), **rankeado**: nombre → descripción → tag. Los demás filtros son ILIKE contains; `tag` es exacto |
+| GET | `/productos?q=&marca=&departamento=&categoria=&subcategoria=&laboratorio=&tag=&conStock=&precioMin=&precioMax=&page=&size=` | `q` texto libre sobre nombre + descripción + SKU + **código de barras** + **tags** (unaccent), **rankeado**: nombre → SKU → código de barras → descripción → **tags (último)**. Los demás filtros son ILIKE contains; `tag` es exacto |
 | GET | `/productos/{id}` | |
 | GET | `/productos/filtros` | listas para los dropdowns + `taxonomia` (árbol departamento→categoría→subcategoría) para encadenarlos |
 

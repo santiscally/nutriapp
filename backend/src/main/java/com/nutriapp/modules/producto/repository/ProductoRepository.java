@@ -19,10 +19,20 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
      * Buscador del emisor de recetas.
      *
      * <p><b>{@code q}</b> (texto libre, sin acentos) matchea nombre, descripción, SKU, código de barras
-     * y <b>tags</b> del maestro — y el resultado sale <b>rankeado</b>: primero los que lo tienen en el
-     * nombre, después en la descripción, al final los que solo lo tienen en tag/código. Es el pedido
-     * textual de Gon (call 29:15): <i>"arriba los que tienen magnesio en el nombre, más abajo los que
-     * lo tienen en el tag"</i>. Un OR plano mezclaría todo.
+     * y <b>tags</b> del maestro. El resultado sale <b>rankeado</b> por dónde matcheó, en este orden:
+     *
+     * <ol start="0">
+     *   <li>nombre — lo que la persona está buscando casi siempre;</li>
+     *   <li>SKU — identificador exacto: si alguien lo tipea, sabe lo que quiere;</li>
+     *   <li>código de barras — ídem, y suele venir de un escáner;</li>
+     *   <li>descripción;</li>
+     *   <li><b>tags</b>, siempre al final.</li>
+     * </ol>
+     *
+     * <p>Los tags van últimos a propósito: son etiquetas de clasificación y muchas son genéricas
+     * ("bienestar", "salud") — un producto puede tener 20 y matchear por una que no describe lo que
+     * es. Coincide con el pedido de Gon (call 29:15): <i>"arriba los que tienen magnesio en el
+     * nombre, más abajo los que lo tienen en el tag"</i>. Un OR plano mezclaría todo.
      *
      * <p>Los tags entran por {@code EXISTS} y no por un JOIN: con JOIN, un producto con 20 tags que
      * matchean saldría 20 veces y rompería la paginación.
@@ -63,9 +73,12 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
                 WHEN :q IS NULL OR :q = '' THEN 0
                 WHEN LOWER(FUNCTION('unaccent', p.nombre))
                      LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%'))) THEN 0
+                WHEN LOWER(COALESCE(p.sku, ''))
+                     LIKE LOWER(CONCAT('%', :q, '%')) THEN 1
+                WHEN COALESCE(p.codigoBarras, '') LIKE CONCAT('%', :q, '%') THEN 2
                 WHEN LOWER(FUNCTION('unaccent', COALESCE(p.descripcion, '')))
-                     LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%'))) THEN 1
-                ELSE 2
+                     LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%'))) THEN 3
+                ELSE 4
               END,
               p.nombre
             """)
