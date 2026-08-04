@@ -335,7 +335,15 @@ button {
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
-.footer__marca { font-weight: 700; color: var(--text); font-size: 0.8rem; }
+.footer__marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+.footer__marca .icon { color: var(--primary); }
 .footer__copy { flex: 1; }
 /* Píldora "powered by <s/a>" (Simple Apps): logo navy fijo, resto con la paleta del sitio. */
 .powered-by {

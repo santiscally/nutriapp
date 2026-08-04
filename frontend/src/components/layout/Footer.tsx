@@ -4,13 +4,18 @@
 // Antes tenía arriba una columna de links a Panel/Recetas/Pacientes/Cierre. Se sacó por dos
 // razones: en el perfil de nutricionista repetía la navegación que ya está en la navbar, y en el
 // de admin era directamente inservible — esas cuatro rutas son sólo de nutricionista (C-07), así
-// que al admin lo mandaban a un 403 o lo rebotaban al home.
+// que al admin lo mandaban a un 403 o lo rebotaban al home. La marca con el isotipo sí se conserva.
+
+import { Icon } from "../ui/Icon";
 
 export function Footer() {
   return (
     <footer className="footer">
       <div className="footer__bar-inner">
-        <span className="footer__marca">NutriApp</span>
+        <span className="footer__marca">
+          <Icon name="leaf" size={15} />
+          NutriApp
+        </span>
         <span className="footer__copy">
           © {new Date().getFullYear()} — datos confidenciales.
         </span>
