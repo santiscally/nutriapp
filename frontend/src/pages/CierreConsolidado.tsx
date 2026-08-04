@@ -7,6 +7,7 @@ import { getCierreConsolidado, liquidarRecetas } from "../api/cierres";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Icon } from "../components/ui/Icon";
 import { TableSkeleton } from "../components/ui/Skeleton";
+import { useDialog } from "../components/ui/Dialog";
 import { useToast } from "../components/ui/Toast";
 import { useFetch } from "../hooks/useFetch";
 import { descargarCsv, generarCsv } from "../lib/csv";
@@ -29,6 +30,7 @@ export function CierreConsolidado() {
   const [hasta, setHasta] = useState(inicial.hasta);
   const [liquidando, setLiquidando] = useState<string | null>(null);
   const toast = useToast();
+  const { confirmar } = useDialog();
 
   const fetcher = useCallback(
     (signal: AbortSignal) => getCierreConsolidado(desde, hasta, signal),
@@ -55,15 +57,22 @@ export function CierreConsolidado() {
 
   async function liquidar(f: CierreFila) {
     const cuantas = f.recetasPendientes;
-    if (
-      !window.confirm(
-        `¿Marcar como liquidadas ${cuantas} receta(s) de ${f.nombre} ${f.apellido}, ` +
-          `por ${money(f.comisionPendiente)} de comisión?\n\n` +
-          "Es para registrar que ya le pagaste: esas recetas dejan de figurar como pendientes.",
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmar({
+      titulo: `Liquidar ${cuantas} receta${cuantas === 1 ? "" : "s"} de ${f.nombre} ${f.apellido}`,
+      mensaje: (
+        <>
+          <p>
+            Vas a registrar el pago de <strong>{money(f.comisionPendiente)}</strong> de comisión.
+          </p>
+          <p>
+            Esas recetas dejan de figurar como pendientes de liquidar, pero siguen contando en el
+            histórico.
+          </p>
+        </>
+      ),
+      confirmar: "Marcar como liquidadas",
+    });
+    if (!ok) return;
     setLiquidando(f.nutricionistaId);
     try {
       const r = await liquidarRecetas(f.recetaIdsPendientes);
@@ -97,12 +106,12 @@ export function CierreConsolidado() {
       </div>
 
       <div className="filtros card">
-        <label className="filtros__date">
-          Desde
+        <label className="filtros__campo">
+          <span>Desde</span>
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
         </label>
-        <label className="filtros__date">
-          Hasta
+        <label className="filtros__campo">
+          <span>Hasta</span>
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
         </label>
       </div>

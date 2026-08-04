@@ -1225,7 +1225,8 @@ select {
 input, select, textarea { color: var(--text); }
 .field input,
 .picker__input,
-.filtros__date input,
+.filtros__campo input,
+.filtros__campo select,
 .items__qty input,
 .items__ind,
 .field textarea,
@@ -1235,7 +1236,8 @@ select {
 }
 .field input:focus,
 .picker__input:focus,
-.filtros__date input:focus,
+.filtros__campo input:focus,
+.filtros__campo select:focus,
 .items__ind:focus,
 .field textarea:focus,
 select:focus {
@@ -1687,3 +1689,98 @@ html, body { overflow-x: hidden; }
 /* Etiquetas de estado apiladas en una celda (recetable / sin maestro / bloqueado). */
 .labels { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 .badge--warn { background: var(--amber-soft); color: var(--amber); }
+
+/* Diálogos propios (confirmación / captura de texto), en reemplazo de window.confirm y prompt. */
+.dialog { display: flex; flex-direction: column; gap: 1.1rem; }
+.dialog__mensaje { font-size: 0.92rem; line-height: 1.6; color: var(--muted); }
+.dialog__mensaje strong { color: var(--text); }
+.dialog__mensaje p { margin: 0 0 0.6rem; }
+.dialog__mensaje p:last-child { margin-bottom: 0; }
+.dialog__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+/* Confirmación de una acción irreversible: acá el botón sí va lleno, para que no se confunda con
+   el de cancelar. El .btn--danger de las tablas es outline y en un diálogo se lee como secundario. */
+.btn--danger-solid {
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(184, 59, 59, 0.28);
+}
+.btn--danger-solid:hover:not(:disabled) { background: #9c3030; }
+
+/* ---- Ficha de nutricionista (modal del admin) ---- */
+/* Dos zonas separadas: arriba lo que se toca a diario, abajo las acciones de cuenta. Antes eran
+   todos botones chicos en una misma fila y no se distinguía "guardar" de "borrar para siempre". */
+.ficha { display: flex; flex-direction: column; gap: 1.5rem; }
+.ficha__datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.2rem 1.6rem;
+  margin: 0;
+}
+.ficha__datos dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--subtle);
+  margin-bottom: 0.3rem;
+}
+.ficha__datos dd { margin: 0; font-size: 0.92rem; line-height: 1.45; }
+.ficha__bloque {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+.ficha__titulo { margin: 0 0 0.9rem; font-size: 0.95rem; }
+.ficha__hint { margin: 0.3rem 0 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.ficha__nota { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.ficha__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.ficha__cuenta { display: flex; flex-direction: column; gap: 0.9rem; }
+/* Cada acción con su explicación al lado: sin eso, "Desactivar" y "Borrar" son dos botones
+   parecidos y la diferencia entre ellos (reversible o no) sólo se descubre apretando. */
+.ficha__cuenta-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.ficha__cuenta-fila strong { font-size: 0.9rem; }
+.ficha__cuenta-fila--peligro { border-color: #f3d2d2; background: #fdf6f6; }
+
+/* Datos del perfil propio: una fila por dato, con separadores. En grilla quedaban etiqueta y valor
+   de distintos campos pegados y se leía como un bloque de texto corrido. */
+.perfil__datos {
+  display: block;
+  margin: 1.35rem 0 1.1rem;
+  padding: 0;
+  border-bottom: none;
+}
+.perfil__datos > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.perfil__datos > div:last-child { border-bottom: none; }
+.perfil__datos dt {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: normal;
+  margin: 0;
+}
+.perfil__datos dd { margin: 0; font-weight: 700; text-align: right; }

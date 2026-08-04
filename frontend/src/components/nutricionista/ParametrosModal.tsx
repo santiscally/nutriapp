@@ -1,7 +1,13 @@
 // C-09 — ficha de una nutricionista: datos del registro, sus % (obligatorios desde V011: se
 // eliminó el valor global) y las acciones del admin sobre su cuenta.
 //
-// Las cuatro acciones de cuenta son distintas y no intercambiables:
+// El modal está partido en dos zonas con jerarquías distintas, porque mezclarlas confunde:
+//   · Arriba, la ficha y los porcentajes, con su botón de guardar (o aprobar, si está pendiente).
+//     Es lo que se toca todos los días.
+//   · Abajo, separada, la zona de cuenta: contraseña, desactivar/reactivar y borrar. Son acciones
+//     que casi nunca se usan y dos de ellas son difíciles o imposibles de revertir.
+//
+// Las acciones no son intercambiables y por eso conviven:
 //   · Aprobar/Rechazar → resuelven la SOLICITUD, sólo mientras está pendiente.
 //   · Desactivar/Reactivar → cortan o devuelven el acceso conservando todo. Para bajas.
 //   · Borrar → elimina de verdad. Para altas equivocadas; el backend lo frena si emitió recetas.
@@ -21,6 +27,7 @@ import {
 } from "../../api/nutricionistas";
 import { fecha } from "../../lib/format";
 import type { NutricionistaAdmin } from "../../types/nutricionista";
+import { useDialog } from "../ui/Dialog";
 import { Modal } from "../ui/Modal";
 import { useToast } from "../ui/Toast";
 
@@ -37,6 +44,7 @@ const pctValido = (v: string) => {
 
 export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
   const toast = useToast();
+  const { confirmar, pedirTexto } = useDialog();
   const [descuento, setDescuento] = useState(nutri.descuentoPct.toString());
   const [comision, setComision] = useState(nutri.comisionPct.toString());
   const [busy, setBusy] = useState(false);
@@ -81,46 +89,81 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
     }, pendiente ? "Nutricionista aprobada." : "Parámetros actualizados.");
   }
 
-  function onRechazar() {
-    const motivo = window.prompt("Motivo del rechazo (opcional):") ?? undefined;
-    if (motivo === undefined && !window.confirm("¿Rechazar la solicitud sin motivo?")) return;
-    correr(() => rechazarNutricionista(nutri.id, motivo), "Solicitud rechazada.");
+  async function onRechazar() {
+    const motivo = await pedirTexto({
+      titulo: "Rechazar la solicitud",
+      mensaje: `${nutri.nombre} ${nutri.apellido} no va a poder entrar. Podés dejar registrado el motivo.`,
+      etiqueta: "Motivo (opcional)",
+      placeholder: "Ej.: la matrícula adjunta no se lee.",
+      multilinea: true,
+      opcional: true,
+      confirmar: "Rechazar solicitud",
+    });
+    if (motivo === null) return;
+    correr(() => rechazarNutricionista(nutri.id, motivo || undefined), "Solicitud rechazada.");
   }
 
-  function onDesactivar() {
-    if (!window.confirm(`${nutri.nombre} no va a poder entrar más, pero se conservan sus recetas y pacientes. ¿Seguimos?`)) return;
-    correr(() => desactivarNutricionista(nutri.id), "Acceso desactivado.");
+  async function onDesactivar() {
+    const ok = await confirmar({
+      titulo: `Desactivar a ${nutri.nombre} ${nutri.apellido}`,
+      mensaje: (
+        <>
+          <p>Deja de poder entrar, pero se conservan sus recetas, sus pacientes y sus datos.</p>
+          <p>Podés devolverle el acceso cuando quieras.</p>
+        </>
+      ),
+      confirmar: "Desactivar acceso",
+    });
+    if (ok) correr(() => desactivarNutricionista(nutri.id), "Acceso desactivado.");
   }
 
   function onReactivar() {
     correr(() => reactivarNutricionista(nutri.id), "Acceso reactivado.");
   }
 
-  function onEliminar() {
-    // Doble confirmación con el nombre a la vista: es irreversible y no hay papelera.
-    if (!window.confirm(
-      `Se va a BORRAR a ${nutri.nombre} ${nutri.apellido} y sus pacientes, sin vuelta atrás.\n\n` +
-        "Si sólo querés que no pueda entrar, cancelá y usá \"Desactivar\".",
-    )) return;
-    correr(() => eliminarNutricionista(nutri.id), "Nutricionista eliminada.");
+  async function onEliminar() {
+    const ok = await confirmar({
+      titulo: `¿Borrar a ${nutri.nombre} ${nutri.apellido}?`,
+      mensaje: (
+        <>
+          <p>
+            Se eliminan <strong>su usuario, su perfil y sus pacientes</strong>. No se puede deshacer.
+          </p>
+          <p>
+            Si sólo querés que no pueda entrar, cancelá y usá <strong>Desactivar</strong>: conserva
+            todo y es reversible.
+          </p>
+        </>
+      ),
+      confirmar: "Borrar definitivamente",
+      peligro: true,
+    });
+    if (ok) correr(() => eliminarNutricionista(nutri.id), "Nutricionista eliminada.");
   }
 
-  function onResetPassword() {
-    const nueva = window.prompt(
-      `Contraseña nueva para ${nutri.email} (mínimo 8 caracteres).\nAvisale por un canal seguro.`,
-    );
+  async function onResetPassword() {
+    const nueva = await pedirTexto({
+      titulo: "Nueva contraseña",
+      mensaje: (
+        <p>
+          Se la ponés vos a <strong>{nutri.email}</strong>. Pasásela por un canal seguro: no queda
+          registrada en ningún lado.
+        </p>
+      ),
+      etiqueta: "Contraseña nueva",
+      tipo: "password",
+      placeholder: "Mínimo 8 caracteres",
+      validar: (v) => (v.length < 8 ? "La contraseña debe tener al menos 8 caracteres." : null),
+      confirmar: "Cambiar contraseña",
+    });
     if (nueva === null) return;
-    if (nueva.trim().length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres.");
-      return;
-    }
     correr(() => resetearPassword(nutri.id, nueva), "Contraseña actualizada.", false);
   }
 
   return (
-    <Modal title={`${nutri.nombre} ${nutri.apellido}`} onClose={onClose}>
-      <form className="detalle" onSubmit={onGuardar}>
-        <dl className="detalle__meta">
+    <Modal title={`${nutri.nombre} ${nutri.apellido}`} onClose={onClose} ancho>
+      <form className="ficha" onSubmit={onGuardar}>
+        <dl className="ficha__datos">
           <div>
             <dt>Email</dt>
             <dd>{nutri.email}</dd>
@@ -156,6 +199,10 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
             <dd>{nutri.condicionFiscal || <span className="muted">—</span>}</dd>
           </div>
           <div>
+            <dt>Solicitud</dt>
+            <dd>{fecha(nutri.createdAt)}</dd>
+          </div>
+          <div>
             <dt>Respaldo</dt>
             <dd>
               {nutri.tieneMatricula ? (
@@ -173,89 +220,112 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
               )}
             </dd>
           </div>
-          <div>
-            <dt>Solicitud</dt>
-            <dd>{fecha(nutri.createdAt)}</dd>
-          </div>
         </dl>
 
-        <h3 className="detalle__title">Porcentajes</h3>
-        <div className="form-grid">
-          <label className="field">
-            <span>Descuento de recetas (%)</span>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              required
-              value={descuento}
-              onChange={(e) => setDescuento(e.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Comisión (%)</span>
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              required
-              value={comision}
-              onChange={(e) => setComision(e.target.value)}
-            />
-          </label>
-        </div>
-        <p className="muted" style={{ marginTop: "-0.4rem", fontSize: "0.8rem" }}>
-          Los cambios afectan sólo a las recetas futuras: las ya emitidas conservan el porcentaje
-          con el que salieron.
-        </p>
-
         {nutri.estadoValidacion === "RECHAZADA" && nutri.notasValidacion && (
-          <p className="muted">Motivo del rechazo: {nutri.notasValidacion}</p>
+          <p className="ficha__nota">Motivo del rechazo: {nutri.notasValidacion}</p>
         )}
+
+        <section className="ficha__bloque">
+          <h3 className="ficha__titulo">Porcentajes</h3>
+          <div className="form-grid">
+            <label className="field">
+              <span>Descuento de recetas (%)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                required
+                value={descuento}
+                onChange={(e) => setDescuento(e.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>Comisión (%)</span>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step="0.01"
+                required
+                value={comision}
+                onChange={(e) => setComision(e.target.value)}
+              />
+            </label>
+          </div>
+          <p className="ficha__hint">
+            Los cambios afectan sólo a las recetas futuras: las ya emitidas conservan el porcentaje
+            con el que salieron.
+          </p>
+        </section>
 
         {error && <div className="alert alert--error">{error}</div>}
 
-        <div className="detalle__actions">
+        {/* Acción principal, siempre en el mismo lugar: abajo a la derecha. */}
+        <div className="ficha__acciones">
           {pendiente && (
-            <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onRechazar}>
+            <button type="button" className="btn btn--ghost" disabled={busy} onClick={onRechazar}>
               Rechazar
             </button>
           )}
-          <button type="submit" className="btn btn--sm btn--primary" disabled={busy}>
-            {busy ? "Guardando…" : pendiente ? "Aprobar" : "Guardar"}
+          <button type="submit" className="btn btn--primary" disabled={busy}>
+            {busy ? "Guardando…" : pendiente ? "Aprobar solicitud" : "Guardar cambios"}
           </button>
         </div>
 
-        {/* Acciones sobre la cuenta, separadas de los datos: no se tocan en la operación diaria. */}
+        {/* Zona de cuenta: separada porque son acciones raras y difíciles de revertir. */}
         {!pendiente && (
-          <>
-            <h3 className="detalle__title">Cuenta</h3>
-            <div className="detalle__actions">
-              <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onResetPassword}>
-                Nueva contraseña
-              </button>
-              {aprobada && nutri.activo && (
-                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onDesactivar}>
-                  Desactivar
+          <section className="ficha__bloque ficha__bloque--cuenta">
+            <h3 className="ficha__titulo">Cuenta</h3>
+            <div className="ficha__cuenta">
+              <div className="ficha__cuenta-fila">
+                <div>
+                  <strong>Contraseña</strong>
+                  <p className="ficha__hint">
+                    Si no puede entrar, ponele una nueva: no hay recuperación por email.
+                  </p>
+                </div>
+                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onResetPassword}>
+                  Cambiar contraseña
                 </button>
+              </div>
+
+              {aprobada && (
+                <div className="ficha__cuenta-fila">
+                  <div>
+                    <strong>{nutri.activo ? "Acceso a la plataforma" : "Acceso desactivado"}</strong>
+                    <p className="ficha__hint">
+                      {nutri.activo
+                        ? "Sacarle el acceso conserva sus recetas y pacientes. Es reversible."
+                        : "Hoy no puede entrar. Podés devolverle el acceso."}
+                    </p>
+                  </div>
+                  {nutri.activo ? (
+                    <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onDesactivar}>
+                      Desactivar
+                    </button>
+                  ) : (
+                    <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onReactivar}>
+                      Reactivar
+                    </button>
+                  )}
+                </div>
               )}
-              {aprobada && !nutri.activo && (
-                <button type="button" className="btn btn--sm btn--ghost" disabled={busy} onClick={onReactivar}>
-                  Reactivar
+
+              <div className="ficha__cuenta-fila ficha__cuenta-fila--peligro">
+                <div>
+                  <strong>Borrar definitivamente</strong>
+                  <p className="ficha__hint">
+                    Elimina usuario, perfil y pacientes. Sólo se puede si nunca emitió una receta.
+                  </p>
+                </div>
+                <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onEliminar}>
+                  Borrar
                 </button>
-              )}
-              <button type="button" className="btn btn--sm btn--danger" disabled={busy} onClick={onEliminar}>
-                Borrar
-              </button>
+              </div>
             </div>
-            <p className="muted" style={{ fontSize: "0.8rem" }}>
-              <strong>Desactivar</strong> le saca el acceso y se puede revertir.{" "}
-              <strong>Borrar</strong> la elimina para siempre y sólo funciona si nunca emitió una
-              receta — las que ya emitió forman parte de los cierres.
-            </p>
-          </>
+          </section>
         )}
       </form>
     </Modal>

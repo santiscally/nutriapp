@@ -9,6 +9,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Icon } from "../components/ui/Icon";
 import { Modal } from "../components/ui/Modal";
 import { TableSkeleton } from "../components/ui/Skeleton";
+import { useDialog } from "../components/ui/Dialog";
 import { useToast } from "../components/ui/Toast";
 import { useDebounce } from "../hooks/useDebounce";
 import { useFetch } from "../hooks/useFetch";
@@ -29,6 +30,7 @@ export function Pacientes() {
   const dq = useDebounce(q);
   const [form, setForm] = useState<FormState>(null);
   const toast = useToast();
+  const { confirmar } = useDialog();
 
   const fetcher = useCallback(
     (s: AbortSignal) => listarPacientes(dq, page, PAGE_SIZE, s),
@@ -48,7 +50,15 @@ export function Pacientes() {
   }
 
   async function onDelete(p: Paciente) {
-    if (!window.confirm(`¿Eliminar a ${p.nombre} ${p.apellido}?`)) return;
+    const ok = await confirmar({
+      titulo: `¿Eliminar a ${p.nombre} ${p.apellido}?`,
+      mensaje:
+        "Se va a quitar de tu lista de pacientes. Sus recetas ya emitidas no se tocan. " +
+        "Si tiene recetas pendientes, el sistema no te va a dejar.",
+      confirmar: "Eliminar",
+      peligro: true,
+    });
+    if (!ok) return;
     try {
       await eliminarPaciente(p.id);
       toast.success("Paciente eliminado.");

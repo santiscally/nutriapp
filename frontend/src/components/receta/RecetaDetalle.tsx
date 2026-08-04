@@ -5,6 +5,7 @@ import { ApiRequestError } from "../../api/client";
 import { anularReceta, getReceta, reenviarReceta } from "../../api/recetas";
 import { useFetch } from "../../hooks/useFetch";
 import { fecha, fechaHora, money } from "../../lib/format";
+import { useDialog } from "../ui/Dialog";
 import { EstadoBadge } from "../ui/EstadoBadge";
 import { Modal } from "../ui/Modal";
 import { useToast } from "../ui/Toast";
@@ -20,13 +21,14 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
   const { data, loading, error, refetch } = useFetch(fetcher, [id]);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
+  const { confirmar } = useDialog();
 
   async function run(
     fn: (id: string) => Promise<unknown>,
-    confirmMsg: string,
+    confirmacion: { titulo: string; mensaje: string; confirmar: string; peligro?: boolean },
     okMsg: string,
   ) {
-    if (!window.confirm(confirmMsg)) return;
+    if (!(await confirmar(confirmacion))) return;
     setBusy(true);
     try {
       await fn(id);
@@ -141,7 +143,11 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                 onClick={() =>
                   run(
                     reenviarReceta,
-                    "¿Reenviar el mail de esta receta?",
+                    {
+                      titulo: "¿Reenviar el mail?",
+                      mensaje: `Se vuelve a encolar el mail con el código ${data.codigo} a ${data.paciente.email}.`,
+                      confirmar: "Reenviar",
+                    },
                     "Mail reenviado.",
                   )
                 }
@@ -154,7 +160,14 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                 onClick={() =>
                   run(
                     anularReceta,
-                    "¿Anular esta receta? Se intentará borrar el cupón.",
+                    {
+                      titulo: `¿Anular la receta ${data.codigo}?`,
+                      mensaje:
+                        "El cupón se da de baja en la tienda y la paciente ya no va a poder usarlo. " +
+                        "No se puede deshacer.",
+                      confirmar: "Anular receta",
+                      peligro: true,
+                    },
                     "Receta anulada.",
                   )
                 }

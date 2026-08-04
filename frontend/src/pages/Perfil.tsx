@@ -9,6 +9,7 @@ import { ApiRequestError } from "../api/client";
 import { borrarFoto, cambiarPassword, subirFoto } from "../api/perfil";
 import { useAuth } from "../auth/AuthContext";
 import { Avatar } from "../components/ui/Avatar";
+import { useDialog } from "../components/ui/Dialog";
 import { Icon } from "../components/ui/Icon";
 import { useToast } from "../components/ui/Toast";
 
@@ -18,6 +19,7 @@ const MIN_PASSWORD = 8;
 export function Perfil() {
   const { me, refrescar } = useAuth();
   const toast = useToast();
+  const { confirmar } = useDialog();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
 
@@ -48,7 +50,12 @@ export function Perfil() {
   }
 
   async function quitar() {
-    if (!window.confirm("¿Quitar tu foto de perfil?")) return;
+    const ok = await confirmar({
+      titulo: "¿Quitar tu foto de perfil?",
+      mensaje: "Vas a volver a aparecer con tus iniciales. Podés subir otra cuando quieras.",
+      confirmar: "Quitar foto",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await borrarFoto();

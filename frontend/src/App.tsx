@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { AppLayout } from "./components/layout/AppLayout";
 import { RequireAuth } from "./components/layout/RequireAuth";
 import { RequireRol } from "./components/layout/RequireRol";
+import { DialogProvider } from "./components/ui/Dialog";
 import { ToastProvider } from "./components/ui/Toast";
 import { CierreConsolidado } from "./pages/CierreConsolidado";
 import { CierreMensual } from "./pages/CierreMensual";
@@ -21,6 +22,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
+        <DialogProvider>
         <BrowserRouter>
         <Routes>
           {/* Públicas */}
@@ -54,6 +56,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </BrowserRouter>
+        </DialogProvider>
       </ToastProvider>
     </AuthProvider>
   );

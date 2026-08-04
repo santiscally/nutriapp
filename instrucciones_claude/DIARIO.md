@@ -32,6 +32,36 @@
 
 ## Entradas
 
+## 2026-08-04 — Santi — frontend (diálogos propios, ficha del admin y arreglos de la tanda anterior)
+**Qué:** Cuatro cosas que salieron de mirar la app en vivo. `tsc`/`oxlint`/`build` verdes.
+
+- **Fuera todos los `window.confirm` / `window.prompt`.** Eran 9 en 5 archivos. Nuevo
+  `components/ui/Dialog.tsx`: `DialogProvider` + `useDialog()` con `confirmar()` y `pedirTexto()`,
+  ambos promesa-based para que el call site siga leyéndose igual que antes
+  (`if (!(await confirmar({...}))) return;`). Más allá de la estética, el diálogo del browser no
+  deja explicar nada: en un borrado irreversible hace falta decir qué se pierde y qué alternativa
+  hay, y eso no entra en una línea de texto plano. Ahora el botón que confirma **nombra la acción**
+  ("Borrar definitivamente") en vez de decir "Aceptar", y va en rojo si es destructiva.
+- **Ficha de nutricionista rediseñada.** Los botones estaban todos en una fila de tamaño parecido:
+  guardar convivía con borrar-para-siempre. Quedó partida en dos zonas: arriba la ficha y los
+  porcentajes con su botón primario abajo a la derecha, y separada una zona "Cuenta" donde cada
+  acción (contraseña / desactivar / borrar) es una fila con su explicación al lado — sin eso,
+  "Desactivar" y "Borrar" son dos botones parecidos y la diferencia entre ellos sólo se descubre
+  apretando.
+- **Datos de "Mi perfil" descomprimidos**: pasaron de grilla a una fila por dato con separadores.
+  En grilla, la etiqueta de un campo y el valor de otro quedaban pegados y se leía como texto corrido.
+- **`/catalogo` (Productos del admin) redirigía a `/nutricionistas`.** El código de la ruta y el
+  guard estaban bien: era el **cache de Vite**. Edité `App.tsx` agregando el import de
+  `CatalogoAdmin` *antes* de crear el archivo; Vite cachea el fallo de resolución y desde ahí la
+  ruta no existía en el bundle, así que caía en el fallback `path="*"` → `/` → Login con sesión →
+  home del rol → `/nutricionistas`, que es exactamente el síntoma. Se resolvió reiniciando el dev
+  server con `node_modules/.vite` borrado. **Al crear un archivo nuevo, crearlo antes de importarlo.**
+
+**De paso:** `CierreConsolidado` seguía usando la clase `filtros__date`, que había sido reemplazada
+por `filtros__campo` al alinear los filtros de recetas — sus dos fechas estaban sin estilo.
+**Refs:** `components/ui/Dialog.tsx` (nuevo), `components/nutricionista/ParametrosModal.tsx`,
+`pages/{Perfil,Pacientes,CierreConsolidado}.tsx`, `components/receta/RecetaDetalle.tsx`, `index.css`.
+
 ## 2026-08-04 — Santi — backend+frontend+db (11 cambios pedidos: parámetros, cuentas, catálogo admin y UI)
 **Qué:** Tanda grande de cambios pedidos por el usuario. `mvn verify` **149 unit + 1 IT**; front `tsc`/`oxlint`/
 `build` verdes. Dos migraciones (`V011`, `V012`). Verificado e2e contra el stack (back `:8088`).
