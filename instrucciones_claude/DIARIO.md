@@ -32,6 +32,38 @@
 
 ## Entradas
 
+## 2026-08-10 — Santi — frontend + infra (landing "Próximamente" detrás de un flag de build + DNS/TLS de nutriapp.com.ar)
+**Qué:** Nueva pantalla `pages/Proximamente.tsx` y un flag de build `VITE_COMING_SOON`. Con el flag en
+`true`: `/` es la landing de pre-lanzamiento (propuesta de valor + CTA "Solicitar acceso"), `/registro`
+sigue igual, y el login se mueve a **`/ingresar`** sin link desde ningún lado. Con el flag apagado (default)
+la app queda **exactamente** como estaba: `/` es el login. El área autenticada sigue montada en los dos
+modos — el flag saca la puerta de entrada de la vista pública, no desarma la app. Estilos `.soon__*` al final
+de `index.css` reusando los tokens y el `--ink` del split-screen de auth (nada de assets nuevos). Del lado
+de infra: webroot ACME (`nginx/acme/` + `location ^~ /.well-known/acme-challenge/` en el `:80`, que antes
+redirigía todo a HTTPS y hacía imposible el http-01), y DEPLOY.md con los registros DNS de `nutriapp.com.ar`,
+el modo pre-lanzamiento y la emisión con certbot.
+**Por qué:** el cliente presiona para tener algo publicado en `nutriapp.com.ar` ya. Un flag de build en vez
+de una rama o un `index.html` aparte porque el registro tiene que pegarle al backend real (regla de oro: nada
+mockeado) y porque apagarlo tiene que ser un rebuild, no un revert.
+**Problemas:** ninguno en el build (`tsc` + `oxlint` + `vite build` verdes; verificado además que el flag se
+hornea: `VITE_COMING_SOON:"true"` aparece en el bundle con el flag y desaparece sin él). Sí **encontré un
+error preexistente en DEPLOY.md**: el snippet de build decía `VITE_API_BASE_URL=https://app.midominio.com/api`,
+pero `config.ts` le concatena `/api/v1` → habría quedado `/api/api/v1` y **todos** los fetch en 404 en el
+primer deploy. Corregido al origen pelado (así ya estaba, bien, en `.env.example`).
+**Impacto para el otro:** Fran — **toqué `frontend/`, que es tuyo** (pedido explícito de Santi). Cinco
+archivos: `pages/Proximamente.tsx` (nuevo), `config.ts` (+`comingSoon`), `App.tsx` (dos rutas: `/` condicional
+y `/ingresar`), `Registro.tsx` (2 líneas: el pie "¿Ya tenés cuenta? Ingresar" se oculta con el flag) y
+`index.css` (bloque nuevo al final) + `index.html` (title y meta OG). No cambié nada existente de tus
+pantallas ni del contrato. Si te molesta la forma, el flag es un solo `if` y se mueve donde quieras.
+**Pendiente / decisiones abiertas (Santi):** (1) los 80/443 del server los puede estar ocupando la landing
+del cliente → hay que decidir quién es el front antes del `up`, y endurecer el `server_name _` (hoy catch-all,
+le robaría el `Host` a la landing); (2) el registro público **no manda ningún mail** (no encola notificación y
+el proveedor es stub) y la bandeja de aprobación del admin está diferida a Fase 3 → aprobar es por API o SQL,
+y avisarle a la nutricionista lo hace una persona. Todo detallado en DEPLOY.md.
+**Refs:** `frontend/src/pages/Proximamente.tsx`, `frontend/src/{config.ts,App.tsx,index.css}`,
+`frontend/src/pages/Registro.tsx`, `frontend/index.html`, `nginx/conf.d/nutriapp.conf`, `nginx/acme/`,
+`docker-compose.prod.yml`, `.env.example`, `DEPLOY.md`.
+
 ## 2026-08-04 — Santi — frontend (pantallas sin scroll: emisión, navbar/footer fijos, detalle en modal)
 **Qué:** Cinco ajustes de layout salidos de usar la app. `tsc`/`oxlint`/`build` verdes.
 

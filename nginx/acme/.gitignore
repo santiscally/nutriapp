@@ -1,0 +1,5 @@
+# Webroot del challenge http-01 de Let's Encrypt. certbot escribe acá archivos efímeros
+# (.well-known/acme-challenge/<token>) que no tienen ningún valor fuera del momento de la
+# validación. El directorio se versiona (el bind-mount del compose lo necesita), el contenido no.
+*
+!.gitignore

@@ -14,7 +14,28 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-04** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
+**Última actualización: 2026-08-10** — hecha la **landing "Próximamente"** para poder publicar
+`nutriapp.com.ar` ya (el cliente presiona). Detalle en el DIARIO (entrada 2026-08-10).
+
+**🚀 PRE-LANZAMIENTO (2026-08-10).** Flag de build `VITE_COMING_SOON=true` → `/` es la landing de
+"Próximamente" con CTA a `/registro`, el login pasa a `/ingresar` (sin link), y el resto queda intacto.
+Apagarlo es `false` + rebuild, sin tocar código. Infra: webroot ACME en `nginx/acme/` (el `:80` ya no
+redirige el challenge de Let's Encrypt) y DEPLOY.md con el DNS de `nutriapp.com.ar`, la emisión con certbot
+y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido explícito** — 5 archivos, avisado en
+el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
+`VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
+
+**⛔ Bloqueantes del deploy (necesitan decisión/dato, no código):**
+1. **80/443 del server**: la landing del cliente está en el mismo host. Hay que definir quién termina TLS
+   (nginx de nutriapp como front único con un `server{}` para la landing, o nutriapp en puertos altos detrás
+   del webserver existente) y endurecer el `server_name _`, que hoy es catch-all y le robaría el `Host`.
+2. **Registro público sin mail**: no se encola notificación y el proveedor es stub → nadie recibe el
+   "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3 (aprobar es
+   por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
+3. **DNS**: `A @ → 187.127.36.153` + `CNAME www → nutriapp.com.ar`. **No** replicar el `AAAA` de la zona de
+   la landing: apunta a Hostinger mientras el `A` apunta a Telecom AR — son hosts distintos.
+
+**Estado previo (2026-08-04)** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
 las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**
 (bloque 🆕 abajo). `mvn verify` **149 unit + 1 IT**.
 

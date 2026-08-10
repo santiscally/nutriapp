@@ -63,6 +63,9 @@ services:
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
+      # Webroot del challenge ACME (http-01). certbot escribe acá desde el host; nginx lo sirve
+      # por HTTP sin redirigir (location ^~ /.well-known/acme-challenge/).
+      - ./nginx/acme:/var/www/acme:ro
       # SPA compilada (frontend/dist). Override con FRONTEND_DIST si se buildea en otro path.
       - ${FRONTEND_DIST:-./frontend/dist}:/usr/share/nginx/html:ro
     ports:
