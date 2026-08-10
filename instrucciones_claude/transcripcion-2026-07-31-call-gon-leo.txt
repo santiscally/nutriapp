@@ -1,0 +1,919 @@
+Meeting Transcription
+Meeting started: Jul 31, 2026, 1:56:25 PM
+Meeting duration: 59 minutes
+Meeting participants: GB, LAC, Santiago Scally
+View original transcript at Tactiq.
+Transcript
+00:00 Santiago S.: Hola Santiago te hablo de la veterinaria de koala era la 
+vacuna triple felina en el mes de agosto, cariño.
+03:39 GB : Cómo va papá
+03:40 Santiago S.: Estoy en vos.
+03:41 GB : Bien, todo tranqui, acá andamos.
+03:43 Santiago S.: Me alegro.
+03:44 GB : Qué onda el día
+03:46 Santiago S.: Bien de reunión en reunión, pero bien.
+03:50 GB : mucho laburo
+03:51 Santiago S.: Sí, sí.
+03:53 GB : látigo
+03:54 Santiago S.: látigo látigo No así está tan azul vendiendo cosas en la 
+empresa y cosas que no tenemos desarrolladas viste de decir para
+04:05 Santiago S.: Hola, estoy transcribiendo esta llamada con mi extensión 
+Tactiq AI. https://tactiq.io/r/transcribing
+12:57 GB : https://rest.contabilium.com/api/inventarios/getStockBySKU?
+codigo=137
+13:51 Santiago S.: la dan como Leo Cómo estás
+13:59 LAC : Bien, bien Estoy sin cámara porque ahí la prendo y saludo porque 
+están dando mal en internet y nada.
+14:05 Santiago S.: Olvídate
+14:05 LAC : Es más aprendí, no nunca aprendió. Pero sigan sigan con lo que 
+estaban, que es la base seguro.
+
+14:12 Santiago S.: sí
+14:12 GB : No ya estábamos terminando igual se relaciona mucho con el 
+proyecto, así que
+14:14 LAC : Ah bueno
+14:17 GB : por ahí hasta se encara medio todo junto.
+14:21 LAC : Qué raro Che no me anda ni la cámara, Qué onda. Bueno nada
+14:28 Santiago S.: Bueno espero que vos
+14:30 LAC : Cómo andas Santi perdón Bien, andamos con 10 millones de cosas 
+p*** madre Por qué no anda la cámara.
+14:39 Santiago S.: Te olvidaste?
+14:40 LAC : no, no me preocupa que ponga la que estoy está prendida como la 
+cámara pero no, no salgo y acá veo esta partida Bueno nada tenemos todas las 
+máquinas
+14:49 Santiago S.: El cosito de arriba no está tapando.
+14:50 LAC : llenas de virus virus virus Todo bien, No no no está es más prendió 
+una Lucecita
+14:58 Santiago S.: Algo así capaz reiniciando la máquina.
+14:59 LAC : No, no, no, no, no están dando muy lento el internet acá en la 
+oficina, ahí
+15:00 GB : O permiso permiso de Chrome que le sacaste cámara.
+15:06 LAC : está, ves Mirá Se prendió solo, por eso digo está. Está lento Uy no 
+los pelos. Bueno, bueno, al menos tengo bueno, nada, Todo bien, No anda 
+como el otro internet la voy a pagar así mejor un poco bueno. Nada, acá 
+andamos amigos Cómo estás.
+15:28 Santiago S.: Todo bien por suerte
+15:31 LAC : mucho laburo
+15:32 Santiago S.: Sí sí, sí, estamos le contaba que Comercial vende cosas que 
+no existen en la
+15:34 LAC : Bueno, bien.
+15:38 Santiago S.: empresa Así que nos están bombardeando con estamos 
+ahora a hacer telepase activar una barrera con que le pasa en flaco eso no 
+existe Bueno pero Así que nada
+15:53 LAC : Bueno es lo que hay.
+15:55 Santiago S.: Es lo que hay totalmente Pero bueno nada les paso a 
+
+compartir un poquito.
+16:00 LAC : Dale
+16:03 Santiago S.: Bueno Este es el árbol principal de las nutricionistas Esto es 
+lo que deberían obviamente no hay nada cargado.
+16:11 LAC : Vamos, Qué linda, tipografía, la p*** que lo parió.
+16:14 Santiago S.: Me imagino que te iba a gustar.
+16:17 LAC : Allá No lo que pasa que para que sepas Acá hay una guerra campal 
+entre que
+16:21 Santiago S.: con la
+16:21 LAC : cómics es la peor es la peor tipografía del mundo y otro que dice es 
+la mejor del mundo, no te voy a decir quién, cuál vos solo te diste cuenta?
+16:31 Santiago S.: Creo que sí.
+16:32 LAC : Pero bueno viste los viejos más viejos somos cascarrabia Entonces 
+nos imponemos a veces.
+16:36 GB : Voy a decir algo, no quedó tan mal acá.
+16:40 LAC : lo vamos a lograr de acá diez años, vamos a volver a imponerla, va 
+a ser el top trending topi Por qué usaron cómics, ahí no van a invitar a
+16:47 GB : No quiero no quiero dar esa guerra en la vida.
+16:50 LAC : No cómo que no?
+16:50 Santiago S.: Igual para voy a voy a decir algo no es cómic.
+16:58 LAC : Es muy parecida, es boludo de lo mismo.
+17:00 Santiago S.: está Creo que se llama cómic neue algo así.
+17:08 LAC : Ah bueno es más o menos la misma falopa no me joda.
+17:16 GB : Ay excelente sí está más linda.
+17:17 LAC : Está buenísima, está buenísima.
+17:24 Santiago S.: Que tienen un poco para ganar los dos, yo soy un jugador, te 
+traigo le traigo un poco de Victoria cada uno.
+17:31 LAC : Hijo de p***, bueno bueno en principio nos gustas.
+17:34 Santiago S.: bueno Este es el bueno este es la pantalla principal de las 
+nutricionistas que van a ver, después vienen acá para para las recetas emiten 
+las recetas, acá. Bueno, primero tienen que haber dado de alta del paciente, el 
+paciente le pide un par de datos que es nombre mail, dni, y cuál masera fecha 
+fecha de nacimiento y WhatsApp y bueno algún par de notas por si necesitan 
+anotar algo.
+
+18:05 LAC : Por las dudas todas esas cosas después si la nutricionista le 
+pregunto me dice Che Estaría bueno sumar esto Esto se lo podemos sumar, no? 
+A ese a ese coso.
+18:11 Santiago S.: Sí sí, campito. Sí, Olvídate sí sí.
+18:13 LAC : eso eso yo para ir Sabiendo
+18:16 Santiago S.: Sí, sí, sí, sí, no hay problema, pero eso se puede agregar 
+después cuando
+18:18 LAC : porque
+18:19 Santiago S.: ya esté productivo.
+18:20 LAC : Tenemos una nutricionista que va a ser nuestro conejillo de indias 
+que sabe esto y es como que va a ser nuestra la que va de la mano Entonces 
+cuando vos
+18:28 Santiago S.: Dale dale
+18:28 LAC : consideres que ya es necesario alguien que la fogoné para probarla 
+yo la sumo está bien pero no, ni lo hice porque recién arrancábamos también, 
+pero ella
+18:38 Santiago S.: no, no
+18:38 LAC : va a ser la tester de lugar de nutricionista y nosotros de nuestro 
+lado obviamente.
+18:45 Santiago S.: Bueno después nada en receta acá vas a emitir recetas 
+seleccionas al paciente y acá seleccionas los productos estos productos son de 
+contabilidad real, o sea ya está la integración en contabilidad.
+19:00 LAC : ok
+19:01 Santiago S.: Bueno nada agregás los productos le pones las cantidades 
+acá y este descuento esto es un poco de lo que quería hablar con ustedes, pues 
+este cuento es fijo los setean ustedes ahora no lo ven porque ahora estoy con 
+ahora. Estoy con un
+19:12 LAC : para
+19:15 Santiago S.: perfil de nutricionista, pero ustedes van a tener un perfil de 
+administrador para que ustedes puedan setear este valor capaz quieren que la 
+nutricionista tenga ese poder eso es algo. Bueno que lo decidirán ustedes.
+19:29 LAC : No no va a ser de nuestro lado.
+19:31 Santiago S.: Ok a todo tipo
+19:32 LAC : Perdón cosas, que me van surgiendo preguntas que no estaban en 
+
+mi cabeza. Esto se sentía general toda la web up o es algo que podría uno 
+setear por nutricionista y que una solo pueda cinco otra pueda.
+19:44 Santiago S.: Podría podría ser por nutricionista, sí.
+19:48 LAC : Anotatelo, si no es complejo si es complejo, No pasa nada, pero está 
+bueno tener una herramienta de que por nutricionista, eso está bueno también.
+19:55 Santiago S.: Okay, Dale dale sino también podemos arrancar, pero sí sí, 
+no, no debe ser complicado, pero pero Dale dale Bueno nada emitir la receta.
+20:00 LAC : bueno Pará te puedo seguir haciendo pregunta o no del buscador a 
+ver.
+20:11 Santiago S.: sí
+20:12 LAC : Entrar en cualquiera o sea, emitir el buscador del producto es por 
+nombre por escayo o por descripción descripción de cualquier cosa si yo pongo 
+no importa o sea, no es que cualquier letra que contenga listo perfecto y 
+después acá donde dice marcar todos que es desplegarlo a Marca a ver 
+despégamelo.
+20:32 Santiago S.: Dónde Ah marcas acá?
+20:33 LAC : Quiero ver a ver Estas son las ya importadas, no?
+20:38 GB : Es el debe ser el su rubro nosotros usamos subrubro como marca en 
+contabilidad.
+20:40 Santiago S.: sí
+20:45 LAC : Okay y
+20:46 GB : Otra expresión que hago es lo que vale el producto esto ya después 
+para cuando es un tendría que hacer un aproximado, no? Porque este es el 
+precio lleno
+20:53 Santiago S.: sí
+20:57 GB : después en tienda nube puede que estén más barato o no Leo Y a es 
+un descuento, no?
+21:07 LAC : Sí déjame pensarlo nosotros en tienda nube tal vez tenemos un 
+precio lleno el mismo que contabilium. Hasta ahí estamos bien, después puede 
+después puede
+21:12 GB : Sí hasta ahí estamos bien.
+21:15 LAC : que la tienda nube tenga un descuento.
+21:17 GB : Claro, por x.
+21:18 LAC : Probablemente va a ser acumulativo O sea que lo que figura acá no 
+
+es real final lo que va a pagar la persona. Está bien.
+21:27 Santiago S.: Por ejemplo si yo agrego acá no
+21:28 GB : con aclarar que es
+21:30 Santiago S.: Y yo le pongo este este 51 no vas, no? Esto este descuento 
+sería falso, digamos
+21:34 LAC : bueno para
+21:38 Santiago S.: porque en realidad esto sería menos.
+21:40 LAC : Sí sí, En realidad gonza, a ver tal vez.
+21:43 GB : siempre es posible siempre va a ser positivo para el cliente porque
+21:47 LAC : Sí pero tal vez no, pero para no me acuerdo Yo en algún lado puse 
+que figure los precios o no, no me no me acuerdo porque en una receta no 
+figuran precios lo ideal es que no figure precio podemos hacer que no figure 
+precio o es algo que
+22:00 Santiago S.: Okay.
+22:00 LAC : necesitamos para poder calcular la comisión que va al nutricionista.
+22:05 Santiago S.: Para la comisión es necesario, pero podríamos no, no figurar, 
+pero que está igual que lo ocultamos el dato.
+22:10 LAC : A ver, déjame pensar.
+22:13 GB : Una cosa es la teórica y otra cosa es la que realmente después 
+cuando convierte se puede ver el ticket.
+22:18 LAC : Sí pero pero al nutricionista le va a caer comisión por esto.
+22:22 GB : No, no, no, por la por yo estimaría que es por lo que se terminó 
+facturando sería ideal.
+22:28 LAC : Entonces en realidad el dato de la comisión no viene contable viene 
+del paso final que es de tienda nube de la venta de tienda nube tiene que venir 
+el dato porque vos acá acá arranca, vos le haces la receta la persona entra a 
+tienda nube compra a un precio x y la comisión va a ser sobre la compra 
+conformada en
+22:43 Santiago S.: Okay sí
+22:49 LAC : tienda nube que puede ser un valor completamente distinto a este 
+que está acá
+22:50 Santiago S.: claro
+22:53 LAC : Entonces en realidad el dato de la comisión. tienda nube si vos 
+preguntas en esta primera etapa donde tiene que recetar no tiene que figurar 
+
+ningún precio para mí en este déjame que lo piense me lo voy a llevar para 
+darte un
+23:05 GB : Y otra cosa el código de descuento solo le va a aplicar para estos 
+productos,
+23:10 Santiago S.: sí
+23:11 GB : Ah okay, okay.
+23:12 LAC : En realidad es una definición nuestra.
+23:13 Santiago S.: Es para los productos que vos agregues a la receta.
+23:17 GB : tienda nube permite eso claro crear un cupón solo
+23:20 Santiago S.: si yo
+23:21 LAC : Parada, pero acá viene acá viene una decisión nuestra que es yo me 
+imaginaba No atarlo a ningún producto y si algún paciente se da cuenta que 
+compre más a nosotros nos chupa tres huevos o en realidad nos complica con 
+la no nos complica una nutricionista porque le voy a dar más comisión de 
+productos que no
+23:36 GB : Le vas a dar más comisión?
+23:39 LAC : amerita, no, entonces Está bien que sea solo a los productos que 
+están puestos, está bien eso. Sí, voy a tomar nota para después pasarte las 
+consultas, entonces para cómo
+23:49 Santiago S.: Okay eso
+23:51 LAC : lo ves Santi que gonza vos también que en toda esta primera etapa 
+no haya valores. es como la tapa de recetas como pensarlo como médico 
+pensarlo como médico tipo recetas y no hay ningún valor al menos en la receta 
+y en la web No tampoco porque la
+24:08 Santiago S.: Igual la nutricionista tiene que tener un valor para poder 
+porque el probablemente el cliente le va a preguntar Che y cuánto queda y eso.
+24:16 LAC : Es buena.
+24:17 Santiago S.: eso
+24:17 GB : No me parece como obviamente cuando le entregas la receta lo que 
+recibe el paciente no hay precio pero en el en el, o sea, acá en el Front de la
+24:23 LAC : no hay
+24:27 GB : nutricionista, puede ver estos precios estimados, pero siempre 
+aclarados que son
+24:31 Santiago S.: estimaciones
+
+24:32 GB : no es pvp, o sea, es precio lleno.
+24:35 LAC : Sí igual pondría una aclaración de el precio, puede cambiar sin 
+previo aviso algo así acá la nutricionista un disclaimer, así se lo podemos.
+24:44 Santiago S.: Claro, hago los precios algo así como los valores son 
+aproximados ya que el precio puede cambiar en vivo.
+24:53 LAC : Sí sí, si puede haber alguna leyenda siempre en esta es donde vea 
+valor buenísimo, pará vos anotas o anoto yo.
+25:01 Santiago S.: No, no, no está notando la el mito.
+25:04 LAC : Ah pero p***, qué tecnología Bueno listo, Dios mío, me estoy 
+quedando viejo
+25:06 Santiago S.: claro
+25:10 LAC : Bueno listo, Sí sería ideal eso una leyenda y con ese racional 
+Entonces hasta esta parte no hay problema Está bien, Es verdad para parte de 
+la nutricionista En todo caso le dice Che Mira este más o menos el valor 
+aproximado es esto Uy no que caro entendés Pero sí está, está bueno.
+25:26 GB : Tiro otra con lo que es productos hay nosotros tenemos un Excel 
+que tiene
+25:36 LAC : Porque no tienen los campos.
+25:41 Santiago S.: como pásame
+25:47 GB : muchísimas columnas con mucha Data pero que todo eso no se 
+puede meter en
+25:54 Santiago S.: No, lo que lo que me estoy lo que estoy pensando es las 
+inconsistencias, Porque nada Esto es algo, que ya lo había comentado aún, pero 
+la forma en que carga los productos es por sincronizaciones. Esto no es si 
+ustedes agregan ahora un
+26:06 GB : contabilium, que es que es súper interesante que esté en la app 
+súper tags
+26:07 Santiago S.: producto a contability, no que primero lo agregaron a tienda 
+nube, No va a aparecer acá insta. Se tienen que hacer una sincronización que 
+busca todos los productos de vuelta, o sea te busca, no, no hay una apis que 
+sea esto sí que no hay una Api que es tipo que sea por cambios tipo que si 
+busco una sincronización me trae los últimos cambios te trae todos los 
+productos de uno.
+26:30 Santiago S.: entonces lo que me estoy lo que habría que cranear un poco 
+
+es como en el
+26:31 GB : eso quizás será una actualización. No sé eso sí, ya no me lo imagino. 
+No
+26:35 Santiago S.: momento que ustedes agregan nuevos productos, que 
+también los van a agregar al Excel como
+26:43 LAC : No puede, no puede chupar de contabilium cruzar con el Excel y de 
+ahí traer.
+26:43 Santiago S.: Tendría que tener tendrían que tener otra.
+26:44 GB : sé Ahí Cómo se lo imaginan santu un Excel es medio peligroso.
+26:51 Santiago S.: Claro pero ustedes tienen que hacer dos trabajos manuales 
+uno sincronizar con contabilidad y el otro cargar el nuevo Excel cargado 
+entendés.
+26:58 LAC : Todo el Excel siempre va a estar actualizado eso seguro. Es una 
+base más importante de contabildonte, le diría está actualizado todo.
+27:05 Santiago S.: Okay.
+27:07 GB : Sí, sí, sí, sí, sí, sí, sí lo sufro todo. Sí, sí sí. Es un Excel es un Excel de 
+One Drive quizás hay forma de con algún link o algo de que lo vaya a buscar 
+una vez cada tanto o cuando cuando haces la sincro de contabilium que 
+termine el proceso yendo a actualizar ese Excel también.
+27:24 Santiago S.: actualizar el Excel o a buscar la info del Excel
+27:26 GB : a buscar el Excel que es un link de onedrive o se le nada se le se lo 
+carga con un examinar pero
+27:33 LAC : Alexis no lo va a actualizar, no le va a sumar Data seguro, va a 
+chupar Data de ahí y esa Data va a estar actualizada.
+27:37 Santiago S.: claro, quiero entender Si el Excel es para también traer 
+énfasis es una fuente de datos o la También es importante actualizar el Excel
+27:45 GB : no, no te muestro te comparto pantalla más rápido Este es el famoso 
+maestro
+27:48 Santiago S.: Dale
+27:51 GB : artículos, a ver si Para que te des una idea. Nuestro que creo que en 
+las apis es código bien en contabilidad acá en el Excel está igual cada fila. Tarda 
+un poquito porque ya está pesando ahí está. es más, está el ahí de contabilidad 
+también Hasta más fácil, si lo querés
+28:23 Santiago S.: ok
+
+28:27 GB : relacionar Pero bueno, ponele que La se llega a ver ya.
+28:32 Santiago S.: Sí sí, estoy viendo.
+28:33 GB : bueno Tenemos skywoo y empiezan para que te des una idea. Mira 
+todas las columnas que hay con info
+28:43 Santiago S.: ok
+28:44 GB : Que todo eso nos permite que haga en contabilidad, por eso lo 
+cargamos algunas cosas Pero bueno de acá me imagino algunas cosas que son 
+interesantes, por ejemplo, la subcategoría es algo que no está o la categoría de 
+un producto más que nada para lo que es suplementos, no, pero no esto no 
+está por ejemplo en contabilidad y no hay ningún campo. Que uno pueda subir, 
+eso es una c***** de contabilidad en realidad.
+29:07 Santiago S.: claro
+29:09 GB : Si usamos el sub rubro para cargar la marca que está acá Eso sí 
+coincide con
+29:14 Santiago S.: Dale
+29:15 GB : contabilidad Pero bueno no hay un montón de datos Ahorita hay 
+presentación Cuántas pastillas, vienen por producto, entonces hay mucha cosas 
+que se pueden llegar y después otra que pensaba son los tags, que por ejemplo 
+este para un producto tiene todos estos tags Entonces cuando también vos 
+buscás se Dame los magnesios, vos buscas magnesio y que el Search del del de 
+la nutri no busque solo si la descripción contiene la palabra magnesio que 
+busque también.
+29:44 GB : Sí a ver puede priorizar los magnesios la búsqueda, no sé cómo 
+funciona la función esa, pero la es arriba aparecen los que aparecen magnesio, 
+pero abajo más abajo en la búsqueda. Aparecen los que en El Tac también está 
+la palabra magnesio. Ponele por decir algo, no? Pero bueno es toda Data súper 
+interesante.
+30:03 Santiago S.: Después pásame este Excel y pásame las columnas que les o 
+quieren todas las columnas de ahí.
+30:08 GB : Nos llevamos, nos llevamos con Leo a pensar qué columnas servirían 
+para una
+30:12 LAC : Exacto sí
+30:13 GB : para laboratorio laboratorio también a veces las nutrisse dice pará 
+quiero el
+
+30:14 Santiago S.: Dale dale
+30:17 GB : magnesio de claro y tiene el filtros golazo. Nosotros esto lo tenemos 
+súper
+30:18 LAC : farmamérica no, el que sea
+30:23 GB : actualizado y es sagrado.
+30:25 Santiago S.: Perfecto, bárbaro, después pásame pásamelo hoy Y. Sí, 
+recontra es agregar
+30:27 LAC : Listo, nos llevamos. Entonces pongo columnas del maestro que el 
+buscador.
+30:32 Santiago S.: un filtro. Y me llevo también yo el tema de cómo, cómo, 
+cómo sincronizar contabilium con el Excel ese cuál va a estar la mejor forma?
+30:43 LAC : de perfecto
+30:46 GB : Se amerita un botón a demanda al principio está bien, eh? Digo no, 
+no pongas
+30:46 Santiago S.: Dale bueno Okay.
+30:55 GB : algo diario algo por ahí conviene.
+30:58 Santiago S.: Sí que sea que sea manual en ese sentido.
+31:02 GB : Se por el momento.
+31:03 Santiago S.: Por ahora lo que se me está ocurriendo Así es que esté la 
+sincronización de contabilium Y ustedes carga en el examinar y que que hay 
+machete que ahí al macho.
+31:15 GB : Sí, sí, no hay problema.
+31:16 Santiago S.: Pero capaz de capaz hay alguna solución alternativa que esté 
+un poco más copada?
+31:22 GB : Tenemos las imágenes de los productos también si en algún 
+momento.
+31:26 Santiago S.: Y las imágenes es un poquito más porque te va a cargar, la te 
+va a cargar el servidor de no sé si aporta mucho va, no sé si ustedes lo 
+necesitan Sí o sí, pero pensá que las imágenes de dos mil productos te termina 
+generando un peso en en el servidor.
+31:44 GB : Ok subidas en miniatura o chiquita con baja calidad también
+31:47 Santiago S.: y no menos, pero Pero puede llegar a porque por ejemplo, 
+esto yo lo tenía pensado subir al en el servidor de Sí el que ya tenemos hecho 
+el que ya la bps que subimos donde están las web Apps las huevas, no las 
+
+Subirlo ahí y ahí se ahorran un servidor Entonces si le empezamos a meter 
+ruido y capaz, haría falta pagar otro servidor y capaz no tendría sentido.
+32:16 GB : Son ideas para el Me parece que no hace falta es re interesante 
+poder ver la foto de lo que estás recetando Pero vale mvp para mí no sin foto.
+32:21 Santiago S.: Okay. Dale de una yo lo digo para que ustedes no, pero sí 
+también para que ustedes no le servidores por unas imágenes.
+32:31 LAC : Pero para si fuese no, pero ponele Si queremos pagar el servidor, es 
+algo complejo o no del lado de ustedes decir, no que es complejo Que figura la 
+imagen.
+32:42 Santiago S.: No, no Debería ser muy complejo.
+32:45 LAC : Dónde te imaginas la imagen no me imagino la receta si en esta 
+etapa Cómo te lo imaginas, gonza, en dónde?
+32:50 Santiago S.: Es que no tengo no tengo la clave de productos igual
+32:53 GB : Te paras arriba del producto y se te abre la imagen la típica o el 
+loguito de
+32:56 LAC : Ah eso
+32:59 GB : una camarita al lado del título y uno aprieta y se abre la imagen 
+como cualquier portal de droguería, me lo imaginé.
+33:06 Santiago S.: Okay okay.
+33:06 LAC : En todo caso lo podemos dejar puesto sin cargar las imágenes y 
+después en todo
+33:07 GB : portales
+33:10 LAC : caso vemos la opción de ya cargar las imágenes, pero ustedes la 
+parte ustedes ya está la parte que esté eso sí.
+33:15 Santiago S.: claro
+33:18 LAC : Digo No fíjate que veamos si se puede poner porque en realidad no 
+van a ser
+33:21 GB : arquitectura
+33:23 LAC : más de 600 productos y cada foto. Sí, no sé cuánto pesa las 
+tenemos ahí todas las fotos, pero bueno.
+33:30 GB : Voleo, quieres filtrar Solo que se vean suplementos acá o dejarías 
+cremas, por ejemplo.
+33:35 LAC : no, no
+33:36 Santiago S.: Acá, esto es todo las categorías que tenemos.
+
+33:40 LAC : a ver Conceptualmente nosotros queremos que vendan cualquier 
+cosa porque Cuanto más receta más nos compran más plata le vuelve a ellas. 
+Así que si me decís a mí haciéndonos lo boludo le dejaré abierto todo pero en 
+realidad vamos y hablamos de suplementos alguno va a detectar que puede 
+recetar otra cosa y va a decir Che boludo, te podés hacer un descuento 
+adicional con esto a nosotros nos suma o sea, cualquier O sea no va a 
+beneficiar entendés, no creo que haya un ruido de la nutricionista que diga Che 
+Mira puedo
+34:10 Santiago S.: claro
+34:14 LAC : recetar pilas Duracell que vamos a tener listado pila Duracell y va a 
+tener un descuento en pilas, Duracell y nosotros.
+34:21 Santiago S.: claro
+34:22 LAC : No podemos hacerlo boludo porque en realidad nosotros nos 
+conviene.
+34:26 GB : Eso Santi eso es el rubro y es en realidad ahí Ese ese no iría ese iría 
+el
+34:28 Santiago S.: sí
+34:33 GB : del maestro de artículos del Excel el rubro en realidad al revés te 
+tenés que
+34:35 Santiago S.: claro
+34:38 GB : quedar con todo lo que se llaman producto terminado como que al 
+revés todo lo
+34:41 Santiago S.: ok
+34:42 GB : otro son cosas fuera de la de Big Company son cosas de Anel de 
+marketing de insumos Ya de por sí hay que filtrar siempre producto terminado. 
+Creo que la tengo la idea de rubro por ahí también lo puedo pasar.
+34:56 Santiago S.: bárbaro
+34:59 GB : Bien, sigamos.
+35:00 Santiago S.: Bueno sí nada, bueno emitir la receta este código es todavía 
+no hay todavía no está la vinculación con con tienda nube, eso es lo que estaba 
+viendo que tienda nube No tiene apis lo que tiene es te permite crear una app 
+dentro de tienda nube que vos podés Conectar a esa app y y de ahí detrás de la 
+info Así que Y eso depende del nivel que ustedes tengan de contratación 
+contiene nube.
+
+35:33 GB : lo subimos hace menos de un mes al plan Te acordás Leo
+35:34 Santiago S.: ok
+35:39 LAC : El intermedio el que permitía que la web pueda ser desarrollada por 
+fuera, pero veamos, veamos A ver, no sé tienda nube.
+35:47 GB : y si no hago un plugin de esos que se
+35:51 Santiago S.: Claro, eso eso es lo que te digo Necesitas ponerle un plugin 
+creado tuyo propio que tenga como las apis que vos necesitás para crear para 
+crear esto digamos.
+36:03 GB : claro
+36:06 Santiago S.: Pero bueno nada, eso eso era con apis y que había que dar a 
+de alta una mini
+36:08 GB : Vos te imaginaste?
+36:13 Santiago S.: app dentro de cosas dijo bueno Esto lo dejamos para lo 
+último.
+36:18 LAC : pero para vos decís que no tiene nada de Lápiz no importa el plan o 
+vos decís que sí depende el plan, te dan acceso a
+36:25 Santiago S.: No es que no tienen apis así directas como tiene contabilium, 
+que vos le pegas una Api te devuelve vos tenés que crear algo dentro de tienda 
+nube para que ese algo te de la información que vos necesitas. Se entiende.
+36:38 LAC : O sea, tenés que crearte tu Api yo no entiendo mucho de esto Tal 
+vez.
+36:41 Santiago S.: Claro, ponele ponele que es como que tenés que crearla es 
+como que tenés que ir a crear la Api de tu en tu tienda nube porque ellos no te 
+dan una Api que digas le pego y me devuelve así de simple.
+36:51 LAC : Bueno Y eso complejidad de armado de eso.
+36:55 Santiago S.: No no, tranqui, tranqui, eso estaba eso, eso es un poco más 
+complejo de lo que
+36:58 LAC : OK OK
+37:02 Santiago S.: pensábamos por eso ahora, por eso lo tiré para lo último 
+porque eso va a ser lo que más porque vamos a tener que meternos en tienda 
+nube, vamos a tener que ver cómo Cómo meter la de adentro, pero bueno.
+37:14 LAC : está bien, está bien, charlemos al final no hay problema, Dale
+37:19 Santiago S.: Sí esa esa etapa la vamos a dejar más para el final. Pero 
+bueno nada acá tenés la receta que te tira el código de descuento y bueno acá 
+
+después puedes ver todas las recetas. Y bueno, tienes un cierre mensual Esto es 
+para la para la nutricionista. Y después nada, después tenés el perfil como les 
+comentaba el partido el perfil administrador.
+37:50 LAC : Podés volver o no?
+37:52 Santiago S.: Sí ahora vuelo usted el perfil de administrador igual es Es 
+como una
+37:53 LAC : Sí eso confirmado, seguro que sea también por
+37:56 Santiago S.: nutricionista O sea usted podrían también Incluso si quieren 
+hacer descuentos a gente porque le pinta lo que yo quieras, pero bueno, nada 
+tienen estas dos tablas adicionales de configuración Esto es lo que le decía 
+descuento de recetas y la comisión de la nutricionista, que esto es general no 
+está dividido por nutricionista Pero te lo Podemos agregar. Lo podemos lo 
+Podemos agregar. Que ustedes Acá busquen la las nutricionistas y y nada, otro 
+tema que no está acá, pero tendría que que el alta de las nutricionistas también 
+va a ser de su lado, no se van a poder dar de alta las nutricionistas por su 
+cuenta de ustedes la van a tener que dar de alta o prefieren que las 
+nutricionistas se den de alta y toda la bola.
+38:48 LAC : No pueden ellas tipo la clásica, date de alto usuario cargan los datos 
+y de últimas. Nosotros llega aún aceptar o no aceptar tipo, te acepto o no te
+38:53 Santiago S.: Sí sí se puede decir.
+38:57 LAC : acepto.
+38:58 Santiago S.: Okay sí, yo lo había pensado por ustedes con por un tema de 
+de que no se le dé de alta gente random.
+39:06 LAC : No, que nosotros demos el Ok final, digamos O sea que a lo sumo 
+que haya en la
+39:08 Santiago S.: Okay.
+39:11 LAC : parte del Back en una parte donde sea tenés que aceptar, o sea, 
+aceptarle el usuario y ahí recién puede entrar y nosotros no tomamos laborito 
+de aceptar al menos no descargar los datos.
+39:21 Santiago S.: Dale dale
+39:23 LAC : Sí pero que ellas cuando hagan el primer login que sea
+39:26 Santiago S.: Otra acá otra tabcita que va a ser nutricionistas y ustedes ahí, 
+que
+39:26 GB : una validación
+
+39:32 Santiago S.: probablemente está configuración.
+39:33 GB : La comisión ponerla ahí y listo.
+39:36 Santiago S.: Claro que esta esta tablet se va a ir configuración, se va a ir, 
+va a aparecer nutricionista y dentro de cada nutricionista, vas a tener dos tabs 
+que sean nutricionistas aceptadas y ahí le podés aceptar, le metes el descuento 
+el
+39:45 LAC : Okay.
+39:49 Santiago S.: porcentaje de descuento por nutricionista y la comisión por 
+nutricionista y ha tratado que sea no sé para para aceptar, o sea, esto 
+solicitudes pendientes y ahí vos le das de Okay te parece.
+40:05 LAC : Sí están los campos obligatorios que tienen que agregarse más allá 
+de los clásicos que son números de teléfono mail y demás o no.
+40:13 Santiago S.: Sí, necesitan algo más número de teléfono contraseña, qué 
+más?
+40:18 LAC : Obliga pero obligatorios que sí o sí no pueden hacer sus usuarios, si 
+no lo cargan mail, celular mail y celular seguro súper obligatorio, o sea en todo 
+caso que cargue uno uno uno pero nosotros no se lo vamos a aceptar. Le 
+vamos a devolver algo entendés, Pero mail y celular obligatorio, obviamente 
+dni, nombre dni, se pone eso Yo le pedí dni, gonza o no O es medio invasivo.
+40:40 GB : No, Sí aparte la mejor forma de saber que que no hay una persona 
+dos veces o
+40:42 LAC : bueno sí
+40:47 GB : qué? Si querés quick o quilt no sé en vez de dni.
+40:50 LAC : Dni, nombre apellido dni, y el que seguro tiene que estar que no es 
+habitual es número de matrícula porque los nutricionistas tienen un número de 
+matrícula.
+41:01 GB : Y que suba un PDF con algo, no importa después vemos si 
+aceptamos o no, pero que eso lo vayamos guardando.
+41:08 LAC : Okay.
+41:09 Santiago S.: Okay okay.
+41:10 GB : Tenemos la matrícula, te lo invento.
+41:13 LAC : Sí pero bueno, pero nosotros vamos a tener una validación final 
+vamos a ver los datos Y a ver si aceptamos o no, y vamos a ver, está bien.
+41:20 GB : Que suba el título o algo.
+
+41:22 LAC : Está bien, me parece bien?
+41:25 Santiago S.: Pásame la dirección de tu casa.
+41:28 GB : qué te iba a decir no para la parte de facturación y cierre de 
+comisiones no
+41:29 LAC : Ahí hay que ver si alguien.
+41:33 GB : queremos ya pedirle algo de su cuit para liquidarle la factura C
+41:39 LAC : Ah sí que esté también barracuy.
+41:41 GB : la parte fiscal la parte
+41:43 LAC : cuitter
+41:43 Santiago S.: Bueno entonces parada si va a estar cuit y cuil entonces no 
+estoy dni, o sí.
+41:47 LAC : está bien, no no hace falta cuit, Barranquilla
+41:49 Santiago S.: Porque van a ser monotributistas o no sí.
+41:52 LAC : No algunas son responsables, puede haber una responsable cripta, 
+así que por eso te digo, cuit barracuy.
+41:58 Santiago S.: No metemos los dos y fue que cargue todo y listo, qué cara 
+de cuit cuil cuido
+42:00 LAC : Bueno, que cargue todo cuit barra Queen seguro. No, no, no 
+siempre es el mismo campo, pero le debe aclararra Por si es
+42:06 Santiago S.: Queen sí, sí sí sí.
+42:11 LAC : responsable escrito listo listo.
+42:13 GB : Igual aclaro, eh? Cuil es cuando laburás para otro, o sea, solo 
+pondría cuit y punto No importa, si le pondría si querías un desplegable decís 
+Bueno te lo paso si querés condición fiscal que es una lista desplegable que diga
+42:25 Santiago S.: Okay dale
+42:27 GB : responsable cripto. Bueno, tributo esos clásicos busco uno de 
+cualquier web.
+42:34 LAC : Perdón, el campo no es número de matrícula ponele perdón, sí es 
+número matrícula nacional a los sumos nn circulito matrícula nacional tiene que 
+estar
+42:45 Santiago S.: ok
+42:46 LAC : la palabra nacional.
+42:49 GB : Ahí Leo claro.
+42:53 LAC : Sí pero entiendo que la nacional es todo toda la nación Argentina 
+
+entiendo que no ahí nosotros nos vamos a llevar para investigar en todo caso 
+se le cambia el nombre al campo Pero va a haber un número es lo de menos, 
+pero el principio que figure eso después vemos si le sacamos lo de nacional.
+43:12 Santiago S.: Y bueno, por último estaba estaba la integración que acá es 
+donde digo sincronizar catálogos. Esto no está todavía lo del mail, tampoco y 
+bueno lo
+43:23 LAC : Está bien.
+43:25 Santiago S.: de WhatsApp tampoco.
+43:26 LAC : Okay perfecto
+43:30 Santiago S.: Lo de la esto lo que te decía lo de la última sincronización si 
+quieren podemos probar para ver Cuánto tarda para que vean Cuánto tarda 
+porque me decías que con los dos mil productos te había tardado más o menos.
+43:43 GB : Sí pero eso le pego a varias en por distintos Eh vos podés estar 
+pegando solo a get producto o no?
+43:48 Santiago S.: Sí, sí.
+43:50 GB : Cuando quieras traer el stock de cada uno ahí.
+43:54 Santiago S.: Trae el estoque igual, eh también.
+43:56 GB : Porque lo trae ya está bien, lo trae todo unificado el stock cuando es 
+la de get productos, pero hay una
+44:02 Santiago S.: sí, no es muy instantáneo, pero tarda van a ver que
+44:08 LAC : Perdón, si traes top significa que no va a poder recetar algo que no 
+tiene stock.
+44:14 Santiago S.: No se puede.
+44:15 LAC : Se puede o no se puede?
+44:18 Santiago S.: De hecho hay un filtro Ahí va ahí tardo.
+44:20 GB : Creo que solo se usa para el filtro de con stock y sin stock.
+44:24 Santiago S.: Ahí está creados uno actualizado 209 sin cambios 2057 igual 
+tardó un minuto bien.
+44:33 GB : No, por eso Qué productos rápida.
+44:36 Santiago S.: Pero ves Acá hay un campo que es solo con esto ahí te baja.
+44:43 GB : Bajó a 78 páginas, por ejemplo?
+44:49 Santiago S.: Sí, 100 productos también.
+44:52 GB : Le puso un filtro Santi de productos mayor a 100 pesos para que no 
+haya. Tenemos hoy mil y pico de productos con precio igual a un peso por el 
+
+tema.
+45:04 Santiago S.: Claro, acá debería haber dos mil productos, pero el acá ya 
+hay un filtro que no se puede editar que es filtro, si tiene menos de 100 pesos 
+se se omite como como para que ustedes puedan hacer lo que hicieron ahora 
+que subir productos que no tengan que le van a que saben que van a 
+venderlos, pero todavía no saben qué precio le van a poner Entonces esto te lo 
+filtra ya por menos de 100 pesos que no va a haber ningún producto como lo 
+decimos, no?
+45:31 GB : Hay otro campo más que te va a servir para filtrar m***** que es 
+estado, no sé si lo están usando Hay un estado activo inactivo. Que sean los 
+estados igual.
+45:43 Santiago S.: Ok también que no se puede editar, no que no se pueda 
+recetar nada con inactivo, me imagino, no?
+45:47 GB : A esta actos y activos que ya no lo estamos comprando más ni 
+vendiendo más
+45:50 LAC : Pero perdón y productos sin stop entiendo que tampoco gonza o no 
+jugamos a que
+45:50 GB : tipo.
+45:55 LAC : tal vez por un tiempo está quebrado y tal vez a los dos días ya hay 
+stock. Cómo querés
+46:01 GB : Es muy filosófico esto.
+46:06 LAC : Bueno, queremos, no queremos. Yo hoy me inclino por sí evitar 
+barreras prefiero que recete algo sin stock, pero si justo ponen no sé pasta 
+cherutti pasta.
+46:19 GB : La experiencia la experiencia malas y después no consigue entender.
+46:23 LAC : tenés razón ahora
+46:25 Santiago S.: Pero yo no sé si yo no sé si van a hacer yo lo pienso del lado 
+del cliente. A mí me viene la nutricionista. Me dice, te te receto esto, no? Y 
+después voy a la tienda nube y justo no hay stock, no? No sé si voy a decir Uh 
+qué experiencia mala es como Uy mala, suerte entendés.
+46:45 LAC : No, en realidad sí, En realidad.
+46:48 GB : Igual Es verdad que hay un tiempo entre que receta y compra que el 
+stock se te puede ir a cero O sea que va a pasar eso el tema es que ya De 
+antemano, te está
+
+46:54 Santiago S.: claro
+46:57 GB : recetando algo que hoy no tenés stock, lo cual es o muy probable 
+que siga sin tener stock o justo lo compraste y apareció stock y de pedo metes 
+una una receta.
+47:07 LAC : Y perdón se puede hacer como algo que pueda detectar el 
+nutricionista que justo está sin stock en ese momento. tipo un puntito
+47:18 GB : Eso eso cuando tenemos a Tower House porque histórico.
+47:22 Santiago S.: No, y tampoco y tampoco porque no es largo porque no es 
+largo es con
+47:27 LAC : trabajo
+47:28 Santiago S.: sincronizaciones esto y lata Warehouse siempre va a ser una 
+esclava de la base de contabilium.
+47:35 GB : Bueno pero parece que no sea Live pero ponerle que vamos a un 
+escenario de una vez al día
+47:39 LAC : una vez al día
+47:41 Santiago S.: Claro, Okay Sí bueno Esto es bueno Esto es cuando ustedes 
+quieran si usted esto
+47:43 GB : está
+47:47 Santiago S.: Esto está esto está haciendo una esclava solamente de 
+productos de lo que te dice contabilium, o sea que si ustedes van a 
+sincronización integraciones.
+47:55 GB : Bueno, igual levanto la mano que en el get producto lo que te traes 
+el stock sumado de todos los depósitos después también empieza el debate de 
+ojo. nada Es tienda nube Mira el stock que hay solo en un depósito de los siete 
+creados.
+48:19 Santiago S.: Claro, okay.
+48:21 GB : Nada, si uno quiere ser fino no sirve tanto ese stock, el de cuando el 
+que figura en producto, No viste eso te pasé lento stock ese uno le puede decir 
+en
+48:31 Santiago S.: sí
+48:35 GB : el Jason te tira el stock por depósito ese te tira la posta del depósito 
+de donde sale las ventas de tienda nube el día de mañana cuando hace un local 
+nada el stock, puede ser distinto al de tienda nube que el de un local digo.
+48:49 LAC : Sí pero esto en principio esta primera etapa que sea a la tienda 9 
+
+porque entendéis, no que puedo hacer local, no va, Yo sé que es una limitante, 
+pero vamos con la realidad de hoy, después nos juntamos y será la versión uno 
+punto dos y vemos.
+49:06 GB : Bueno pero volvamos a la pregunta inicial queremos que se filtre por 
+stock o no?
+49:12 LAC : En base a lo que dijiste ahora cambié. Ahora estoy más que bueno, 
+que sí, que lo deje que recete cosas sin stock.
+49:19 GB : y
+49:19 LAC : Pero vamos a tener ahí un temita con productos de berga.
+49:22 GB : Chau Bueno pero a ver es Data que igual sirve porque a mí me sirve 
+también para comprar Che están recetando esto y no tengo Qué onda Voy lo 
+compro.
+49:30 LAC : Y bueno y bueno, sí, de verdad sirve la Data no, bueno.
+49:34 GB : A la vez a la vez para ir proveedor está quebrado, eh? No es que yo 
+no lo quiere si yo lo veo activo porque no tendrías todo pero no importa. Esto 
+es más de gestión, pero sí que pueda recetar todo, ya está.
+49:42 LAC : sí Que pueda Dale listo, listo, está profe si está activo en 
+contabilidad.
+49:50 Santiago S.: Dale bárbaro, bárbaro, bueno Y eso era. Y esto era la es casi 
+lo mismo, eh?
+49:57 LAC : Bueno, para volver a verlo como nutricionista no admin. No pero 
+quería ver a ver porque las últimas dos o la pinguis.
+50:06 GB : El de quiere ver el de cierre.
+50:08 LAC : Sí muy bien, viste viste ya me lee la mente, ya somos hermanos 
+nacimos el mismo vientre. sí
+50:18 Santiago S.: Igual estaba en el sí decime.
+50:20 LAC : En mi cabeza, yo me imaginaba que tal vez la mina receta en una 
+semana 40 y va a
+50:26 Santiago S.: sí
+50:26 LAC : tener cuarenta al mismo tiempo, cómo lo ve eso entendés? Que 
+tenga una receta que porque la idea es que convierta que la mina pueda entrar 
+y ver quién es convirtieron la venta y atienda nube y en esto ya está pendiente.
+50:39 Santiago S.: sí
+50:41 GB : Eso en el panel de recetas era No encierre eso.
+
+50:44 LAC : No sé tal vez estén recetas Acá está perfecto, entonces le figura Este 
+es el que se me pasó rápido cerrarlo cerrarlo en el general, quiero verlo que la 
+mina ponele va a tener cuarenta líneas acá, si figura estado pendiente nunca se 
+ejecutó si el estado que he estado Cuántos estados, hay hay dos nada más 
+pendientes y
+51:06 Santiago S.: aplicada vencida y anulada
+51:09 LAC : Okay listo Perfecto entonces cuando convierte cuando usa el cupón 
+una persona en tienda nube y paga acá se lee se le convierte en aplicada?
+51:20 Santiago S.: del último mes
+51:21 LAC : perfecto y el cierre mensual tiene que ser solo sobre las aplicadas 
+del valor de tienda nube nada de contabilium, porque es todo ya Data de tienda 
+nube, No gonza, acordate que
+51:33 GB : y de la fecha y de la fecha aplicada también no es que Tipo de si no 
+la cagas por ahí se convierte no, pero ponele que la emite el 29 de julio y la 
+paga el cliente la USA en agosto. Se la tenía que pagar en agosto.
+51:50 LAC : Caro en realidad tiene que hacerle los cierres sobre las que están 
+aplicadas que ya es una compra realizada.
+51:54 GB : Sí pero con fecha de compra no con fecha de receta por las dudas lo 
+claro.
+52:00 LAC : Con fecha en que se convirtió la venta en tienda nube No de cuando 
+emitió la receta está bien.
+52:07 Santiago S.: ok
+52:08 LAC : Y Y de nuevo y lo facturado, claro, este dato viene, no de 
+contabilidad no, O ya es dato que también está en contabilidad en cuando ya 
+compró en tienda nube.
+52:17 GB : Pasa que no sé Ahí hay que hacer un puente o sea.
+52:22 Santiago S.: ahí me perdí para de vuelta a Leo
+52:23 LAC : Por qué? Porque vos acordate lo que vemos acá el precio el 
+descuento no es lo que finalmente va a ocurrir porque va a pagar más barato 
+todavía. Entonces
+52:30 Santiago S.: sí
+52:30 LAC : realmente la comisión tiene que ser sobre lo que gastó la persona 
+en tienda nube Entonces es un valor distinto Al que está en contabilium, 
+inicialmente el precio esté lleno con el 15 de descuento que pusiste.
+
+52:43 Santiago S.: claro
+52:44 LAC : Entendés entonces el precio valor el valor final que la persona paga 
+es de tienda nube Lo que pasa que yo entiendo el container también tiene ese 
+dato cuando una persona compra algo por tienda nube, no están contabilium, 
+no?
+52:58 GB : Sí sí, tienes una ID de venta, pero no tienes el cupón yo no puedo 
+ver en contabilidad un cuál venta se usó ese cupón.
+53:06 LAC : Entonces sería ideal que el dato de la plata gastada
+53:09 GB : No creo, pará creo, eh Ojo por ahí? Sí, aparece la línea copón en la 
+detalle la factura con el ID de cupón y
+53:17 LAC : Lo que pasa que si Igualmente vamos van los chicos van a tener 
+que elaborar en esta Api que chupa de tienda nube ese dato va a estar en 
+tienda nube
+53:26 GB : te digo que hoy lo puedo hacer manual, puedo exportar las ventas 
+de tienda nube
+53:26 LAC : Lo tiene todo. pero
+53:32 GB : y ver cuando se usó el cupón y
+53:35 LAC : Solo para que se entienda que el cierre mensual O sea la etapa 
+donde puede ver precios Solo queda en la tapa de nueva receta pero después 
+que no quede ningún histórico de que recetó a ese precio nada que sea nomás 
+ahí en el buscador de producto.
+53:49 Santiago S.: Por ejemplo acá en este coso de esto.
+53:53 LAC : Ya ahí desaparece porque ya el precio va a cambiar cuando 
+entendés que sea
+53:58 Santiago S.: No claro como para que la mina no pueda hacer las cuentas 
+por su cuenta digamos.
+53:59 LAC : más más que nada. Claro La idea, es que no la idea es que sea Solo 
+tal vez en la etapa inicial donde está recetando y de última dice Uy que Caro 
+este producto nada más que eso después de desaparece los datos, Porque ya 
+es como una receta, vos no te ponen precio. Está bien entonces que no figure 
+nada de ese dato Solo que esté en la original, si querés Sí nomás para que 
+tenga una referencia de precio.
+54:21 Santiago S.: Claro sí le ponemos la ley veleza de
+54:24 LAC : Eso está bien y de ahí y de ahí no hay más presión en esta parte 
+
+que no se
+54:26 Santiago S.: precio aproximado o algo así
+54:29 LAC : vea el precio solo lo que se recetó y cantidades está bien Y entonces 
+después
+54:34 Santiago S.: Ok bárbaro
+54:34 LAC : cuando vas a cierre mensual es solo lo que venga este dato de 
+entiendo yo tienda nube idealmente que la persona va a tener un descuento del 
+15, pero tal vez en la tienda, ya tiene un 30 entonces va a tener un 45 al final 
+Está bien, entonces nada tendría que venir de tienda nube, el cierre de cada 
+receta Cuánto es plata. Final está bien. Qué te iba a decir? Déjame pensar.
+55:05 GB : Falta el paso final.
+55:06 LAC : No está bien por ahora está bien.
+55:09 GB : Este cierre que termina dando diciéndote como un resumen, no?
+55:14 Santiago S.: esto porque por el mes
+55:14 GB : y el estado del cierre que dice en curso, eso cambia cuando se le 
+paga el nutricionista o No pero está bien, está bien.
+55:22 Santiago S.: Yo voy a junio, ya te aparece cerrado. Te lo hace por mes 
+calendario.
+55:28 GB : Y nosotros como admin tendríamos que poder. Saber o exportar 
+Cuánto comisionó cada nutricionista para pagárselo tener como un cierre 
+nosotros como admin para el cierre de todas las nutrias a la vez.
+55:42 LAC : claro
+55:47 Santiago S.: Ah ustedes un cierre mensual como admin?
+55:49 LAC : un cierre del mensual o del corte de gramo en realidad porque, o 
+sea vamos a tratar de que sea mensual internamente, pero si queremos a una
+55:57 Santiago S.: Si quieren seleccionar la fecha que quieran Ok pregunta 
+Entonces porque yo a ustedes los pensé como nutricionistas quieren tener este 
+este cierre mensual se transforma en esto que decimos de todas las 
+nutricionistas Pero porque su usuario digamos es como que puede hacer todo 
+lo que hace una nutricionista.
+56:17 GB : Yo no dejaría que ese usuario pueda hacer recetas a lo sumo. 
+Nosotros nos creamos nuestro propio nuestro propia cuenta de nutricionista Si 
+queremos.
+56:23 Santiago S.: Nutricionista le saco le saco panel, le saco esto le saco esto y 
+
+le saco esto.
+56:32 LAC : O sea no sí
+56:33 Santiago S.: no es lo mismo lo mismo que acá pero
+56:35 LAC : Sí está bien, pero sí no, no hace falta ver, No no vamos a recetar 
+con ese Back de administrador, ponele con ese usuario administrador.
+56:42 Santiago S.: Okay perfecto
+56:43 LAC : Pero sí, este tema de cierres.
+56:45 Santiago S.: Okay listo, entonces va a quedar cierre mensual y 
+nutricionistas y integraciones.
+56:52 GB : Sí, lo ideal te digo de nosotros como no funciona un exportable que 
+aún no puede hacer un clic y que te tiene tiene un Excel O sí, lo que sea, si se ve
+56:58 Santiago S.: y que salga Excel
+57:02 GB : txt que diga cuit ahí nutricionista mail nutricionista las Y cuánto estas
+57:03 LAC : sí
+57:07 Santiago S.: no, una
+57:09 GB : columnas? Cuánto facturó Cuántos comisionado, Cuántas recetas Y 
+eso pues nosotros después lo aplicamos.
+57:14 LAC : Ahora pregunto nosotros ponele que nos factura y le transferimos 
+después en su panel, ella puede tener como le queda un histórico algo o le 
+desaparece si va un mes viejo hay algo.
+57:25 Santiago S.: Si vamos me viejo puede ver el cierre de un mes anterior.
+57:29 LAC : Pero en ningún pero no sabemos si está liquidado o no, porque 
+esto no Pero
+57:32 Santiago S.: Sí, acá.
+57:34 LAC : cómo sabe que le pagamos.
+57:36 GB : No, eso no.
+57:36 Santiago S.: Ah bueno, eso ustedes quieren que ustedes quieren que ella 
+pueda ponerle un
+57:38 LAC : Eh, eso digo.
+57:41 Santiago S.: ticke de a tipo jugó ustedes.
+57:43 LAC : No ella No ella no nosotros en nuestro eso nosotros en estobar 
+decir ya liquidamos esto Entonces ya está Le figura liquidado entendés y tenés 
+como
+57:52 Santiago S.: Ok Dale Sí desde este cierre mensual Okay dale Dale dale dale
+
+57:54 LAC : para asegurarnos de que le pagamos esas ese mes o esas recetas 
+en realidad va a ser más por receta por más que el cierre sea mensual es por 
+receta que se le liquida está bien.
+58:05 Santiago S.: Su cierre mensual va a tener va a poder marcar el estado del 
+cierre mensual de las nutricionistas.
+58:15 GB : pero para estuvo bueno, eso que dijo Leo el estado final de una 
+receta es Más allá de aplicada o es tipo liquidada como pagada Ese es el último 
+estado
+58:26 LAC : sí
+58:26 GB : esa receta ya está, se la pagamos en algún cierre último estado es 
+como no
+58:31 Santiago S.: Sí sí, liquidada está bien.
+58:33 GB : sé comisionada o lo que sea.
+58:36 LAC : Abonada abonada, la que quiera.
+58:37 GB : Entidad y listo Ese es el último estado ahí Cambia de estado la receta 
+y deja
+58:41 LAC : exacto
+58:42 GB : de salir en los cierres siguientes ya está, chao.
+58:44 LAC : exacto
+58:45 Santiago S.: bárbaro bárbaro
+58:47 LAC : Esa es buena muy bien.
+58:48 Santiago S.: Perfecto, buenísimo.
+58:51 GB : Che muy bueno
+58:52 LAC : sí, boludo espectacular
+58:54 Santiago S.: Bárbaro Me alegra que les guste es importantísimo eso.
+58:57 LAC : Bien, bien. Bueno, a ver como resumen Bueno lo que sea que 
+anotaste vos de tu lado, lo
+59:04 LAC : único que no llevamos nosotros en nuestro lado columnas del 
+maestro que sirvan para el buscado de productos algo más de nuestro lado 
+Santi que quieras.
+59:16 Santiago S.: No eso eso
+59:17 LAC : listo bueno para
+59:18 Santiago S.: cualquier cosa les escribo por el grupo Pero eso
+59:21 LAC : Bueno listo, lo de la Api lo querías hablar ahora porque yo no 
+
+entendí si era más tarde dentro de esta col o más tarde en el tiempo de día 
+listo Perfecto
+59:27 Santiago S.: No más tarde en el tiempo.
+59:29 LAC : entonces bueno.
+59:30 Santiago S.: Sí, sí.
+59:32 LAC : Buen finde gran laburo.
+59:34 Santiago S.: Gracias loco, nos vemos Che buen finde.
+59:36 LAC : A los pará Perdón lo de la base, como lo van a manejar, después 
+tira No sé lo manejas con vos.
+59:43 Santiago S.: Sí ahora lo hablo con Fran que hoy no pude venir, okay?
+59:46 LAC : Listo para manejarlo directo con Gonzalo listo, si querés lo puedes 
+tirar en el grupo Pero yo ni me meto Así que listo listo abrazo, chao.
+59:56 Santiago S.: Dale de una de una de una chicos buen fin
+View original transcript at Tactiq.
