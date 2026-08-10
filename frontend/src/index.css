@@ -1960,3 +1960,147 @@ html, body { overflow-x: hidden; }
   font-size: 0.76rem;
   line-height: 1.5;
 }
+
+/* ---- Próximamente (landing pre-lanzamiento, VITE_COMING_SOON=true) ----
+   Pantalla única sobre el verde oscuro de marca (mismo `--ink` del panel de Login/Registro),
+   centrada y sin scroll en desktop. Reusa .auth__brand-badge/-name y .powered-by para no
+   duplicar la identidad. Todo el arte es CSS: no agrega ningún asset ni pedido externo. */
+.soon {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  background: var(--ink);
+  color: #fff;
+  overflow: hidden;
+}
+/* Halo mint detrás del contenido — decorativo, con gradiente (no imagen). */
+.soon__glow {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 70vh;
+  background: radial-gradient(ellipse at 50% 0%, rgba(87, 211, 166, 0.22), transparent 65%);
+  pointer-events: none;
+}
+.soon__inner {
+  position: relative;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 56px 24px 40px;
+  text-align: center;
+  align-self: center;
+}
+.soon__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 30px;
+}
+.soon__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 18px;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgba(87, 211, 166, 0.35);
+  border-radius: 999px;
+  background: rgba(87, 211, 166, 0.1);
+  color: var(--primary-mint);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.soon__title {
+  margin: 0;
+  font-size: clamp(1.9rem, 5vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.soon__lead {
+  margin: 18px auto 0;
+  max-width: 540px;
+  font-size: 1rem;
+  line-height: 1.65;
+  color: #a9c2bc;
+}
+.soon__pasos {
+  list-style: none;
+  margin: 38px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  text-align: left;
+}
+.soon__paso {
+  padding: 18px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.045);
+}
+.soon__paso-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  background: rgba(87, 211, 166, 0.14);
+  color: var(--primary-mint);
+}
+.soon__paso b { display: block; font-size: 0.92rem; font-weight: 700; }
+.soon__paso-texto {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #a9c2bc;
+}
+.soon__cta {
+  display: inline-block;
+  margin-top: 36px;
+  padding: 14px 34px;
+  border-radius: var(--radius-btn);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(15, 138, 102, 0.35);
+}
+.soon__cta:hover { background: var(--primary-dark); }
+.soon__note {
+  margin: 18px auto 0;
+  max-width: 460px;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #7d968f;
+}
+.soon__footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.75rem;
+  color: #7d968f;
+}
+/* El .powered-by global asume fondo claro: sobre el ink hay que invertirlo. */
+.soon__footer .powered-by { border-color: rgba(255, 255, 255, 0.14); background: transparent; }
+.soon__footer .powered-by:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--primary-mint);
+}
+.soon__footer .powered-text { color: #7d968f; }
+.soon__footer .powered-logo { color: #fff; }
+
+@media (max-width: 700px) {
+  .soon__pasos { grid-template-columns: 1fr; gap: 10px; }
+  .soon__paso { padding: 14px; }
+  .soon__inner { padding: 40px 20px 32px; }
+  .soon__cta { display: block; margin-top: 28px; }
+}

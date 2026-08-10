@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
 import { registrar } from "../api/registro";
+import { config } from "../config";
 import { CONDICIONES_FISCALES } from "../types/registro";
 import { Icon } from "../components/ui/Icon";
 
@@ -272,9 +273,12 @@ export function Registro() {
             {saving ? "Enviando…" : "Enviar solicitud"}
           </button>
 
-          <p className="auth__foot">
-            ¿Ya tenés cuenta? <Link to="/">Ingresar</Link>
-          </p>
+          {/* En modo pre-lanzamiento no se ofrece login: `/` es la landing "Próximamente". */}
+          {!config.comingSoon && (
+            <p className="auth__foot">
+              ¿Ya tenés cuenta? <Link to="/">Ingresar</Link>
+            </p>
+          )}
         </form>
       </main>
     </div>

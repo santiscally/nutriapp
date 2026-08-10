@@ -10,6 +10,12 @@ const API_ORIGIN = env.VITE_API_BASE_URL ?? "http://localhost:8080";
 export const config = {
   /** Base completa de la API REST. El contrato vive bajo /api/v1. */
   apiBaseUrl: `${API_ORIGIN}/api/v1`,
+  /**
+   * Modo pre-lanzamiento: `/` muestra la landing "Próximamente" y lo único público es
+   * `/registro`. El login sigue existiendo en `/ingresar`, sin link (equipo + demos).
+   * Se hornea en el build (Vite): apagarlo requiere `npm run build` de nuevo.
+   */
+  comingSoon: env.VITE_COMING_SOON === "true",
   keycloak: {
     url: env.VITE_KEYCLOAK_URL ?? "http://localhost:8081",
     realm: env.VITE_KEYCLOAK_REALM ?? "nutriapp",

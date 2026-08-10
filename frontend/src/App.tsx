@@ -15,8 +15,10 @@ import { Login } from "./pages/Login";
 import { Nutricionistas } from "./pages/Nutricionistas";
 import { Pacientes } from "./pages/Pacientes";
 import { Perfil } from "./pages/Perfil";
+import { Proximamente } from "./pages/Proximamente";
 import { Recetas } from "./pages/Recetas";
 import { Registro } from "./pages/Registro";
+import { config } from "./config";
 
 export default function App() {
   return (
@@ -25,8 +27,13 @@ export default function App() {
         <DialogProvider>
         <BrowserRouter>
         <Routes>
-          {/* Públicas */}
-          <Route path="/" element={<Login />} />
+          {/* Públicas.
+              Modo pre-lanzamiento (VITE_COMING_SOON=true): `/` es la landing "Próximamente" y lo
+              único ofrecido es registrarse. El login no desaparece — queda en `/ingresar`, sin
+              link, para el equipo y las demos. `/ingresar` existe siempre (en modo normal es
+              simplemente un alias de `/`), así los bookmarks no se rompen al apagar el modo. */}
+          <Route path="/" element={config.comingSoon ? <Proximamente /> : <Login />} />
+          <Route path="/ingresar" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
 
           {/* Protegidas (layout con sidebar/topbar) */}
