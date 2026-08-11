@@ -3,16 +3,26 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # Cambios vs dev:
-#   - nginx (nuevo): único servicio público (80/443), TLS termination + reverse proxy.
+#   - nginx (nuevo): reverse proxy de la app; NO publica puertos en el host.
 #   - backend: perfil `prod`, secretos fail-closed (sin default de dev).
 #   - keycloak: modo producción bajo path /auth, detrás del proxy TLS.
-#   - db/keycloak/backend siguen bindeados a 127.0.0.1 (loopback, no públicos); el único
-#     puerto expuesto a la red es el de nginx.
+#   - db/keycloak/backend siguen bindeados a 127.0.0.1 (loopback, no públicos).
+#
+# TOPOLOGÍA POR DEFECTO: detrás del Caddy del VPS.
+#   En este host los 80/443 los tiene `edge-caddy-1` (stack /root/stack), que ya sirve
+#   haltcatch.com.ar y jeianell.com.ar y proxea POR NOMBRE DE CONTENEDOR sobre la red
+#   docker externa `web` — no por puertos de loopback. NutriApp se suma a ese esquema:
+#   nginx entra a `web`, no publica ni un puerto, y Caddy le manda el dominio con
+#   `reverse_proxy nutriapp-nginx:80`. El TLS lo emite y renueva Caddy solo.
+#
+#   Si algún día este stack tiene que ser el front único (dueño de 80/443 y del TLS),
+#   sumar el override docker-compose.edge.yml. Ver DEPLOY.md.
 #
 # Requisitos antes de `up` (ver DEPLOY.md):
-#   1. certs reales en nginx/certs/ (o `bash scripts/gen-selfsigned-cert.sh` para staging).
-#   2. SPA compilada:  cd frontend && npm run build  (genera frontend/dist, que nginx sirve).
+#   1. La red externa `web` tiene que existir (`docker network create web` si no está).
+#   2. SPA compilada: frontend/dist (build con los VITE_* de prod).
 #   3. .env con los secretos de prod (KEYCLOAK_ADMIN_CLIENT_SECRET regenerado, dominio, etc.).
+#   4. El site block de nutriapp en /root/stack/Caddyfile + `caddy reload`.
 # ============================================================
 
 services:
@@ -28,9 +38,12 @@ services:
     # --import-realm hace el bootstrap del realm en el primer arranque (idempotente si ya existe).
     command: ["start", "--import-realm"]
     environment:
-      # Origen público (scheme + host), SIN path. El /auth lo agrega KC_HTTP_RELATIVE_PATH.
-      # Ej: https://app.midominio.com  → Keycloak queda en https://app.midominio.com/auth
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME (origen público, ej. https://app.midominio.com)}
+      # URL pública COMPLETA, /auth INCLUIDO. Ej: https://nutriapp.com.ar/auth
+      # OJO (KC 25, hostname v2): si esto es una URL completa, el context path sale de ACÁ y
+      # KC_HTTP_RELATIVE_PATH NO se le concatena. Poniendo el origen pelado, el .well-known
+      # publica https://<host>/realms/... (sin /auth) → nginx no rutea ese path y el login
+      # del SPA rompe con un 404 disfrazado de index.html. Verificado 2026-08-11.
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME (URL pública con /auth, ej. https://nutriapp.com.ar/auth)}
       KC_HTTP_RELATIVE_PATH: /auth
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: "false"
@@ -61,14 +74,25 @@ services:
     restart: unless-stopped
     depends_on: [backend, keycloak]
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Dos variantes de config, se elige por env:
+      #   ./nginx/conf.d-proxied  (default) → HTTP en :80, detrás de Caddy. Sin TLS acá.
+      #   ./nginx/conf.d                    → TLS propio en :443, para el modo front único
+      #                                       (va junto con docker-compose.edge.yml).
+      - ${NGINX_CONF_DIR:-./nginx/conf.d-proxied}:/etc/nginx/conf.d:ro
       - ./nginx/certs:/etc/nginx/certs:ro
-      # Webroot del challenge ACME (http-01). certbot escribe acá desde el host; nginx lo sirve
-      # por HTTP sin redirigir (location ^~ /.well-known/acme-challenge/).
+      # Webroot del challenge ACME (http-01). Sólo lo usa la variante conf.d (certbot).
+      # Detrás de Caddy es inofensivo: el ACME lo hace Caddy y ni siquiera se rutea acá.
       - ./nginx/acme:/var/www/acme:ro
       # SPA compilada (frontend/dist). Override con FRONTEND_DIST si se buildea en otro path.
       - ${FRONTEND_DIST:-./frontend/dist}:/usr/share/nginx/html:ro
-    ports:
-      - "80:80"
-      - "443:443"
-    networks: [nutriapp-net]
+    # Sin `ports`: el único que tiene que alcanzar a nginx es Caddy, y lo hace por nombre
+    # de contenedor dentro de la red `web`. Publicar 80/443 acá chocaría con Caddy y
+    # rompería el `up`; publicar un puerto alto agregaría superficie sin necesidad.
+    networks: [nutriapp-net, web]
+
+networks:
+  # Red del borde, la crea el stack de Caddy (/root/stack). `external` = este compose la
+  # usa pero no la administra: no la crea ni la borra en el `down`. Sólo la comparte nginx;
+  # db/keycloak/backend quedan solos en nutriapp-net, sin ruta desde los otros sitios del VPS.
+  web:
+    external: true
