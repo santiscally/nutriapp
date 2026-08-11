@@ -32,6 +32,32 @@
 
 ## Entradas
 
+## 2026-08-11 — Santi — infra (zona DNS de nutriapp.com.ar + **corrección** de dos cosas que escribí ayer)
+**Qué:** Archivo `nutriapp.com.ar.zone` en la raíz del repo, formato BIND, listo para importar en hPanel
+(mismo criterio que `haltcatch.com.ar.zone` del proyecto de la landing). Activos sólo tres registros:
+`A @ → 187.127.36.153`, `AAAA @ → 2a02:4780:6e:84b8::1`, `CNAME www → nutriapp.com.ar.`. El bloque de
+correo Hostinger y un bloque alternativo de anti-spoofing (SPF `-all` + DMARC reject + null MX) quedan
+comentados, excluyentes entre sí, con la explicación de cuándo usar cada uno.
+**Por qué:** el usuario ya había hecho lo mismo para haltcatch y jeianell; importar un `.zone` evita cargar
+registros a mano en el panel.
+**Corrección 1 — el `AAAA` SÍ va (ayer dije que no).** Escribí que el `A` (Telecom AR) y el `AAAA` (rango
+Hostinger) de la landing eran dos servidores distintos. Es falso: los dos tienen el mismo PTR,
+`srv1786758.hstgr.cloud` → un solo VPS de Hostinger dual-stack (el `/48` es HOSTINGER-HOSTING en RDAP, y el
+IPv4 187.127.36.x es de Hostinger aunque parezca argentino). Corregido en DEPLOY.md y ESTADO.md.
+**Corrección 2 — en el VPS los 80/443 los tiene Caddy, no un nginx.** Verificado contra el server:
+`haltcatch.com.ar` da `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
+`Server: nginx/1.27.5`, o sea Caddy termina TLS y proxea a un nginx que sirve la landing. Consecuencias:
+(a) el override de prod, que bindea `80:80`/`443:443`, **no levanta ahí** — nutriapp tiene que escuchar en un
+puerto alto con un `reverse_proxy` de Caddy adelante; (b) **el certbot/webroot ACME que agregué ayer queda de
+reserva**: Caddy emite y renueva el cert solo. Falta adaptar el override a HTTP plano en puerto alto y decidir
+dónde quedan los security headers y el rate-limit, que hoy viven en el `server{}` de TLS del nginx nuestro.
+**Hallazgo nuevo:** `nutriapp.com.ar` da **SERVFAIL** (no NXDOMAIN) → hay delegación en nic.ar pero los
+nameservers no sirven la zona. Hay que crear el dominio en hPanel y poner en nic.ar el par de NS que hPanel
+muestre **para ese dominio**: no es fijo por cuenta (haltcatch usa `lunar/solar.dns-parking.com`, jeianell
+usa `ns1/ns2.dns-parking.com`). Hasta que eso esté, el `.zone` no tiene dónde importarse.
+**Impacto para el otro:** ninguno (nada de esto toca `frontend/` ni el contrato).
+**Refs:** `nutriapp.com.ar.zone` (nuevo), `DEPLOY.md` (secciones DNS + pre-requisitos + TLS), `ESTADO.md`.
+
 ## 2026-08-10 — Santi — frontend + infra (landing "Próximamente" detrás de un flag de build + DNS/TLS de nutriapp.com.ar)
 **Qué:** Nueva pantalla `pages/Proximamente.tsx` y un flag de build `VITE_COMING_SOON`. Con el flag en
 `true`: `/` es la landing de pre-lanzamiento (propuesta de valor + CTA "Solicitar acceso"), `/registro`

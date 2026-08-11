@@ -14,7 +14,8 @@ Topología (single domain, path-based):
 
 > **TLS elegido: bring-your-own-cert.** nginx lee `nginx/certs/{fullchain,privkey}.pem`. Para
 > Let's Encrypt hay webroot ACME servido en `:80` (`nginx/acme/`) → emisión con certbot `--webroot`;
-> la **renovación sigue siendo manual** (paso 1).
+> la **renovación sigue siendo manual** (paso 1). **En el VPS del cliente esto probablemente no se
+> use**: ahí Caddy ya termina TLS y emite/renueva solo — ver punto 2 de la sección DNS.
 
 > **Pre-lanzamiento:** para publicar el dominio con una pantalla "Próximamente" y sólo el registro
 > habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS concreto de
@@ -27,8 +28,9 @@ Topología (single domain, path-based):
 1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriapp.com.ar](#dns--nutriappcomar).
 2. **Docker + Docker Compose v2** en el host.
 3. **Node** (para compilar la SPA) — en el host o en un CI que deje el `dist/` listo.
-4. **Los puertos 80/443 del host libres** — ver la advertencia de convivencia con la landing del
-   cliente en la sección de DNS. Si ya hay un webserver ahí, esto NO levanta.
+4. **Definir quién termina TLS.** En el VPS del cliente los 80/443 ya los tiene **Caddy** (sirve la
+   landing `haltcatch.com.ar`), así que el override tal como está —bindeado a `80:80`/`443:443`— **no
+   levanta ahí**. Ver el punto 2 de la sección de DNS antes de intentar el `up`.
 
 ## Pasos de despliegue
 
@@ -147,37 +149,50 @@ admin la aprueba, así que un registro público no da acceso a nada.
 
 ## DNS — nutriapp.com.ar
 
-El host es el **mismo servidor donde está la landing del cliente** (`haltcatch.com.ar`), cuya zona
-resuelve a `187.127.36.153`. Registros mínimos a crear en la zona de `nutriapp.com.ar`:
+**Archivo listo para importar: [`nutriapp.com.ar.zone`](nutriapp.com.ar.zone)** (formato BIND, mismo
+criterio que `haltcatch.com.ar.zone`). Los registros activos son sólo estos tres:
 
-| Tipo    | Nombre | Valor               | TTL |
-| ------- | ------ | ------------------- | --- |
-| `A`     | `@`    | `187.127.36.153`    | 300 |
-| `CNAME` | `www`  | `nutriapp.com.ar`   | 300 |
+| Tipo    | Nombre | Valor                    | TTL |
+| ------- | ------ | ------------------------ | --- |
+| `A`     | `@`    | `187.127.36.153`         | 300 |
+| `AAAA`  | `@`    | `2a02:4780:6e:84b8::1`   | 300 |
+| `CNAME` | `www`  | `nutriapp.com.ar`        | 300 |
 
-Con eso alcanza para servir la app por HTTPS (nginx atiende cualquier `Host`). Nada más es
-necesario: no hay subdominios (`/api` y `/auth` son paths del mismo dominio, no hosts).
+Con eso alcanza. No hay subdominios: `/api` y `/auth` son paths del mismo dominio, no hosts.
+El bloque de correo y el de anti-spoofing quedaron comentados en el archivo (ver ahí cuándo usar
+cada uno; son excluyentes entre sí).
 
-**Tres cosas a verificar antes de tocar la zona:**
+**Es el mismo VPS que la landing `haltcatch.com.ar`**, y es un VPS de Hostinger:
+`187.127.36.153` y `2a02:4780:6e:84b8::1` resuelven por PTR **los dos** a `srv1786758.hstgr.cloud`
+→ una sola máquina dual-stack, así que el `AAAA` va igual que en la landing (verificado 2026-08-11).
 
-1. **NO copiar el `AAAA` de la landing.** La zona de `haltcatch.com.ar` tiene
-   `A @ → 187.127.36.153` (Telecom AR) y `AAAA @ → 2a02:4780:6e:84b8::1` (rango de Hostinger):
-   **son dos servidores distintos**. Si se replica ese `AAAA` en `nutriapp.com.ar` y la app corre en
-   el `187.127.36.153`, los clientes con IPv6 (que lo prefieren por Happy Eyeballs) van a pegarle al
-   host equivocado → sitio incorrecto o timeouts intermitentes, imposibles de debuggear desde
-   Argentina si tu ISP no tiene IPv6. Poner `AAAA` **sólo** si se confirma que el mismo host que
-   sirve nutriapp responde en esa IPv6. De paso: esa inconsistencia en la zona de la landing
-   conviene revisarla con el cliente, puede estar sirviendo la landing desde otro lado del esperado.
-2. **Los puertos 80/443 del host.** El stack prod de nutriapp levanta su propio nginx bindeado a
-   `80:80` y `443:443`. Si la landing ya se sirve desde ese mismo servidor, **el `up` va a fallar
-   por puerto ocupado** (o va a robarle el tráfico). Hay que decidir cuál de las dos:
-   - **nginx de nutriapp como front único**: agregarle un `server{}` para `haltcatch.com.ar` que
-     sirva/proxee la landing. Más simple si la landing es estática.
-   - **el webserver existente como front**: nutriapp bindea a puertos altos (`8443:443` en el
-     override) y el nginx de afuera proxea `nutriapp.com.ar` hacia ahí. Mantiene la landing intacta.
-3. **`server_name _` es catch-all.** Mientras el nginx de nutriapp sea el único en 80/443, va a
-   responder también para `haltcatch.com.ar` y cualquier otro `Host` que apunte a esa IP. En
-   convivencia, endurecerlo:
+**Tres cosas a resolver antes de importar / deployar:**
+
+1. **La zona de `nutriapp.com.ar` no existe todavía.** Al 2026-08-11 el dominio devuelve **SERVFAIL**
+   (no NXDOMAIN) desde `1.1.1.1`: hay delegación en nic.ar pero los nameservers no sirven la zona.
+   Orden correcto: agregar el dominio en hPanel (crea la zona) → poner en nic.ar **exactamente** el
+   par de NS que hPanel muestre para *este* dominio → importar el `.zone`. El par no es fijo por
+   cuenta: `haltcatch.com.ar` usa `lunar/solar.dns-parking.com` y `jeianell.com.ar` usa
+   `ns1/ns2.dns-parking.com`.
+2. **En el VPS los 80/443 los tiene Caddy, no nginx.** `haltcatch.com.ar` responde
+   `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
+   `Server: nginx/1.27.5` → Caddy termina TLS y proxea a un nginx que sirve la landing. Entonces
+   **el stack prod de nutriapp NO puede bindear `80:80`/`443:443`**: el `up` falla por puerto ocupado.
+   Lo natural es sumarse a ese esquema — nutriapp escucha en un puerto alto de loopback y Caddy le
+   pasa el dominio:
+   ```caddyfile
+   nutriapp.com.ar, www.nutriapp.com.ar {
+       reverse_proxy 127.0.0.1:<puerto-alto>
+   }
+   ```
+   **Si va detrás de Caddy, todo el trámite de certificados del paso 1 no hace falta**: Caddy emite y
+   renueva solo (ACME automático). Lo que sí hay que hacer es adaptar el override para publicar HTTP
+   plano en un puerto alto en vez de TLS en 443, y decidir dónde viven los security headers y el
+   rate-limit (hoy están en el `server{}` de TLS de `nginx/conf.d/nutriapp.conf`) para no perderlos
+   ni duplicarlos. El webroot ACME queda igual, inofensivo, para el caso de frontear directo.
+3. **`server_name _` es catch-all.** Sólo importa si el nginx de nutriapp llegara a quedar expuesto
+   en 80/443: ahí responde también para `haltcatch.com.ar` y cualquier `Host` que apunte a esa IP.
+   En ese caso endurecerlo:
    ```nginx
    server_name nutriapp.com.ar www.nutriapp.com.ar;
    # + un server{} catch-all con `return 444;` para Hosts desconocidos
@@ -194,10 +209,12 @@ transaccionales conviene arrancar en `p=none` y endurecer a `quarantine` cuando 
 **Verificación** (desde PowerShell, contra un resolver público para saltear caché local):
 ```powershell
 Resolve-DnsName nutriapp.com.ar     -Server 1.1.1.1 -Type A
+Resolve-DnsName nutriapp.com.ar     -Server 1.1.1.1 -Type AAAA
 Resolve-DnsName www.nutriapp.com.ar -Server 1.1.1.1 -Type CNAME
 curl.exe -I https://nutriapp.com.ar
 ```
-Propagación: con TTL 300 son minutos, pero el registrante puede tardar más en publicar la zona.
+Propagación: con TTL 300 son minutos, pero la delegación en nic.ar + la creación de la zona en
+hPanel pueden tardar bastante más. Mientras siga dando SERVFAIL, el problema está antes del `.zone`.
 
 ---
 
@@ -216,6 +233,7 @@ Los dumps traen **PII** (pacientes/recetas) + el **store de credenciales de Keyc
 ## Pendiente al confirmar hosting con Gon
 - **Renovación automática del cert** (la emisión ya está: webroot ACME en `nginx/acme/`; renovar y
   recargar nginx sigue siendo manual).
-- **Convivencia con la landing en 80/443** y `server_name` endurecido — ver sección DNS.
+- **Integración con el Caddy del VPS** (nutriapp en puerto alto detrás de Caddy, headers y
+  rate-limit reubicados) — ver punto 2 de la sección DNS. Con eso, el cert lo maneja Caddy.
 - Rate-limit de red fino, WAF/headers extra según hosting.
 - Imagen Keycloak `--optimized` (build stage) para arranque más rápido, si el boot importa.

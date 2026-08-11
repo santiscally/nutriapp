@@ -25,15 +25,23 @@ y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido expl�
 el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
 `VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
 
-**⛔ Bloqueantes del deploy (necesitan decisión/dato, no código):**
-1. **80/443 del server**: la landing del cliente está en el mismo host. Hay que definir quién termina TLS
-   (nginx de nutriapp como front único con un `server{}` para la landing, o nutriapp en puertos altos detrás
-   del webserver existente) y endurecer el `server_name _`, que hoy es catch-all y le robaría el `Host`.
+**⛔ Bloqueantes del deploy (necesitan decisión/dato, no código) — actualizado 2026-08-11 con lo verificado
+contra el VPS y el DNS real:**
+1. **Los 80/443 del VPS los tiene Caddy**, que hoy termina TLS y proxea a un nginx que sirve la landing
+   (`haltcatch.com.ar` responde `Server: Caddy` en :80 y `Via: 1.1 Caddy` + `nginx/1.27.5` en :443). El
+   override de prod bindea `80:80`/`443:443` → **no levanta ahí**. Lo natural: nutriapp en un puerto alto y
+   un site block de Caddy con `reverse_proxy`. **Bonus: con Caddy adelante el cert lo emite y renueva él**,
+   así que el certbot/webroot que agregué queda de reserva. Falta adaptar el override (HTTP plano en puerto
+   alto) y decidir dónde viven los security headers y el rate-limit, que hoy están en el `server{}` de TLS.
 2. **Registro público sin mail**: no se encola notificación y el proveedor es stub → nadie recibe el
    "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3 (aprobar es
    por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
-3. **DNS**: `A @ → 187.127.36.153` + `CNAME www → nutriapp.com.ar`. **No** replicar el `AAAA` de la zona de
-   la landing: apunta a Hostinger mientras el `A` apunta a Telecom AR — son hosts distintos.
+3. **La zona de `nutriapp.com.ar` no existe todavía**: al 2026-08-11 da **SERVFAIL** (no NXDOMAIN) → hay
+   delegación en nic.ar pero los NS no sirven la zona. Orden: crear el dominio en hPanel → poner en nic.ar
+   el par de NS que hPanel muestre **para este dominio** (varía: haltcatch usa lunar/solar, jeianell ns1/ns2)
+   → importar `nutriapp.com.ar.zone` (nuevo, en la raíz del repo). **Corrección de lo que había escrito
+   antes:** el `AAAA` de la landing SÍ va — `187.127.36.153` y `2a02:4780:6e:84b8::1` tienen el mismo PTR
+   (`srv1786758.hstgr.cloud`), es un solo VPS dual-stack de Hostinger, no dos hosts.
 
 **Estado previo (2026-08-04)** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
 las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**

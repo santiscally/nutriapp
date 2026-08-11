@@ -1,0 +1,50 @@
+$ORIGIN nutriapp.com.ar.
+$TTL 3600
+
+; ============================================================
+; Zona DNS de nutriapp.com.ar — para importar en hPanel (Hostinger).
+; Mismo VPS que la landing haltcatch.com.ar: srv1786758.hstgr.cloud
+; (verificado por PTR: 187.127.36.153 y 2a02:4780:6e:84b8::1 resuelven
+;  los dos a ese hostname → es UNA sola máquina, dual-stack).
+;
+; ANTES DE IMPORTAR: hoy nutriapp.com.ar da SERVFAIL (2026-08-11), no NXDOMAIN.
+; O sea: hay delegación en nic.ar pero los nameservers no sirven la zona todavía.
+; Hay que (1) agregar el dominio en hPanel para que exista la zona y (2) poner en
+; nic.ar EXACTAMENTE el par de NS que hPanel muestre para este dominio. El par no
+; es fijo por cuenta: haltcatch.com.ar usa lunar/solar.dns-parking.com y
+; jeianell.com.ar usa ns1/ns2.dns-parking.com.
+; ============================================================
+
+; Nameservers — los administra el panel; descomentar SÓLO si el importador los pide,
+; y con el par que corresponda a ESTE dominio (ver nota de arriba).
+;@      3600  IN  NS    ns1.dns-parking.com.
+;@      3600  IN  NS    ns2.dns-parking.com.
+
+; ---- Web -> VPS ----
+@       300   IN  A     187.127.36.153
+@       300   IN  AAAA  2a02:4780:6e:84b8::1
+www     300   IN  CNAME nutriapp.com.ar.
+
+; ---- Correo ----
+; NO hace falta para servir la app (el email de nutriapp está en `stub` hasta Fase 2)
+; y va aparte de los registros web. Descomentar SÓLO si se crea una casilla
+; @nutriapp.com.ar EN HOSTINGER; si el mail transaccional sale por otro proveedor
+; (Resend/SES/Brevo/...), van los MX/SPF/DKIM DE ESE proveedor, no estos — con estos
+; se autentica al remitente equivocado y las recetas caen en spam.
+;@      14400 IN  MX    5 mx1.hostinger.com.
+;@      14400 IN  MX    10 mx2.hostinger.com.
+;@      3600  IN  TXT   "v=spf1 include:_spf.mail.hostinger.com ~all"
+;_dmarc 3600  IN  TXT   "v=DMARC1; p=none"
+;hostingermail-a._domainkey  300 IN CNAME hostingermail-a.dkim.mail.hostinger.com.
+;hostingermail-b._domainkey  300 IN CNAME hostingermail-b.dkim.mail.hostinger.com.
+;hostingermail-c._domainkey  300 IN CNAME hostingermail-c.dkim.mail.hostinger.com.
+;autodiscover   300 IN CNAME autodiscover.mail.hostinger.com.
+;autoconfig     300 IN CNAME autoconfig.mail.hostinger.com.
+
+; ---- Anti-spoofing (alternativa al bloque de correo, EXCLUYENTE con él) ----
+; Si nutriapp.com.ar NO va a mandar ni recibir mail, esto evita que alguien
+; spoofee el dominio. Ojo: hay que sacarlo antes de conectar el email de Fase 2,
+; o los propios mails de la app se rechazan.
+;@      3600  IN  TXT   "v=spf1 -all"
+;_dmarc 3600  IN  TXT   "v=DMARC1; p=reject; aspf=s; adkim=s"
+;@      3600  IN  MX    0 .
