@@ -10,15 +10,19 @@ $TTL 3600
 ; ANTES DE IMPORTAR: hoy nutriapp.com.ar da SERVFAIL (2026-08-11), no NXDOMAIN.
 ; O sea: hay delegación en nic.ar pero los nameservers no sirven la zona todavía.
 ; Hay que (1) agregar el dominio en hPanel para que exista la zona y (2) poner en
-; nic.ar EXACTAMENTE el par de NS que hPanel muestre para este dominio. El par no
-; es fijo por cuenta: haltcatch.com.ar usa lunar/solar.dns-parking.com y
-; jeianell.com.ar usa ns1/ns2.dns-parking.com.
+; nic.ar el par de NS que hPanel muestre para este dominio.
 ; ============================================================
 
-; Nameservers — los administra el panel; descomentar SÓLO si el importador los pide,
-; y con el par que corresponda a ESTE dominio (ver nota de arriba).
-;@      3600  IN  NS    ns1.dns-parking.com.
-;@      3600  IN  NS    ns2.dns-parking.com.
+; Nameservers: los de haltcatch.com.ar, por estar en la misma cuenta/VPS.
+; Borrar estas 2 lineas si el importador da error.
+;
+; OJO: el par NO lo define este archivo. El .zone de haltcatch listaba
+; ns1/ns2.dns-parking.com y la delegación real quedó igual en lunar/solar → el
+; importador ignora estas líneas y manda lo que diga hPanel + nic.ar. Si hPanel
+; muestra otro par para nutriapp, ESE es el que va en nic.ar. (jeianell.com.ar,
+; que es otra cuenta, quedó en ns1/ns2.)
+@       3600  IN  NS    lunar.dns-parking.com.
+@       3600  IN  NS    solar.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153

@@ -170,10 +170,12 @@ cada uno; son excluyentes entre sí).
 
 1. **La zona de `nutriapp.com.ar` no existe todavía.** Al 2026-08-11 el dominio devuelve **SERVFAIL**
    (no NXDOMAIN) desde `1.1.1.1`: hay delegación en nic.ar pero los nameservers no sirven la zona.
-   Orden correcto: agregar el dominio en hPanel (crea la zona) → poner en nic.ar **exactamente** el
-   par de NS que hPanel muestre para *este* dominio → importar el `.zone`. El par no es fijo por
-   cuenta: `haltcatch.com.ar` usa `lunar/solar.dns-parking.com` y `jeianell.com.ar` usa
-   `ns1/ns2.dns-parking.com`.
+   Orden correcto: agregar el dominio en hPanel (crea la zona) → poner en nic.ar el par de NS que
+   hPanel muestre para *este* dominio → importar el `.zone`. El archivo trae
+   `lunar/solar.dns-parking.com`, el par de `haltcatch.com.ar`, por estar en la misma cuenta/VPS —
+   pero **el par lo define hPanel, no el `.zone`**: el de haltcatch listaba `ns1/ns2` y la delegación
+   real quedó igual en `lunar/solar`, o sea que el importador ignora esas líneas. Si hPanel muestra
+   otro par, ese manda. (`jeianell.com.ar`, otra cuenta, quedó en `ns1/ns2.dns-parking.com`.)
 2. **En el VPS los 80/443 los tiene Caddy, no nginx.** `haltcatch.com.ar` responde
    `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
    `Server: nginx/1.27.5` → Caddy termina TLS y proxea a un nginx que sirve la landing. Entonces
