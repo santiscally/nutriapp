@@ -175,12 +175,18 @@ cada uno; son excluyentes entre sí).
    - El alta del sitio en hPanel ya creó la zona en `orbit/horizon.dns-parking.com`
      (SOA serial `2026081101`), pero está **vacía**: sin `A`, sin `AAAA`, sin `www`, sin `MX`.
 
-   Orden correcto (importar **antes** de mover los NS, para no delegar a una zona vacía):
-   **(1)** importar `nutriapp.com.ar.zone` en hPanel → **(2)** cambiar los nameservers a
-   `orbit.dns-parking.com` / `horizon.dns-parking.com`. El cambio va donde esté la delegación: nic.ar
-   (Clave Fiscal del CUIT titular) o el panel de DonWeb si el dominio se gestiona desde ahí.
+   Orden correcto — **los NS primero**: hPanel **no habilita el import de zona hasta que la
+   delegación apunte a Hostinger** (probado 2026-08-11). No hay nada que cuidar en el medio: el
+   dominio ya no resuelve, así que la ventana con la zona vacía no rompe nada.
+   **(1)** cambiar los nameservers a `orbit.dns-parking.com` / `horizon.dns-parking.com` donde esté
+   la delegación — nic.ar (Clave Fiscal del CUIT titular) o el panel de DonWeb si el dominio se
+   gestiona desde ahí → **(2)** esperar que propague → **(3)** importar `nutriapp.com.ar.zone`.
    El par de NS lo asigna hPanel **por dominio**, no por cuenta: `haltcatch.com.ar` quedó en
    `lunar/solar` y `jeianell.com.ar` en `ns1/ns2`, de ahí que este sea un tercer par.
+
+   **Al importar, revisar que no quede un `A` de parking.** Hostinger puede autopoblar la zona
+   apuntando el dominio a su hosting compartido cuando detecta la delegación. El estado final tiene
+   que ser el VPS: `A → 187.127.36.153` y `AAAA → 2a02:4780:6e:84b8::1`, sin registros duplicados.
 2. **En el VPS los 80/443 los tiene Caddy, no nginx.** `haltcatch.com.ar` responde
    `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
    `Server: nginx/1.27.5` → Caddy termina TLS y proxea a un nginx que sirve la landing. Entonces

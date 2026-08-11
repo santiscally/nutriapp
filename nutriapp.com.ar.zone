@@ -7,14 +7,20 @@ $TTL 3600
 ; (verificado por PTR: 187.127.36.153 y 2a02:4780:6e:84b8::1 resuelven
 ;  los dos a ese hostname → es UNA sola máquina, dual-stack).
 ;
-; ORDEN DE LOS PASOS (importa, para no quedar con el dominio apuntando a la nada):
+; ORDEN DE LOS PASOS — los nameservers van PRIMERO:
 ;   1. Sitio dado de alta en hPanel  -> HECHO 2026-08-11: la zona ya existe en
 ;      orbit/horizon (SOA serial 2026081101) pero está VACÍA (sin A/AAAA/www/MX).
-;   2. Importar ESTE archivo en hPanel -> la zona queda completa.
-;   3. Recién entonces cambiar los nameservers de nic.ar a orbit/horizon.
+;   2. Cambiar los NS a orbit/horizon donde esté la delegación (nic.ar con la
+;      Clave Fiscal del CUIT titular, o el panel de DonWeb).
+;   3. Cuando propague, hPanel habilita el import -> importar ESTE archivo.
+;      (hPanel NO deja importar antes de que la delegación apunte a Hostinger.)
 ; Al 2026-08-11 la delegación en nic.ar es ns1/ns2.donweb.com, que responden
 ; "Query refused" para este dominio (no tienen la zona: de ahí el SERVFAIL).
-; No hay ningún registro ni mail viviendo en DonWeb -> el switch no rompe nada.
+; No hay ningún registro ni mail viviendo en DonWeb -> el switch no rompe nada,
+; y el dominio ya no resuelve, así que la ventana con la zona vacía es gratis.
+;
+; AL IMPORTAR: verificar que no quede un A de parking autopoblado por Hostinger.
+; El estado final tiene que ser el VPS (los dos registros de abajo), sin duplicados.
 ; ============================================================
 
 ; Nameservers asignados por hPanel a ESTE dominio (2026-08-11). Ojo: el par varía
