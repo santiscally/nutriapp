@@ -14,8 +14,27 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-10** — hecha la **landing "Próximamente"** para poder publicar
-`nutriapp.com.ar` ya (el cliente presiona). Detalle en el DIARIO (entrada 2026-08-10).
+**Última actualización: 2026-08-11** — **stack prod desplegado en el VPS, detrás del Caddy del host,
+en modo pre-lanzamiento.** Falta **sólo el DNS** para que sea alcanzable. Detalle en el DIARIO
+(entrada 2026-08-11 "deploy de nutriapp.com.ar").
+
+**🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
+con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`
+(`/root/stack`, sirve haltcatch y jeianell) y nutriapp se sumó a su red docker `web` — nginx **sin
+publicar puertos**, Caddy lo alcanza por nombre (`reverse_proxy nutriapp-nginx:80`) y le maneja el TLS.
+Verificado: 12 migraciones Flyway, `/actuator/health` UP, discovery OIDC con issuer correcto,
+`client_credentials` OK, `/auth/admin` y `/auth/realms/master` → 404, `/api/v1/*` → 401, catch-all `444`
+para Hosts ajenos, y `real_ip` tomando el cliente real sin dejarse spoofear el `X-Forwarded-For`.
+Archivos: `nginx/conf.d-proxied/` (variante HTTP-only), `docker-compose.edge.yml` (modo front único,
+sin uso acá), sección nueva de DEPLOY.md.
+
+**⚠️ Operativo — dos cosas que muerden:**
+- **`.env` de prod vive sólo en el VPS** (`/root/nutriapp/.env`, git-ignored). Secretos fuertes generados
+  el 2026-08-11; el secret del client `nutriapp-backend` se le **impuso** al realm con `kcadm` (no se
+  regeneró por consola) para cerrar el huevo-y-gallina del arranque.
+- **El Caddyfile está bind-mounteado como archivo suelto** → editarlo no le llega al contenedor y
+  `caddy reload` responde `"config is unchanged"` sin aplicar nada. Hay que `docker restart edge-caddy-1`
+  y verificar contra el admin API, no con `curl -I` (el `308` sale igual sin ruta). Ver DEPLOY.md.
 
 **🚀 PRE-LANZAMIENTO (2026-08-10).** Flag de build `VITE_COMING_SOON=true` → `/` es la landing de
 "Próximamente" con CTA a `/registro`, el login pasa a `/ingresar` (sin link), y el resto queda intacto.
@@ -25,23 +44,26 @@ y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido expl�
 el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
 `VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
 
-**⛔ Bloqueantes del deploy (necesitan decisión/dato, no código) — actualizado 2026-08-11 con lo verificado
-contra el VPS y el DNS real:**
-1. **Los 80/443 del VPS los tiene Caddy**, que hoy termina TLS y proxea a un nginx que sirve la landing
-   (`haltcatch.com.ar` responde `Server: Caddy` en :80 y `Via: 1.1 Caddy` + `nginx/1.27.5` en :443). El
-   override de prod bindea `80:80`/`443:443` → **no levanta ahí**. Lo natural: nutriapp en un puerto alto y
-   un site block de Caddy con `reverse_proxy`. **Bonus: con Caddy adelante el cert lo emite y renueva él**,
-   así que el certbot/webroot que agregué queda de reserva. Falta adaptar el override (HTTP plano en puerto
-   alto) y decidir dónde viven los security headers y el rate-limit, que hoy están en el `server{}` de TLS.
-2. **Registro público sin mail**: no se encola notificación y el proveedor es stub → nadie recibe el
-   "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3 (aprobar es
-   por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
-3. **La zona de `nutriapp.com.ar` no existe todavía**: al 2026-08-11 da **SERVFAIL** (no NXDOMAIN) → hay
-   delegación en nic.ar pero los NS no sirven la zona. Orden: crear el dominio en hPanel → poner en nic.ar
-   el par de NS que hPanel muestre **para este dominio** (varía: haltcatch usa lunar/solar, jeianell ns1/ns2)
-   → importar `nutriapp.com.ar.zone` (nuevo, en la raíz del repo). **Corrección de lo que había escrito
-   antes:** el `AAAA` de la landing SÍ va — `187.127.36.153` y `2a02:4780:6e:84b8::1` tienen el mismo PTR
-   (`srv1786758.hstgr.cloud`), es un solo VPS dual-stack de Hostinger, no dos hosts.
+**⛔ Bloqueantes del deploy — actualizado 2026-08-11 después de desplegar:**
+1. ~~Los 80/443 del VPS los tiene Caddy~~ **✅ RESUELTO (2026-08-11)**: nutriapp corre detrás de Caddy en la
+   red `web`, sin publicar puertos. Los security headers y el rate-limit se mudaron al `server{}` de :80 de
+   `nginx/conf.d-proxied/nutriapp.conf`, con `real_ip` para que el limitador siga viendo la IP del cliente.
+   El cert lo emite y renueva Caddy → el certbot/webroot queda de reserva para el modo front único.
+2. **Registro público sin mail** — **sigue abierto**: no se encola notificación y el proveedor es stub → nadie
+   recibe el "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3
+   (aprobar es por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
+   **Ahora es EL bloqueante funcional**: la infra ya no frena nada.
+3. **DNS: migración de DonWeb a Hostinger a medio camino** — **sigue abierto y es el único bloqueante
+   técnico**. Al 2026-08-11 el dominio da **SERVFAIL**: la delegación de nic.ar apunta a
+   `ns1/ns2.donweb.com`, que responden `Query refused` (no tienen la zona). La zona ya existe en
+   `orbit/horizon.dns-parking.com` (el par que hPanel asignó a *este* dominio; varía por dominio —
+   haltcatch quedó en lunar/solar y jeianell en ns1/ns2) pero está **vacía**. Caddy ya tiene el site block
+   cargado e intenta el cert: falla con `"DNS problem: SERVFAIL"` y reintenta con backoff. **En cuanto la
+   zona resuelva, emite solo y el sitio queda arriba sin tocar nada más.** Orden — **NS primero**: cambiar
+   la delegación a orbit/horizon → esperar propagación → importar `nutriapp.com.ar.zone` (hPanel no habilita
+   el import antes) → verificar que no haya quedado un `A` de parking. Detalle en DEPLOY.md §DNS.
+4. **`BACKUP_GPG_RECIPIENT` vacío** — no bloquea el deploy pero sí **abrir el registro**: los dumps traen PII
+   real (DNI, CUIT, matrícula, archivo) desde la primera solicitud y hoy saldrían en texto plano.
 
 **Estado previo (2026-08-04)** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
 las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**

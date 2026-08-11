@@ -32,6 +32,72 @@
 
 ## Entradas
 
+## 2026-08-11 — Santi — infra (deploy de nutriapp.com.ar en modo pre-lanzamiento, detrás del Caddy del VPS)
+**Qué:** Stack prod levantado y sirviendo en el VPS. NutriApp **no** es el front: los 80/443 los tiene
+`edge-caddy-1` (stack `/root/stack`, sirve haltcatch.com.ar y jeianell.com.ar) y nutriapp se suma a ese
+esquema. Cambios:
+- `nginx/conf.d-proxied/nutriapp.conf` (nuevo): variante HTTP-only, sin TLS ni redirect (los hace Caddy),
+  con `server_name` fijo + catch-all `return 444`, y `set_real_ip_from`/`real_ip_header`.
+- `docker-compose.prod.yml`: nginx **sin `ports:`**, sumado a la red externa `web`, conf dir por
+  `NGINX_CONF_DIR` (default la variante proxied).
+- `docker-compose.edge.yml` (nuevo): override opcional para el modo front único (re-publica 80/443,
+  `networks: !override` para sacar `web`). No se usa acá.
+- `/root/stack/Caddyfile`: site block `nutriapp.com.ar, www.nutriapp.com.ar → reverse_proxy nutriapp-nginx:80`.
+  Backup en `Caddyfile.bak-20260811`.
+- `.env` de prod generado con secretos fuertes; SPA compilada con `VITE_COMING_SOON=true` en un contenedor
+  `node:22-alpine` (el VPS no tiene node).
+
+**Por qué:** El DEPLOY.md asumía o bien frontear directo (choca con Caddy) o bien "puerto alto en loopback".
+Las dos estaban mal: **Caddy proxea por nombre de contenedor sobre la red docker `web`**, no por loopback —
+`hac_frontend` y `jeianell_frontend` no publican ni un puerto. Copiando ese patrón, nutriapp no agrega
+superficie de red al host y el TLS lo maneja Caddy (ACME automático), en vez de heredar la renovación manual
+por certbot que documentaba el paso 1.
+
+**Problemas:**
+1. **Keycloak publicaba el issuer sin `/auth`.** Con `KC_HOSTNAME=https://nutriapp.com.ar` (origen pelado,
+   como decía el comentario del override) el `.well-known` respondía OK bajo `/auth` pero adentro publicaba
+   `"issuer":"https://nutriapp.com.ar/realms/nutriapp"`. En KC 25 (hostname v2), si el valor es una URL
+   completa **el context path sale de ahí y `KC_HTTP_RELATIVE_PATH` no se le concatena**. Peor: ese path cae
+   en el `try_files` de la SPA y devuelve `index.html` con **200**, así que el login habría fallado con un
+   error de parseo en vez de un 404 honesto. **Fix:** `KEYCLOAK_HOSTNAME=https://nutriapp.com.ar/auth`.
+   Corregidos los comentarios de `docker-compose.prod.yml`, `.env.example` y DEPLOY.md, que decían "SIN path".
+2. **`caddy reload` fue un no-op silencioso.** El compose de Caddy monta el Caddyfile como **archivo suelto**,
+   y docker lo ata al inodo: al editarlo (reemplazo de archivo, no escritura in-place) el contenedor siguió
+   viendo la versión vieja. `caddy validate` decía "Valid configuration" y `reload` contestaba
+   `"config is unchanged"` — las dos cosas ciertas y las dos inútiles. Y `curl -I` con `Host:` daba `308`
+   igual, porque es el redirect genérico de Caddy, **no** prueba que la ruta exista. **Fix:**
+   `docker restart edge-caddy-1`. **Verificación buena:** `wget -qO- http://127.0.0.1:2019/config/` dentro
+   del contenedor y buscar el host (ojo: `localhost:2019` da connection refused, va la IP).
+3. `.env` no era sourceable desde bash: `TIENDANUBE_USER_AGENT` tenía paréntesis sin comillas. Comillado en
+   `.env` y `.env.example` (compose las stripea igual).
+4. `KC_PROXY: edge` del compose base quedó deprecado en KC 25 — sólo WARN, funciona por `KC_PROXY_HEADERS`.
+   **En KC 26 hay que sacarlo.**
+
+**Verificado:** 12 migraciones Flyway aplicadas; `/actuator/health` UP; discovery OIDC con issuer correcto;
+`client_credentials` del backend contra el secret nuevo devuelve token; `/auth/admin` y `/auth/realms/master`
+→ 404; `/api/v1/recetas` → 401; `/actuator/env` cae al fallback del SPA (no expone actuator); catch-all cierra
+Hosts desconocidos; **real_ip**: con `X-Forwarded-For: 1.2.3.4, 203.0.113.77` nginx loguea `203.0.113.77`
+(el último, o sea el que appendea Caddy) y descarta el spoofeado. haltcatch y jeianell siguen en 200 después
+del restart de Caddy.
+
+**Lo que NO está:** **el sitio todavía no es alcanzable desde internet.** `nutriapp.com.ar` sigue en
+**SERVFAIL** (`EDE 22 No Reachable Authority`; la delegación de nic.ar apunta a `ns1/ns2.donweb.com` —
+`200.58.112.193` — que responden `Query refused` porque no tienen la zona) → Caddy no puede emitir el cert:
+falla el http-01 con `"DNS problem: SERVFAIL"` y reintenta con backoff. **Todo lo demás está listo: en cuanto
+la zona resuelva, Caddy emite solo y el sitio queda arriba sin tocar nada más.** El orden de los pasos de DNS
+está en DEPLOY.md §DNS y en el `.zone` (commits `ec31f27`/`5a4f3c7`, del mismo día): **los NS primero**
+(`orbit/horizon.dns-parking.com`, el par que hPanel asignó a *este* dominio) y recién después el import, porque
+hPanel no lo habilita hasta que la delegación apunte a Hostinger.
+
+**Impacto para el otro (Fran):** `frontend/` no se tocó — sólo se compiló. El build de prod se hornea con
+`VITE_API_BASE_URL=https://nutriapp.com.ar` (origen pelado, el código le concatena `/api/v1`) y
+`VITE_KEYCLOAK_URL=https://nutriapp.com.ar/auth`. **Cualquier cambio de front necesita rebuild + `nginx -s
+reload`**, no alcanza con pushear. La CSP de prod tiene `script-src 'self'` sin `unsafe-inline`/`unsafe-eval`:
+si algo del bundle necesitara eval, rompe en prod y no en dev.
+
+**Refs:** `nginx/conf.d-proxied/nutriapp.conf`, `docker-compose.prod.yml`, `docker-compose.edge.yml`,
+`DEPLOY.md` (sección nueva "Detrás del Caddy del VPS"), `.env.example`, `/root/stack/Caddyfile`.
+
 ## 2026-08-11 — Santi — infra (zona DNS de nutriapp.com.ar + **corrección** de dos cosas que escribí ayer)
 **Qué:** Archivo `nutriapp.com.ar.zone` en la raíz del repo, formato BIND, listo para importar en hPanel
 (mismo criterio que `haltcatch.com.ar.zone` del proyecto de la landing). Activos sólo tres registros:

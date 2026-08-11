@@ -1,8 +1,14 @@
 # NUTRIAPP — Despliegue en producción
 
-Stack prod = `docker-compose.yml` + override `docker-compose.prod.yml`. nginx termina TLS y es
-el **único** servicio público (80/443); db, keycloak y backend quedan en loopback (127.0.0.1) +
-red interna `nutriapp-net`. La SPA se sirve estática desde `frontend/dist` (build de Fran).
+Stack prod = `docker-compose.yml` + override `docker-compose.prod.yml`. db, keycloak y backend
+quedan en loopback (127.0.0.1) + red interna `nutriapp-net`; nginx es el reverse proxy de la app.
+La SPA se sirve estática desde `frontend/dist` (build de Fran).
+
+**En el VPS actual, nginx NO publica puertos: corre detrás del Caddy del host.** Los 80/443 los
+tiene `edge-caddy-1` (stack `/root/stack`), que ya sirve `haltcatch.com.ar` y `jeianell.com.ar`.
+Ver [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual) — es la topología por
+defecto del override. El modo "nginx como front único con TLS propio" quedó como opción, detrás
+del override extra `docker-compose.edge.yml`.
 
 Topología (single domain, path-based):
 
@@ -12,10 +18,9 @@ Topología (single domain, path-based):
 | `/api/`   | backend Spring Boot (`/api/v1`)  |
 | `/auth/`  | Keycloak (`KC_HTTP_RELATIVE_PATH=/auth`) |
 
-> **TLS elegido: bring-your-own-cert.** nginx lee `nginx/certs/{fullchain,privkey}.pem`. Para
-> Let's Encrypt hay webroot ACME servido en `:80` (`nginx/acme/`) → emisión con certbot `--webroot`;
-> la **renovación sigue siendo manual** (paso 1). **En el VPS del cliente esto probablemente no se
-> use**: ahí Caddy ya termina TLS y emite/renueva solo — ver punto 2 de la sección DNS.
+> **TLS: lo termina Caddy.** En el VPS actual el paso 1 (certbot / `nginx/certs/`) **no se usa**:
+> Caddy emite y renueva solo por ACME. El material de bring-your-own-cert queda documentado para
+> el modo front único (`docker-compose.edge.yml`), donde la renovación **sí es manual**.
 
 > **Pre-lanzamiento:** para publicar el dominio con una pantalla "Próximamente" y sólo el registro
 > habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS concreto de
@@ -27,14 +32,20 @@ Topología (single domain, path-based):
 
 1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriapp.com.ar](#dns--nutriappcomar).
 2. **Docker + Docker Compose v2** en el host.
-3. **Node** (para compilar la SPA) — en el host o en un CI que deje el `dist/` listo.
-4. **Definir quién termina TLS.** En el VPS del cliente los 80/443 ya los tiene **Caddy** (sirve la
-   landing `haltcatch.com.ar`), así que el override tal como está —bindeado a `80:80`/`443:443`— **no
-   levanta ahí**. Ver el punto 2 de la sección de DNS antes de intentar el `up`.
+3. **Node**: no hace falta en el host — el build de la SPA va en un contenedor (paso 2).
+4. **La red docker `web` tiene que existir** (la crea el stack de Caddy). `docker network ls | grep web`;
+   si no está: `docker network create web`.
+5. **Definir quién termina TLS.** En este VPS lo hace Caddy y el override ya viene configurado para
+   eso → [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual).
 
 ## Pasos de despliegue
 
 ### 1. Certificados TLS → `nginx/certs/`
+
+> **Detrás de Caddy este paso entero se saltea.** Caddy pide el cert a Let's Encrypt la primera vez
+> que llega tráfico para el dominio y lo renueva solo. Lo de abajo aplica sólo al modo front único
+> (`docker-compose.edge.yml`).
+
 - **Prod (cert real):** copiar `fullchain.pem` + `privkey.pem` del dominio a `nginx/certs/`.
 - **Staging (placeholder):** `bash scripts/gen-selfsigned-cert.sh app.midominio.com`
   (el navegador advertirá; sirve para probar el pipeline TLS).
@@ -57,32 +68,68 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx
 > con un `--deploy-hook` es tarea de Fase 3.
 
 ### 2. Compilar la SPA
+
+**En el VPS no hay `node` instalado**, así que el build va en un contenedor descartable
+(no ensucia el host y da la misma versión de Node siempre):
+
 ```
-cd frontend
-# Los VITE_* se hornean en el build: apuntarlos al dominio prod (mismo origen).
-VITE_API_BASE_URL=https://app.midominio.com \
-VITE_KEYCLOAK_URL=https://app.midominio.com/auth \
-VITE_KEYCLOAK_REALM=nutriapp \
-VITE_KEYCLOAK_CLIENT_ID=nutriapp-frontend \
-VITE_COMING_SOON=true \
-npm ci && npm run build          # genera frontend/dist (lo sirve nginx)
+docker run --rm -v "$PWD/frontend:/app" -w /app \
+  -e VITE_API_BASE_URL=https://nutriapp.com.ar \
+  -e VITE_KEYCLOAK_URL=https://nutriapp.com.ar/auth \
+  -e VITE_KEYCLOAK_REALM=nutriapp \
+  -e VITE_KEYCLOAK_CLIENT_ID=nutriapp-frontend \
+  -e VITE_COMING_SOON=true \
+  node:22-alpine sh -c 'npm ci --no-audit --no-fund && npm run build'
+```
+
+Genera `frontend/dist` (lo sirve nginx read-only). Con node en el host es lo mismo con
+`cd frontend && VITE_...=... npm ci && npm run build`. Verificar que el flag quedó horneado:
+
+```
+grep -o 'VITE_COMING_SOON:`[^`]*`' frontend/dist/assets/*.js   # → VITE_COMING_SOON:`true`
 ```
 
 > **Ojo con `VITE_API_BASE_URL`:** el código le concatena `/api/v1`, así que el valor correcto es el
 > **origen pelado** (`https://nutriapp.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
 > `frontend/` es de Fran. Estos son sólo los env de build documentados; no se modifica su código.
 
-### 3. Regenerar el secret del client `nutriapp-backend` (realm de prod)
-El realm de dev trae un secret **placeholder** (`*-dev-secret-change-me`) que NO debe usarse en prod.
-En la consola de Keycloak (realm `nutriapp` → Clients → `nutriapp-backend` → Credentials →
-*Regenerate*), copiar el nuevo secret y ponerlo en `.env` como `KEYCLOAK_ADMIN_CLIENT_SECRET`.
-El backend en prod **falla-cerrado** si queda vacío (503 en las ops de admin; el compose ni levanta).
+### 3. Fijar el secret del client `nutriapp-backend` (realm de prod)
+El realm importado trae un secret **placeholder** (`*-dev-secret-change-me`) que NO debe usarse en
+prod. El backend en prod **falla-cerrado** si queda vacío (503 en las ops de admin; el compose ni
+levanta).
+
+**Hay un huevo-y-gallina**: el compose exige `KEYCLOAK_ADMIN_CLIENT_SECRET` en `.env` *antes* de
+arrancar, pero el secret vive dentro de Keycloak, que todavía no existe. Se resuelve al revés de
+como suena — se genera el valor primero y se le *impone* al client una vez que Keycloak levantó,
+en lugar de dejar que Keycloak lo genere y después copiarlo a mano:
+
+```
+# 1) generar y poner en .env ANTES del up:  KEYCLOAK_ADMIN_CLIENT_SECRET=<valor>
+openssl rand -base64 24 | tr -d '/+=' | head -c 32
+
+# 2) con el stack ya arriba, imponérselo al client (idempotente, se puede repetir):
+set -a; . ./.env; set +a
+KC=/opt/keycloak/bin/kcadm.sh
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
+  $KC config credentials --server http://localhost:8080/auth --realm master \
+      --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
+  ID=\$($KC get clients -r nutriapp -q clientId=nutriapp-backend --fields id --format csv --noquotes) &&
+  $KC update clients/\$ID -r nutriapp -s secret='$KEYCLOAK_ADMIN_CLIENT_SECRET'"
+
+# 3) reiniciar el backend para que tome el secret bueno
+docker compose -f docker-compose.yml -f docker-compose.prod.yml restart backend
+```
+
+Alternativa por consola (realm `nutriapp` → Clients → `nutriapp-backend` → Credentials →
+*Regenerate*) y copiar el valor a `.env`: mismo resultado, pero necesita el túnel SSH del final de
+esta sección y un `restart backend` igual.
 
 ### 4. `.env` de prod
 Copiar `.env.example` → `.env` y completar el bloque **PRODUCCIÓN**. El compose **aborta**
 (`:?`) si falta alguno de estos, pero **NO** detecta que sigan siendo los débiles de dev — es
 tu responsabilidad regenerarlos:
-- `KEYCLOAK_HOSTNAME` = origen público (ej. `https://app.midominio.com`).
+- `KEYCLOAK_HOSTNAME` = URL pública **con `/auth`** (ej. `https://nutriapp.com.ar/auth`). Ver la
+  nota de hostname v2 más abajo — sin el `/auth` el login rompe.
 - `KEYCLOAK_ADMIN_CLIENT_SECRET` = el regenerado en el paso 3.
 - `POSTGRES_PASSWORD` = fuerte (el default de dev es público en este repo).
 - `KEYCLOAK_ADMIN` + `KEYCLOAK_ADMIN_PASSWORD` = propios (el default de dev es `admin`/`admin`).
@@ -99,10 +146,21 @@ Verificación:
 - `https://<dominio>/auth/realms/nutriapp/.well-known/openid-configuration` → JSON de OIDC.
 - Login en la SPA (ROPC contra `/auth`) → dashboard.
 
-> **Keycloak hostname:** en KC 25 (hostname v2) el arranque prod es sensible a `KC_HOSTNAME` /
-> `KC_PROXY_HEADERS`. Si el login o el `.well-known` fallan (URLs mal formadas), ajustar
-> `KEYCLOAK_HOSTNAME` al origen exacto y revisar los headers `X-Forwarded-*` de nginx. **Validar
-> contra el dominio real** — no se puede verificar sin dominio + stack corriendo.
+> **Keycloak hostname — el `/auth` va en `KEYCLOAK_HOSTNAME`.** En KC 25 (hostname v2), si el valor
+> es una URL completa, el context path sale de esa URL y **`KC_HTTP_RELATIVE_PATH` no se le
+> concatena**. Con `https://nutriapp.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
+> pero publica adentro `"issuer":"https://nutriapp.com.ar/realms/nutriapp"` — sin el prefijo. Ese
+> path nginx no lo rutea: cae en el `try_files` de la SPA y devuelve `index.html` con 200, así que
+> el login falla con un error de parseo en vez de un 404 honesto. El valor correcto es
+> `https://nutriapp.com.ar/auth`. Chequeo rápido:
+>
+> ```
+> curl -s http://127.0.0.1:8081/auth/realms/nutriapp/.well-known/openid-configuration \
+>   | grep -o '"issuer":"[^"]*"'      # → .../auth/realms/nutriapp
+> ```
+>
+> `KC_PROXY: edge` (del compose base) queda deprecado en KC 25 y loguea un WARN; funciona igual
+> porque el override agrega `KC_PROXY_HEADERS: xforwarded`. En KC 26 hay que sacarlo.
 
 > **Consola admin de Keycloak NO es pública:** nginx bloquea `/auth/admin` y `/auth/realms/master`
 > (devuelve 404) — la app usa la Admin API server-side por la red interna, no la consola. Para
@@ -147,6 +205,94 @@ admin la aprueba, así que un registro público no da acceso a nada.
 
 ---
 
+## Detrás del Caddy del VPS (topología actual)
+
+Los 80/443 del host los tiene `edge-caddy-1` (`caddy:2-alpine`, stack en `/root/stack`), que ya
+sirve `haltcatch.com.ar` y `jeianell.com.ar`. NutriApp se suma a ese esquema en vez de pelearle
+el puerto.
+
+**El detalle que importa: Caddy no proxea a `127.0.0.1:<puerto>`, proxea por nombre de contenedor
+sobre la red docker externa `web`.** `hac_frontend` y `jeianell_frontend` no publican un solo
+puerto al host. NutriApp hace lo mismo: `nutriapp-nginx` entra a `web`, **sin `ports:`**, y Caddy
+lo alcanza por DNS interno de docker. Así el host no suma superficie de red y el TLS lo maneja
+Caddy (emite y renueva solo por ACME).
+
+```
+internet :443 → edge-caddy-1 (TLS, red `web`) → nutriapp-nginx:80 (red `web` + `nutriapp-net`)
+                                                   ├── /      SPA (frontend/dist)
+                                                   ├── /api/  backend:8080   ┐ sólo en
+                                                   └── /auth/ keycloak:8080  ┘ nutriapp-net
+```
+
+`db`, `keycloak` y `backend` **no** están en `web`: los otros sitios del VPS no tienen ruta hacia
+ellos. El único puente es nginx.
+
+### Site block en `/root/stack/Caddyfile`
+
+```caddyfile
+nutriapp.com.ar, www.nutriapp.com.ar {
+    encode zstd gzip
+    reverse_proxy nutriapp-nginx:80
+}
+```
+
+Recargar **validando primero** — un Caddyfile roto se lleva puestos los otros dos sitios:
+
+```
+docker exec edge-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+docker exec edge-caddy-1 caddy reload  --config /etc/caddy/Caddyfile
+```
+
+`reload` es en caliente (sin cortar conexiones) y **no toca los certs de los otros dominios**. Si
+`nutriapp.com.ar` todavía no resuelve, Caddy loguea el fallo de ACME y reintenta con backoff; los
+demás sitios siguen sirviendo normal.
+
+> ⚠️ **Trampa del bind-mount de archivo suelto (pisada el 2026-08-11).** El compose de Caddy monta
+> `./Caddyfile:/etc/caddy/Caddyfile:ro` — un **archivo**, no un directorio. Docker lo ata al
+> **inodo**, así que cualquier editor que reemplace el archivo en vez de escribirlo in-place (`sed -i`,
+> la mayoría de los editores, las herramientas de Claude) deja al contenedor viendo la versión
+> **vieja**. `caddy reload` contesta `"config is unchanged"` y **no pasa nada** — un no-op que parece
+> un éxito.
+>
+> Peor todavía: probar con `curl -I http://127.0.0.1 -H 'Host: nutriapp.com.ar'` da `308 → https`
+> **aunque la ruta no exista**, porque es el redirect HTTP→HTTPS genérico de Caddy. No sirve como
+> verificación. Lo único concluyente es preguntarle a Caddy qué tiene cargado:
+>
+> ```
+> docker exec edge-caddy-1 wget -qO- http://127.0.0.1:2019/config/ | tr '}' '\n' | grep -o '"host":\[[^]]*\]'
+> ```
+>
+> Si el dominio no aparece ahí, el reload no aplicó: `docker restart edge-caddy-1` (re-resuelve el
+> bind mount; ~1-2 s de corte para los otros sitios). Ojo que `wget http://localhost:2019` da
+> *connection refused* dentro del contenedor — el admin escucha en `127.0.0.1`, hay que usar la IP.
+
+### Lo que cambia en la config de nginx
+
+`NGINX_CONF_DIR` elige la variante (default `./nginx/conf.d-proxied`):
+
+| | `conf.d-proxied` (default, detrás de Caddy) | `conf.d` (front único, + `docker-compose.edge.yml`) |
+| --- | --- | --- |
+| Puertos | ninguno publicado | `80:80`, `443:443` |
+| TLS | lo hace Caddy | nginx, certs en `nginx/certs/` |
+| Redirect 80→443 | lo hace Caddy | `return 301` en nginx |
+| ACME | Caddy, automático | certbot `--webroot`, **renovación manual** |
+| `server_name` | fijo + catch-all `444` | `_` (catch-all permisivo) |
+| Red | `nutriapp-net` + `web` | sólo `nutriapp-net` |
+
+Dos cosas fáciles de romper al pasar de una a la otra:
+
+- **Los security headers y el `limit_req` viven en el `server{}`**, no en Caddy. Caddy no agrega
+  HSTS ni CSP por su cuenta: si se editan en una variante hay que replicarlo en la otra o se
+  pierden en silencio.
+- **`set_real_ip_from` + `real_ip_header X-Forwarded-For`** son obligatorios detrás de Caddy. Sin
+  eso `$remote_addr` es la IP del contenedor de Caddy y **todo internet cuenta como una sola IP**:
+  el `limit_req zone=perip` y el rate-limit por IP de `/api/v1/registro` dejan de servir, y un
+  visitante solo puede dejar afuera al resto. Va con `real_ip_recursive off` (toma el último valor
+  de la cadena, que es el que appendea Caddy) para que un `X-Forwarded-For` inyectado por el
+  cliente no lo pise.
+
+---
+
 ## DNS — nutriapp.com.ar
 
 **Archivo listo para importar: [`nutriapp.com.ar.zone`](nutriapp.com.ar.zone)** (formato BIND, mismo
@@ -166,7 +312,8 @@ cada uno; son excluyentes entre sí).
 `187.127.36.153` y `2a02:4780:6e:84b8::1` resuelven por PTR **los dos** a `srv1786758.hstgr.cloud`
 → una sola máquina dual-stack, así que el `AAAA` va igual que en la landing (verificado 2026-08-11).
 
-**Tres cosas a resolver antes de importar / deployar:**
+**Tres cosas a resolver antes de importar / deployar** — al 2026-08-11 queda **sólo la primera**;
+las otras dos se resolvieron al desplegar:
 
 1. **Migración de DNS de DonWeb a Hostinger (en curso al 2026-08-11).** Estado verificado:
    - Delegación en nic.ar: `ns1/ns2.donweb.com`, que responden **`Query refused`** para el dominio
@@ -187,29 +334,16 @@ cada uno; son excluyentes entre sí).
    **Al importar, revisar que no quede un `A` de parking.** Hostinger puede autopoblar la zona
    apuntando el dominio a su hosting compartido cuando detecta la delegación. El estado final tiene
    que ser el VPS: `A → 187.127.36.153` y `AAAA → 2a02:4780:6e:84b8::1`, sin registros duplicados.
-2. **En el VPS los 80/443 los tiene Caddy, no nginx.** `haltcatch.com.ar` responde
-   `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
-   `Server: nginx/1.27.5` → Caddy termina TLS y proxea a un nginx que sirve la landing. Entonces
-   **el stack prod de nutriapp NO puede bindear `80:80`/`443:443`**: el `up` falla por puerto ocupado.
-   Lo natural es sumarse a ese esquema — nutriapp escucha en un puerto alto de loopback y Caddy le
-   pasa el dominio:
-   ```caddyfile
-   nutriapp.com.ar, www.nutriapp.com.ar {
-       reverse_proxy 127.0.0.1:<puerto-alto>
-   }
-   ```
-   **Si va detrás de Caddy, todo el trámite de certificados del paso 1 no hace falta**: Caddy emite y
-   renueva solo (ACME automático). Lo que sí hay que hacer es adaptar el override para publicar HTTP
-   plano en un puerto alto en vez de TLS en 443, y decidir dónde viven los security headers y el
-   rate-limit (hoy están en el `server{}` de TLS de `nginx/conf.d/nutriapp.conf`) para no perderlos
-   ni duplicarlos. El webroot ACME queda igual, inofensivo, para el caso de frontear directo.
-3. **`server_name _` es catch-all.** Sólo importa si el nginx de nutriapp llegara a quedar expuesto
-   en 80/443: ahí responde también para `haltcatch.com.ar` y cualquier `Host` que apunte a esa IP.
-   En ese caso endurecerlo:
-   ```nginx
-   server_name nutriapp.com.ar www.nutriapp.com.ar;
-   # + un server{} catch-all con `return 444;` para Hosts desconocidos
-   ```
+
+   **Caddy ya está esperando ese momento**: el site block de `nutriapp.com.ar` está cargado y
+   reintentando el cert; hoy falla con `"DNS problem: SERVFAIL"`. Cuando la zona resuelva, emite
+   solo y el sitio queda arriba sin tocar nada más.
+2. **En el VPS los 80/443 los tiene Caddy, no nginx.** ✅ Resuelto (2026-08-11) — ver
+   [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual).
+3. **`server_name _` era catch-all.** ✅ Resuelto en `nginx/conf.d-proxied/nutriapp.conf`:
+   `server_name` fijo + un `server{}` `default_server` que descarta con `return 444`. La variante
+   `nginx/conf.d/nutriapp.conf` (modo front único) sigue con `server_name _` — si alguna vez se usa
+   en un host compartido, endurecerla igual.
 
 **Email (`@nutriapp.com.ar`): sólo si se va a mandar mail desde ese dominio.** Hoy no hace falta
 (email en `stub` hasta Fase 2) y no tiene relación con servir la app. Cuando se defina el proveedor
@@ -255,10 +389,19 @@ Los dumps traen **PII** (pacientes/recetas) + el **store de credenciales de Keyc
 
 ---
 
-## Pendiente al confirmar hosting con Gon
-- **Renovación automática del cert** (la emisión ya está: webroot ACME en `nginx/acme/`; renovar y
-  recargar nginx sigue siendo manual).
-- **Integración con el Caddy del VPS** (nutriapp en puerto alto detrás de Caddy, headers y
-  rate-limit reubicados) — ver punto 2 de la sección DNS. Con eso, el cert lo maneja Caddy.
+## Pendiente
+
+- ~~Integración con el Caddy del VPS~~ **✅ hecho (2026-08-11)** — headers y rate-limit reubicados, cert
+  a cargo de Caddy. La renovación automática dejó de ser un pendiente: la hace Caddy.
+- **DNS**: la delegación de `nutriapp.com.ar` todavía apunta a DonWeb y la zona de Hostinger está vacía
+  → el dominio no resuelve, el sitio no es alcanzable y Caddy no puede emitir el cert. Es lo único que
+  falta para que quede arriba. Ver [DNS](#dns--nutriappcomar).
+- **Avisos por mail del registro** (Fase 2) — hoy no sale ninguno; ver
+  [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente).
+- **`BACKUP_GPG_RECIPIENT`** antes de abrir el registro: los dumps traen PII desde la primera solicitud.
 - Rate-limit de red fino, WAF/headers extra según hosting.
-- Imagen Keycloak `--optimized` (build stage) para arranque más rápido, si el boot importa.
+- Imagen Keycloak `--optimized` (build stage) para arranque más rápido: el arranque actual corre el build
+  cada vez (~50 s de augmentation). El propio Keycloak lo sugiere en el log
+  (`kc.sh start --import-realm --optimized`).
+- Sacar `KC_PROXY: edge` del compose base cuando se pase a Keycloak 26 (ahí deja de existir).
+- Renovación manual del cert / webroot ACME: **sólo** aplica si alguna vez se usa el modo front único.
