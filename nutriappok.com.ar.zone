@@ -12,29 +12,32 @@ $TTL 3600
 ; El 2026-08-11 se dio de alta por error ese otro dominio en hPanel; esa zona
 ; quedó huérfana (existe en orbit/horizon pero nadie le delega) y hay que borrarla.
 ;
-; ESTADO AL 2026-08-11 — la delegación YA ESTÁ BIEN, falta sólo la zona:
-;   1. Delegación en el registro .ar -> HECHO: d.dns.ar y f.dns.ar contestan
-;      orbit/horizon.dns-parking.com para nutriappok.com.ar. NO hay que tocar
-;      nic.ar de nuevo.
-;   2. La zona NO existe en Hostinger: orbit/horizon responden "REFUSED" para
-;      este dominio (de ahí el SERVFAIL) porque el alta en hPanel se hizo con el
-;      nombre equivocado. -> Dar de alta nutriappok.com.ar en hPanel.
-;   3. Importar ESTE archivo en la zona recién creada.
+; ESTADO AL 2026-08-11 (tarde) — falta el cambio de NS + cargar los registros:
+;   1. hPanel ya creó la zona de nutriappok.com.ar y le asignó el par
+;      nova/cosmos.dns-parking.com. Verificado: los dos contestan NOERROR con
+;      SOA serial 2026081101, pero la zona está VACÍA (sin A/AAAA/www).
+;   2. La delegación en el registro .ar todavía apunta a orbit/horizon -> hay que
+;      cambiarla a nova/cosmos. Ese par (orbit/horizon) era el del dominio
+;      EQUIVOCADO; se cargó en el registro por el error de nombre.
+;   3. Recién con la delegación en nova/cosmos, hPanel deja importar (su
+;      verificación resuelve los NS por DNS: mientras el dominio dé SERVFAIL no
+;      puede pasar nunca, y de ahí el 409 "Domain is pending verification").
 ;
-; SI hPanel LE ASIGNA OTRO PAR DE NS a nutriappok, ahí sí hay que ir al registro
-; a alinear la delegación: el par se asigna por dominio, no por cuenta
-; (haltcatch.com.ar quedó en lunar/solar y jeianell.com.ar en ns1/ns2). Si le
-; toca orbit/horizon, no hay nada que hacer: ya está delegado ahí.
+; EL PAR DE NS SE ASIGNA POR DOMINIO, NO POR CUENTA: haltcatch.com.ar quedó en
+; lunar/solar, jeianell.com.ar en ns1/ns2, nutriapp.com.ar (el equivocado) en
+; orbit/horizon y nutriappok.com.ar en nova/cosmos. Siempre mirar el par que
+; muestra hPanel PARA ESE dominio.
 ;
 ; AL IMPORTAR: verificar que no quede un A de parking autopoblado por Hostinger.
 ; El estado final tiene que ser el VPS (los dos registros de abajo), sin duplicados.
+; Son 3 registros: si el importador se hace el difícil, cargarlos a mano es más rápido.
 ; ============================================================
 
-; Nameservers a los que YA está delegado este dominio en el registro .ar
-; (verificado 2026-08-11 contra d.dns.ar y f.dns.ar). Borrar estas 2 lineas si el
-; importador da error: no las define este archivo sino hPanel + la delegación.
-@       3600  IN  NS    orbit.dns-parking.com.
-@       3600  IN  NS    horizon.dns-parking.com.
+; Nameservers asignados por hPanel a ESTE dominio (verificado 2026-08-11 contra
+; nova/cosmos directamente). Borrar estas 2 lineas si el importador da error: no
+; las define este archivo sino hPanel + la delegación en el registro .ar.
+@       3600  IN  NS    nova.dns-parking.com.
+@       3600  IN  NS    cosmos.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153

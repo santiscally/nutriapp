@@ -56,16 +56,18 @@ el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md ten�
 3. **DNS: falta la zona en hPanel** — **sigue abierto y es el único bloqueante técnico**, pero es un paso
    solo. ⚠️ **El dominio es `nutriappok.com.ar`**, no `nutriapp.com.ar` (ese es de otro; el 2026-08-11 se
    configuró el equivocado y se renombró todo — ver la entrada de corrección del DIARIO).
-   - Delegación en el registro `.ar`: **✅ ya apunta a `orbit/horizon.dns-parking.com`** (verificado contra
-     d.dns.ar y f.dns.ar). **No hay que volver a tocar nic.ar.**
-   - Zona en Hostinger: **❌ no existe** — orbit/horizon responden `REFUSED` para nutriappok, porque el alta
-     en hPanel se hizo con el nombre equivocado. Esa zona huérfana de `nutriapp.com.ar` conviene borrarla.
+   - Zona en Hostinger: **✅ creada**, con el par **`nova/cosmos.dns-parking.com`** (los dos contestan
+     `NOERROR`, SOA `2026081101`) — pero **vacía**: sin `A`, sin `AAAA`, sin `www`.
+   - Delegación en el registro `.ar`: **❌ desalineada** — todavía apunta a `orbit/horizon`, que era el par
+     del dominio **equivocado**; se cargó así por el error de nombre. El par se asigna **por dominio**:
+     haltcatch → lunar/solar, jeianell → ns1/ns2, nutriapp (el errado) → orbit/horizon, nutriappok → nova/cosmos.
 
-   **Falta sólo:** dar de alta `nutriappok.com.ar` en hPanel → importar `nutriappok.com.ar.zone` → chequear
-   que no quede un `A` de parking. Si hPanel le asigna otro par de NS (se asigna por dominio, no por cuenta),
-   ahí sí hay que alinear el registro. Caddy ya tiene el site block cargado y reintenta el cert con backoff:
-   **en cuanto la zona resuelva, emite solo y el sitio queda arriba sin tocar nada más.** Detalle en
-   DEPLOY.md §DNS.
+   **Falta:** (1) cambiar los NS en el registro a `nova`/`cosmos` → (2) importar `nutriappok.com.ar.zone`
+   (o cargar los 3 registros a mano) → (3) chequear que no quede un `A` de parking. El import da hoy
+   **409 "Domain is pending verification"**: la verificación de hPanel resuelve los NS por DNS y el dominio
+   da `SERVFAIL`, así que no puede pasar hasta que la delegación caiga en nova/cosmos. Caddy ya tiene el
+   site block cargado y reintenta el cert con backoff: **en cuanto la zona resuelva con los registros
+   cargados, emite solo y el sitio queda arriba sin tocar nada más.** Detalle en DEPLOY.md §DNS.
 4. **`BACKUP_GPG_RECIPIENT` vacío** — no bloquea el deploy pero sí **abrir el registro**: los dumps traen PII
    real (DNI, CUIT, matrícula, archivo) desde la primera solicitud y hoy saldrían en texto plano.
 

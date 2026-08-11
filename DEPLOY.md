@@ -334,18 +334,25 @@ cada uno; son excluyentes entre sí).
 **Tres cosas a resolver antes de importar / deployar** — al 2026-08-11 queda **sólo la primera**;
 las otras dos se resolvieron al desplegar:
 
-1. **Falta la zona en Hostinger. La delegación YA ESTÁ BIEN.** Estado verificado el 2026-08-11:
-   - **Delegación en el registro `.ar`: ✅ correcta.** `d.dns.ar` y `f.dns.ar` contestan
-     `orbit/horizon.dns-parking.com` para `nutriappok.com.ar`. **No hay que volver a tocar nic.ar.**
-   - **Zona: ❌ no existe.** `orbit`/`horizon` responden **`REFUSED`** para `nutriappok.com.ar` → de
-     ahí el **SERVFAIL**. El alta en hPanel se hizo con el nombre equivocado (ver el recuadro de
-     abajo), así que la zona quedó creada para otro dominio.
+1. **Falta alinear los NS y cargar los registros.** Estado verificado el 2026-08-11 (tarde):
+   - **Zona en Hostinger: ✅ creada**, con el par **`nova/cosmos.dns-parking.com`** — los dos
+     contestan `NOERROR` (SOA `2026081101`). Pero está **vacía**: sin `A`, sin `AAAA`, sin `www`.
+   - **Delegación en el registro `.ar`: ❌ desalineada.** Sigue en `orbit/horizon`, que era el par del
+     dominio **equivocado** (ver el recuadro de abajo); se cargó así por el error de nombre.
 
-   Lo único que falta: **dar de alta `nutriappok.com.ar` en hPanel** → **importar
-   `nutriappok.com.ar.zone`**. Si hPanel le asigna `orbit/horizon` (el par al que ya está delegado),
-   no hay nada más que hacer. **Si le asigna otro par**, ahí sí hay que alinear la delegación en el
-   registro: el par se asigna **por dominio**, no por cuenta — `haltcatch.com.ar` quedó en
-   `lunar/solar` y `jeianell.com.ar` en `ns1/ns2`.
+   **El par de NS se asigna POR DOMINIO, no por cuenta** — `haltcatch.com.ar` en `lunar/solar`,
+   `jeianell.com.ar` en `ns1/ns2`, `nutriapp.com.ar` (el errado) en `orbit/horizon`,
+   `nutriappok.com.ar` en `nova/cosmos`. Siempre mirar el par que muestra hPanel **para ese** dominio.
+
+   Pasos: **(1)** cambiar los NS en el registro a `nova`/`cosmos` → **(2)** importar
+   `nutriappok.com.ar.zone` (son 3 registros: si el importador se hace el difícil, cargarlos a mano
+   es más rápido) → **(3)** chequear que no haya quedado un `A` de parking.
+
+   > **Por qué el import da `409 "Domain is pending verification"`.** hPanel verifica la titularidad
+   > resolviendo los NS del dominio por DNS. Hoy eso devuelve **`SERVFAIL`** —no "apunta a otro
+   > lado"— porque el padre delega a `orbit/horizon` y esos NS **rechazan** el dominio. Es circular:
+   > la verificación necesita una respuesta que sólo existiría si la zona ya estuviera publicada.
+   > **No es propagación y esperar no lo arregla**; se destraba con el paso (1).
 
    **Al importar, revisar que no quede un `A` de parking.** Hostinger puede autopoblar la zona
    apuntando el dominio a su hosting compartido cuando detecta la delegación. El estado final tiene
