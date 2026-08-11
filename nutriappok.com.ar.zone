@@ -33,11 +33,13 @@ $TTL 3600
 ; Son 3 registros: si el importador se hace el difícil, cargarlos a mano es más rápido.
 ; ============================================================
 
-; Nameservers asignados por hPanel a ESTE dominio (verificado 2026-08-11 contra
-; nova/cosmos directamente). Borrar estas 2 lineas si el importador da error: no
-; las define este archivo sino hPanel + la delegación en el registro .ar.
-@       3600  IN  NS    nova.dns-parking.com.
-@       3600  IN  NS    cosmos.dns-parking.com.
+; Nameservers asignados por hPanel a ESTE dominio: nova/cosmos.dns-parking.com
+; (verificado 2026-08-11 preguntandoles directamente). Van COMENTADOS a proposito:
+; este archivo no define la delegacion —la definen hPanel y el registro .ar— y un
+; NS en el apex es la causa mas comun de que el importador rechace la zona o cree
+; registros duplicados. Estan aca solo como referencia de cual es el par correcto.
+;@      3600  IN  NS    nova.dns-parking.com.
+;@      3600  IN  NS    cosmos.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153
