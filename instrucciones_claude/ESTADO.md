@@ -16,7 +16,7 @@
 
 **Última actualización: 2026-08-11** — **stack prod desplegado en el VPS, detrás del Caddy del host,
 en modo pre-lanzamiento.** Falta **sólo el DNS** para que sea alcanzable. Detalle en el DIARIO
-(entrada 2026-08-11 "deploy de nutriapp.com.ar").
+(entrada 2026-08-11 "deploy de nutriappok.com.ar").
 
 **🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
 con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`
@@ -39,7 +39,7 @@ sin uso acá), sección nueva de DEPLOY.md.
 **🚀 PRE-LANZAMIENTO (2026-08-10).** Flag de build `VITE_COMING_SOON=true` → `/` es la landing de
 "Próximamente" con CTA a `/registro`, el login pasa a `/ingresar` (sin link), y el resto queda intacto.
 Apagarlo es `false` + rebuild, sin tocar código. Infra: webroot ACME en `nginx/acme/` (el `:80` ya no
-redirige el challenge de Let's Encrypt) y DEPLOY.md con el DNS de `nutriapp.com.ar`, la emisión con certbot
+redirige el challenge de Let's Encrypt) y DEPLOY.md con el DNS de `nutriappok.com.ar`, la emisión con certbot
 y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido explícito** — 5 archivos, avisado en
 el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
 `VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
@@ -53,15 +53,19 @@ el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md ten�
    recibe el "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3
    (aprobar es por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
    **Ahora es EL bloqueante funcional**: la infra ya no frena nada.
-3. **DNS: migración de DonWeb a Hostinger a medio camino** — **sigue abierto y es el único bloqueante
-   técnico**. Al 2026-08-11 el dominio da **SERVFAIL**: la delegación de nic.ar apunta a
-   `ns1/ns2.donweb.com`, que responden `Query refused` (no tienen la zona). La zona ya existe en
-   `orbit/horizon.dns-parking.com` (el par que hPanel asignó a *este* dominio; varía por dominio —
-   haltcatch quedó en lunar/solar y jeianell en ns1/ns2) pero está **vacía**. Caddy ya tiene el site block
-   cargado e intenta el cert: falla con `"DNS problem: SERVFAIL"` y reintenta con backoff. **En cuanto la
-   zona resuelva, emite solo y el sitio queda arriba sin tocar nada más.** Orden — **NS primero**: cambiar
-   la delegación a orbit/horizon → esperar propagación → importar `nutriapp.com.ar.zone` (hPanel no habilita
-   el import antes) → verificar que no haya quedado un `A` de parking. Detalle en DEPLOY.md §DNS.
+3. **DNS: falta la zona en hPanel** — **sigue abierto y es el único bloqueante técnico**, pero es un paso
+   solo. ⚠️ **El dominio es `nutriappok.com.ar`**, no `nutriapp.com.ar` (ese es de otro; el 2026-08-11 se
+   configuró el equivocado y se renombró todo — ver la entrada de corrección del DIARIO).
+   - Delegación en el registro `.ar`: **✅ ya apunta a `orbit/horizon.dns-parking.com`** (verificado contra
+     d.dns.ar y f.dns.ar). **No hay que volver a tocar nic.ar.**
+   - Zona en Hostinger: **❌ no existe** — orbit/horizon responden `REFUSED` para nutriappok, porque el alta
+     en hPanel se hizo con el nombre equivocado. Esa zona huérfana de `nutriapp.com.ar` conviene borrarla.
+
+   **Falta sólo:** dar de alta `nutriappok.com.ar` en hPanel → importar `nutriappok.com.ar.zone` → chequear
+   que no quede un `A` de parking. Si hPanel le asigna otro par de NS (se asigna por dominio, no por cuenta),
+   ahí sí hay que alinear el registro. Caddy ya tiene el site block cargado y reintenta el cert con backoff:
+   **en cuanto la zona resuelva, emite solo y el sitio queda arriba sin tocar nada más.** Detalle en
+   DEPLOY.md §DNS.
 4. **`BACKUP_GPG_RECIPIENT` vacío** — no bloquea el deploy pero sí **abrir el registro**: los dumps traen PII
    real (DNI, CUIT, matrícula, archivo) desde la primera solicitud y hoy saldrían en texto plano.
 

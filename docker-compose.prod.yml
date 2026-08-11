@@ -38,12 +38,12 @@ services:
     # --import-realm hace el bootstrap del realm en el primer arranque (idempotente si ya existe).
     command: ["start", "--import-realm"]
     environment:
-      # URL pública COMPLETA, /auth INCLUIDO. Ej: https://nutriapp.com.ar/auth
+      # URL pública COMPLETA, /auth INCLUIDO. Ej: https://nutriappok.com.ar/auth
       # OJO (KC 25, hostname v2): si esto es una URL completa, el context path sale de ACÁ y
       # KC_HTTP_RELATIVE_PATH NO se le concatena. Poniendo el origen pelado, el .well-known
       # publica https://<host>/realms/... (sin /auth) → nginx no rutea ese path y el login
       # del SPA rompe con un 404 disfrazado de index.html. Verificado 2026-08-11.
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME (URL pública con /auth, ej. https://nutriapp.com.ar/auth)}
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:?set KEYCLOAK_HOSTNAME (URL pública con /auth, ej. https://nutriappok.com.ar/auth)}
       KC_HTTP_RELATIVE_PATH: /auth
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: "false"

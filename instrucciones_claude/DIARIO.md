@@ -32,6 +32,53 @@
 
 ## Entradas
 
+## 2026-08-11 — Santi — infra (**CORRECCIÓN**: el dominio es `nutriappok.com.ar`, no `nutriapp.com.ar`)
+**Qué:** Todo el deploy de la entrada de más abajo se había configurado con **el dominio equivocado**.
+El dominio del proyecto es **`nutriappok.com.ar`**. Renombrado en todos lados: `.env`
+(`KEYCLOAK_HOSTNAME`, `VITE_*`, `MAIL_FROM_ADDRESS`), `nginx/conf.d-proxied/nutriapp.conf` y
+`nginx/conf.d/nutriapp.conf` (`server_name`), `docker-compose.prod.yml`, `/root/stack/Caddyfile`,
+DEPLOY.md, y el `.zone` pasó a llamarse `nutriappok.com.ar.zone`. **Rebuild de la SPA obligatorio**:
+el origen va horneado en el bundle. Aplicado: keycloak recreado, nginx recreado, Caddy reiniciado.
+
+**Por qué:** `nutriapp.com.ar` **no es nuestro** — su delegación en el registro `.ar` apunta a
+`ns1/ns2.donweb.com`. Es de otro.
+
+**La buena noticia — no hubo que tocar DNS de nuevo.** Verificado contra el padre `.ar`:
+- `nutriappok.com.ar` **ya está delegado a `orbit/horizon.dns-parking.com`** (d.dns.ar y f.dns.ar
+  coinciden). La parte lenta y dolorosa ya estaba hecha, y sobre el dominio correcto.
+- Lo que falta es al revés de lo que parecía: la **zona no existe** (orbit/horizon responden
+  `REFUSED` para nutriappok), porque el alta en hPanel se hizo con el nombre equivocado. Esa zona
+  huérfana de `nutriapp.com.ar` (SOA `2026081101`) existe pero nadie le delega → borrarla.
+
+O sea el cruce exacto: **dominio bueno con delegación buena y sin zona; dominio equivocado con zona
+y sin delegación.** Sólo falta dar de alta `nutriappok.com.ar` en hPanel + importar el `.zone`. Si
+hPanel le asigna otro par de NS (se asigna por dominio, no por cuenta), ahí sí hay que alinear el
+registro; si le toca orbit/horizon, no hay nada que hacer.
+
+**Problemas:**
+1. **Me rompí nginx en el medio y vale documentarlo.** El mount de `conf.d` es un **directorio**, así
+   que editar los `.conf` adentro se ve bien — pero el `git rebase` del push pasó por commits donde
+   `nginx/conf.d-proxied/` no existía, lo borró y lo recreó, y eso **cambia el inodo del directorio**:
+   el contenedor quedó pegado al viejo, vacío. Es silencioso: nginx siguió sirviendo con la config en
+   memoria y explotó recién en el `nginx -s reload` de este cambio, quedándose **sin ningún
+   `server{}`** → *connection refused*, no un error de config (`nginx -t` pasa: una config vacía es
+   válida). Se arregla con `up -d --force-recreate nginx`, no con reload. **Regla: después de
+   cualquier git que toque `nginx/conf.d*/`, recrear nginx.** Documentado en DEPLOY.md.
+2. La trampa del Caddyfile (bind-mount de archivo suelto) volvió a morder, como estaba previsto:
+   `caddy validate` contestó "Valid configuration" **validando el archivo viejo**. Restart y listo.
+
+**Verificado post-rename:** bundle con `https://nutriappok.com.ar` horneado y cero rastros del viejo;
+issuer OIDC `https://nutriappok.com.ar/auth/realms/nutriapp`; `/` 200, `/actuator/health` 200,
+`/api/v1/recetas` 401, `/auth/realms/master` 404; **`Host: nutriapp.com.ar` ahora cae en el catch-all
+y cierra con 444**; real_ip sigue tomando el cliente real; haltcatch y jeianell en 200.
+
+**Impacto para el otro (Fran):** `frontend/src/pages/Proximamente.tsx` menciona `nutriapp.com.ar` en un
+**comentario** (línea 2). No tiene impacto funcional y es tu archivo, así que no lo toqué — corregilo
+cuando pases por ahí.
+
+**Refs:** `nutriappok.com.ar.zone` (era `nutriapp.com.ar.zone`), `.env` (fuera de git), DEPLOY.md,
+`/root/stack/Caddyfile`.
+
 ## 2026-08-11 — Santi — infra (deploy de nutriapp.com.ar en modo pre-lanzamiento, detrás del Caddy del VPS)
 **Qué:** Stack prod levantado y sirviendo en el VPS. NutriApp **no** es el front: los 80/443 los tiene
 `edge-caddy-1` (stack `/root/stack`, sirve haltcatch.com.ar y jeianell.com.ar) y nutriapp se suma a ese

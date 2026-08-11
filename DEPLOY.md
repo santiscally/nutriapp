@@ -24,13 +24,13 @@ Topología (single domain, path-based):
 
 > **Pre-lanzamiento:** para publicar el dominio con una pantalla "Próximamente" y sólo el registro
 > habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS concreto de
-> `nutriapp.com.ar` en [DNS](#dns--nutriappcomar).
+> `nutriappok.com.ar` en [DNS](#dns--nutriappcomar).
 
 ---
 
 ## Pre-requisitos (una vez)
 
-1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriapp.com.ar](#dns--nutriappcomar).
+1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriappok.com.ar](#dns--nutriappcomar).
 2. **Docker + Docker Compose v2** en el host.
 3. **Node**: no hace falta en el host — el build de la SPA va en un contenedor (paso 2).
 4. **La red docker `web` tiene que existir** (la crea el stack de Caddy). `docker network ls | grep web`;
@@ -56,11 +56,11 @@ certbot puede validar con el stack ya arriba. Orden de arranque: primero un self
 (nginx no levanta sin cert), después emitir el real y recargar:
 
 ```
-bash scripts/gen-selfsigned-cert.sh nutriapp.com.ar     # placeholder para poder arrancar
+bash scripts/gen-selfsigned-cert.sh nutriappok.com.ar     # placeholder para poder arrancar
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 certbot certonly --webroot -w ./nginx/acme \
-  -d nutriapp.com.ar -d www.nutriapp.com.ar -m <mail> --agree-tos
-cp /etc/letsencrypt/live/nutriapp.com.ar/{fullchain,privkey}.pem nginx/certs/
+  -d nutriappok.com.ar -d www.nutriappok.com.ar -m <mail> --agree-tos
+cp /etc/letsencrypt/live/nutriappok.com.ar/{fullchain,privkey}.pem nginx/certs/
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
@@ -74,8 +74,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx
 
 ```
 docker run --rm -v "$PWD/frontend:/app" -w /app \
-  -e VITE_API_BASE_URL=https://nutriapp.com.ar \
-  -e VITE_KEYCLOAK_URL=https://nutriapp.com.ar/auth \
+  -e VITE_API_BASE_URL=https://nutriappok.com.ar \
+  -e VITE_KEYCLOAK_URL=https://nutriappok.com.ar/auth \
   -e VITE_KEYCLOAK_REALM=nutriapp \
   -e VITE_KEYCLOAK_CLIENT_ID=nutriapp-frontend \
   -e VITE_COMING_SOON=true \
@@ -90,7 +90,7 @@ grep -o 'VITE_COMING_SOON:`[^`]*`' frontend/dist/assets/*.js   # → VITE_COMING
 ```
 
 > **Ojo con `VITE_API_BASE_URL`:** el código le concatena `/api/v1`, así que el valor correcto es el
-> **origen pelado** (`https://nutriapp.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
+> **origen pelado** (`https://nutriappok.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
 > `frontend/` es de Fran. Estos son sólo los env de build documentados; no se modifica su código.
 
 ### 3. Fijar el secret del client `nutriapp-backend` (realm de prod)
@@ -128,7 +128,7 @@ esta sección y un `restart backend` igual.
 Copiar `.env.example` → `.env` y completar el bloque **PRODUCCIÓN**. El compose **aborta**
 (`:?`) si falta alguno de estos, pero **NO** detecta que sigan siendo los débiles de dev — es
 tu responsabilidad regenerarlos:
-- `KEYCLOAK_HOSTNAME` = URL pública **con `/auth`** (ej. `https://nutriapp.com.ar/auth`). Ver la
+- `KEYCLOAK_HOSTNAME` = URL pública **con `/auth`** (ej. `https://nutriappok.com.ar/auth`). Ver la
   nota de hostname v2 más abajo — sin el `/auth` el login rompe.
 - `KEYCLOAK_ADMIN_CLIENT_SECRET` = el regenerado en el paso 3.
 - `POSTGRES_PASSWORD` = fuerte (el default de dev es público en este repo).
@@ -148,11 +148,11 @@ Verificación:
 
 > **Keycloak hostname — el `/auth` va en `KEYCLOAK_HOSTNAME`.** En KC 25 (hostname v2), si el valor
 > es una URL completa, el context path sale de esa URL y **`KC_HTTP_RELATIVE_PATH` no se le
-> concatena**. Con `https://nutriapp.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
-> pero publica adentro `"issuer":"https://nutriapp.com.ar/realms/nutriapp"` — sin el prefijo. Ese
+> concatena**. Con `https://nutriappok.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
+> pero publica adentro `"issuer":"https://nutriappok.com.ar/realms/nutriapp"` — sin el prefijo. Ese
 > path nginx no lo rutea: cae en el `try_files` de la SPA y devuelve `index.html` con 200, así que
 > el login falla con un error de parseo en vez de un 404 honesto. El valor correcto es
-> `https://nutriapp.com.ar/auth`. Chequeo rápido:
+> `https://nutriappok.com.ar/auth`. Chequeo rápido:
 >
 > ```
 > curl -s http://127.0.0.1:8081/auth/realms/nutriapp/.well-known/openid-configuration \
@@ -172,7 +172,7 @@ Verificación:
 
 ## Modo pre-lanzamiento ("Próximamente")
 
-Para publicar `nutriapp.com.ar` antes de que la app esté terminada. Se activa con **un solo flag de
+Para publicar `nutriappok.com.ar` antes de que la app esté terminada. Se activa con **un solo flag de
 build**, `VITE_COMING_SOON=true`:
 
 | Ruta        | Con el flag                                   | Sin el flag (normal) |
@@ -230,7 +230,7 @@ ellos. El único puente es nginx.
 ### Site block en `/root/stack/Caddyfile`
 
 ```caddyfile
-nutriapp.com.ar, www.nutriapp.com.ar {
+nutriappok.com.ar, www.nutriappok.com.ar {
     encode zstd gzip
     reverse_proxy nutriapp-nginx:80
 }
@@ -244,7 +244,7 @@ docker exec edge-caddy-1 caddy reload  --config /etc/caddy/Caddyfile
 ```
 
 `reload` es en caliente (sin cortar conexiones) y **no toca los certs de los otros dominios**. Si
-`nutriapp.com.ar` todavía no resuelve, Caddy loguea el fallo de ACME y reintenta con backoff; los
+`nutriappok.com.ar` todavía no resuelve, Caddy loguea el fallo de ACME y reintenta con backoff; los
 demás sitios siguen sirviendo normal.
 
 > ⚠️ **Trampa del bind-mount de archivo suelto (pisada el 2026-08-11).** El compose de Caddy monta
@@ -254,7 +254,7 @@ demás sitios siguen sirviendo normal.
 > **vieja**. `caddy reload` contesta `"config is unchanged"` y **no pasa nada** — un no-op que parece
 > un éxito.
 >
-> Peor todavía: probar con `curl -I http://127.0.0.1 -H 'Host: nutriapp.com.ar'` da `308 → https`
+> Peor todavía: probar con `curl -I http://127.0.0.1 -H 'Host: nutriappok.com.ar'` da `308 → https`
 > **aunque la ruta no exista**, porque es el redirect HTTP→HTTPS genérico de Caddy. No sirve como
 > verificación. Lo único concluyente es preguntarle a Caddy qué tiene cargado:
 >
@@ -265,6 +265,25 @@ demás sitios siguen sirviendo normal.
 > Si el dominio no aparece ahí, el reload no aplicó: `docker restart edge-caddy-1` (re-resuelve el
 > bind mount; ~1-2 s de corte para los otros sitios). Ojo que `wget http://localhost:2019` da
 > *connection refused* dentro del contenedor — el admin escucha en `127.0.0.1`, hay que usar la IP.
+
+> ⚠️ **La misma trampa, con git, sobre el `conf.d` de nginx (pisada el 2026-08-11).** El mount
+> `${NGINX_CONF_DIR}:/etc/nginx/conf.d:ro` es un **directorio**, así que editar los `.conf` adentro
+> sí se ve. Lo que **no** sobrevive es que el directorio entero se borre y se recree: un
+> `git rebase`/`checkout` que pase por commits donde `nginx/conf.d-proxied/` todavía no existe hace
+> exactamente eso, y el contenedor queda pegado al directorio viejo — **vacío**.
+>
+> Es silencioso al principio: nginx sigue sirviendo con la config que tiene en memoria. Explota
+> recién en el próximo `nginx -s reload`, y explota feo — se queda **sin ningún `server{}`** y deja
+> de escuchar, o sea *connection refused*, no un error de config. `nginx -t` pasa igual, porque una
+> config vacía es válida. Chequeo:
+>
+> ```
+> docker exec nutriapp-nginx ls /etc/nginx/conf.d/     # vacío = mount roto
+> ```
+>
+> Se arregla recreando el contenedor, no recargándolo:
+> `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate nginx`.
+> **Regla práctica: después de cualquier operación de git que toque `nginx/conf.d*/`, recrear nginx.**
 
 ### Lo que cambia en la config de nginx
 
@@ -293,16 +312,16 @@ Dos cosas fáciles de romper al pasar de una a la otra:
 
 ---
 
-## DNS — nutriapp.com.ar
+## DNS — nutriappok.com.ar
 
-**Archivo listo para importar: [`nutriapp.com.ar.zone`](nutriapp.com.ar.zone)** (formato BIND, mismo
+**Archivo listo para importar: [`nutriappok.com.ar.zone`](nutriappok.com.ar.zone)** (formato BIND, mismo
 criterio que `haltcatch.com.ar.zone`). Los registros activos son sólo estos tres:
 
 | Tipo    | Nombre | Valor                    | TTL |
 | ------- | ------ | ------------------------ | --- |
 | `A`     | `@`    | `187.127.36.153`         | 300 |
 | `AAAA`  | `@`    | `2a02:4780:6e:84b8::1`   | 300 |
-| `CNAME` | `www`  | `nutriapp.com.ar`        | 300 |
+| `CNAME` | `www`  | `nutriappok.com.ar`        | 300 |
 
 Con eso alcanza. No hay subdominios: `/api` y `/auth` son paths del mismo dominio, no hosts.
 El bloque de correo y el de anti-spoofing quedaron comentados en el archivo (ver ahí cuándo usar
@@ -315,29 +334,33 @@ cada uno; son excluyentes entre sí).
 **Tres cosas a resolver antes de importar / deployar** — al 2026-08-11 queda **sólo la primera**;
 las otras dos se resolvieron al desplegar:
 
-1. **Migración de DNS de DonWeb a Hostinger (en curso al 2026-08-11).** Estado verificado:
-   - Delegación en nic.ar: `ns1/ns2.donweb.com`, que responden **`Query refused`** para el dominio
-     (no tienen la zona) → de ahí el **SERVFAIL**. No hay ningún registro ni mail viviendo ahí, así
-     que el cambio no rompe nada.
-   - El alta del sitio en hPanel ya creó la zona en `orbit/horizon.dns-parking.com`
-     (SOA serial `2026081101`), pero está **vacía**: sin `A`, sin `AAAA`, sin `www`, sin `MX`.
+1. **Falta la zona en Hostinger. La delegación YA ESTÁ BIEN.** Estado verificado el 2026-08-11:
+   - **Delegación en el registro `.ar`: ✅ correcta.** `d.dns.ar` y `f.dns.ar` contestan
+     `orbit/horizon.dns-parking.com` para `nutriappok.com.ar`. **No hay que volver a tocar nic.ar.**
+   - **Zona: ❌ no existe.** `orbit`/`horizon` responden **`REFUSED`** para `nutriappok.com.ar` → de
+     ahí el **SERVFAIL**. El alta en hPanel se hizo con el nombre equivocado (ver el recuadro de
+     abajo), así que la zona quedó creada para otro dominio.
 
-   Orden correcto — **los NS primero**: hPanel **no habilita el import de zona hasta que la
-   delegación apunte a Hostinger** (probado 2026-08-11). No hay nada que cuidar en el medio: el
-   dominio ya no resuelve, así que la ventana con la zona vacía no rompe nada.
-   **(1)** cambiar los nameservers a `orbit.dns-parking.com` / `horizon.dns-parking.com` donde esté
-   la delegación — nic.ar (Clave Fiscal del CUIT titular) o el panel de DonWeb si el dominio se
-   gestiona desde ahí → **(2)** esperar que propague → **(3)** importar `nutriapp.com.ar.zone`.
-   El par de NS lo asigna hPanel **por dominio**, no por cuenta: `haltcatch.com.ar` quedó en
-   `lunar/solar` y `jeianell.com.ar` en `ns1/ns2`, de ahí que este sea un tercer par.
+   Lo único que falta: **dar de alta `nutriappok.com.ar` en hPanel** → **importar
+   `nutriappok.com.ar.zone`**. Si hPanel le asigna `orbit/horizon` (el par al que ya está delegado),
+   no hay nada más que hacer. **Si le asigna otro par**, ahí sí hay que alinear la delegación en el
+   registro: el par se asigna **por dominio**, no por cuenta — `haltcatch.com.ar` quedó en
+   `lunar/solar` y `jeianell.com.ar` en `ns1/ns2`.
 
    **Al importar, revisar que no quede un `A` de parking.** Hostinger puede autopoblar la zona
    apuntando el dominio a su hosting compartido cuando detecta la delegación. El estado final tiene
    que ser el VPS: `A → 187.127.36.153` y `AAAA → 2a02:4780:6e:84b8::1`, sin registros duplicados.
 
-   **Caddy ya está esperando ese momento**: el site block de `nutriapp.com.ar` está cargado y
+   **Caddy ya está esperando ese momento**: el site block de `nutriappok.com.ar` está cargado y
    reintentando el cert; hoy falla con `"DNS problem: SERVFAIL"`. Cuando la zona resuelva, emite
    solo y el sitio queda arriba sin tocar nada más.
+
+   > ⚠️ **El dominio es `nutriappOK.com.ar`, no `nutriapp.com.ar`.** El 2026-08-11 se configuró y se
+   > dio de alta en hPanel el segundo por error. **`nutriapp.com.ar` no es nuestro**: su delegación
+   > en el registro `.ar` apunta a `ns1/ns2.donweb.com`. La zona que quedó creada en hPanel para ese
+   > nombre es huérfana (existe en `orbit/horizon` pero nadie le delega) y **conviene borrarla** —
+   > no sirve para nada y confunde. Todo el repo, el `.env`, el Caddyfile y el bundle de la SPA ya
+   > están renombrados; el `.zone` pasó a llamarse `nutriappok.com.ar.zone`.
 2. **En el VPS los 80/443 los tiene Caddy, no nginx.** ✅ Resuelto (2026-08-11) — ver
    [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual).
 3. **`server_name _` era catch-all.** ✅ Resuelto en `nginx/conf.d-proxied/nutriapp.conf`:
@@ -345,7 +368,7 @@ las otras dos se resolvieron al desplegar:
    `nginx/conf.d/nutriapp.conf` (modo front único) sigue con `server_name _` — si alguna vez se usa
    en un host compartido, endurecerla igual.
 
-**Email (`@nutriapp.com.ar`): sólo si se va a mandar mail desde ese dominio.** Hoy no hace falta
+**Email (`@nutriappok.com.ar`): sólo si se va a mandar mail desde ese dominio.** Hoy no hace falta
 (email en `stub` hasta Fase 2) y no tiene relación con servir la app. Cuando se defina el proveedor
 en Fase 2, ahí van `MX` + `SPF` + `DKIM` + `DMARC` **del proveedor que se elija** — copiar los de
 Hostinger de la landing sólo tiene sentido si el mail de nutriapp también va a Hostinger, y si no,
@@ -355,18 +378,18 @@ transaccionales conviene arrancar en `p=none` y endurecer a `quarantine` cuando 
 
 **Verificación** (desde PowerShell, contra un resolver público para saltear caché local):
 ```powershell
-Resolve-DnsName nutriapp.com.ar     -Server 1.1.1.1 -Type A
-Resolve-DnsName nutriapp.com.ar     -Server 1.1.1.1 -Type AAAA
-Resolve-DnsName www.nutriapp.com.ar -Server 1.1.1.1 -Type CNAME
-curl.exe -I https://nutriapp.com.ar
+Resolve-DnsName nutriappok.com.ar     -Server 1.1.1.1 -Type A
+Resolve-DnsName nutriappok.com.ar     -Server 1.1.1.1 -Type AAAA
+Resolve-DnsName www.nutriappok.com.ar -Server 1.1.1.1 -Type CNAME
+curl.exe -I https://nutriappok.com.ar
 ```
 
 **¿La delegación ya está publicada?** Mientras el dominio dé **SERVFAIL** los resolvers públicos no
 sirven para diagnosticar (van a los NS viejos, que responden `REFUSED`, y eso se ve igual esté el
 cambio pendiente o mal guardado). Hay que preguntarle al **registro `.ar`**, que es el padre:
 ```powershell
-Resolve-DnsName nutriapp.com.ar -Server 192.140.126.50 -Type NS   # d.dns.ar (TLD .ar)
-Resolve-DnsName nutriapp.com.ar -Server 130.59.31.20   -Type NS   # f.dns.ar (segunda opinión)
+Resolve-DnsName nutriappok.com.ar -Server 192.140.126.50 -Type NS   # d.dns.ar (TLD .ar)
+Resolve-DnsName nutriappok.com.ar -Server 130.59.31.20   -Type NS   # f.dns.ar (segunda opinión)
 ```
 Si eso devuelve `ns1/ns2.donweb.com`, el cambio **no está en el padre**: o nic.ar todavía no publicó,
 o se cargaron los `NS` dentro del editor de zona de nic.ar en vez de cambiar la *delegación* del
@@ -393,7 +416,7 @@ Los dumps traen **PII** (pacientes/recetas) + el **store de credenciales de Keyc
 
 - ~~Integración con el Caddy del VPS~~ **✅ hecho (2026-08-11)** — headers y rate-limit reubicados, cert
   a cargo de Caddy. La renovación automática dejó de ser un pendiente: la hace Caddy.
-- **DNS**: la delegación de `nutriapp.com.ar` todavía apunta a DonWeb y la zona de Hostinger está vacía
+- **DNS**: la delegación de `nutriappok.com.ar` todavía apunta a DonWeb y la zona de Hostinger está vacía
   → el dominio no resuelve, el sitio no es alcanzable y Caddy no puede emitir el cert. Es lo único que
   falta para que quede arriba. Ver [DNS](#dns--nutriappcomar).
 - **Avisos por mail del registro** (Fase 2) — hoy no sale ninguno; ver

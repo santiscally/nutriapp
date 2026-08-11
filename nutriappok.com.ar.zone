@@ -1,44 +1,50 @@
-$ORIGIN nutriapp.com.ar.
+$ORIGIN nutriappok.com.ar.
 $TTL 3600
 
 ; ============================================================
-; Zona DNS de nutriapp.com.ar — para importar en hPanel (Hostinger).
+; Zona DNS de nutriappok.com.ar — para importar en hPanel (Hostinger).
 ; Mismo VPS que la landing haltcatch.com.ar: srv1786758.hstgr.cloud
 ; (verificado por PTR: 187.127.36.153 y 2a02:4780:6e:84b8::1 resuelven
 ;  los dos a ese hostname → es UNA sola máquina, dual-stack).
 ;
-; ORDEN DE LOS PASOS — los nameservers van PRIMERO:
-;   1. Sitio dado de alta en hPanel  -> HECHO 2026-08-11: la zona ya existe en
-;      orbit/horizon (SOA serial 2026081101) pero está VACÍA (sin A/AAAA/www/MX).
-;   2. Cambiar los NS a orbit/horizon donde esté la delegación (nic.ar con la
-;      Clave Fiscal del CUIT titular, o el panel de DonWeb).
-;   3. Cuando propague, hPanel habilita el import -> importar ESTE archivo.
-;      (hPanel NO deja importar antes de que la delegación apunte a Hostinger.)
-; Al 2026-08-11 la delegación en nic.ar es ns1/ns2.donweb.com, que responden
-; "Query refused" para este dominio (no tienen la zona: de ahí el SERVFAIL).
-; No hay ningún registro ni mail viviendo en DonWeb -> el switch no rompe nada,
-; y el dominio ya no resuelve, así que la ventana con la zona vacía es gratis.
+; OJO CON EL NOMBRE: el dominio es nutriappOK.com.ar. `nutriapp.com.ar` (sin OK)
+; es de otro: su delegación en el registro .ar apunta a ns1/ns2.donweb.com.
+; El 2026-08-11 se dio de alta por error ese otro dominio en hPanel; esa zona
+; quedó huérfana (existe en orbit/horizon pero nadie le delega) y hay que borrarla.
+;
+; ESTADO AL 2026-08-11 — la delegación YA ESTÁ BIEN, falta sólo la zona:
+;   1. Delegación en el registro .ar -> HECHO: d.dns.ar y f.dns.ar contestan
+;      orbit/horizon.dns-parking.com para nutriappok.com.ar. NO hay que tocar
+;      nic.ar de nuevo.
+;   2. La zona NO existe en Hostinger: orbit/horizon responden "REFUSED" para
+;      este dominio (de ahí el SERVFAIL) porque el alta en hPanel se hizo con el
+;      nombre equivocado. -> Dar de alta nutriappok.com.ar en hPanel.
+;   3. Importar ESTE archivo en la zona recién creada.
+;
+; SI hPanel LE ASIGNA OTRO PAR DE NS a nutriappok, ahí sí hay que ir al registro
+; a alinear la delegación: el par se asigna por dominio, no por cuenta
+; (haltcatch.com.ar quedó en lunar/solar y jeianell.com.ar en ns1/ns2). Si le
+; toca orbit/horizon, no hay nada que hacer: ya está delegado ahí.
 ;
 ; AL IMPORTAR: verificar que no quede un A de parking autopoblado por Hostinger.
 ; El estado final tiene que ser el VPS (los dos registros de abajo), sin duplicados.
 ; ============================================================
 
-; Nameservers asignados por hPanel a ESTE dominio (2026-08-11). Ojo: el par varía
-; por dominio, no por cuenta — haltcatch.com.ar quedó en lunar/solar y
-; jeianell.com.ar en ns1/ns2. Borrar estas 2 lineas si el importador da error:
-; no las define este archivo sino hPanel + la delegación de nic.ar.
+; Nameservers a los que YA está delegado este dominio en el registro .ar
+; (verificado 2026-08-11 contra d.dns.ar y f.dns.ar). Borrar estas 2 lineas si el
+; importador da error: no las define este archivo sino hPanel + la delegación.
 @       3600  IN  NS    orbit.dns-parking.com.
 @       3600  IN  NS    horizon.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153
 @       300   IN  AAAA  2a02:4780:6e:84b8::1
-www     300   IN  CNAME nutriapp.com.ar.
+www     300   IN  CNAME nutriappok.com.ar.
 
 ; ---- Correo ----
 ; NO hace falta para servir la app (el email de nutriapp está en `stub` hasta Fase 2)
 ; y va aparte de los registros web. Descomentar SÓLO si se crea una casilla
-; @nutriapp.com.ar EN HOSTINGER; si el mail transaccional sale por otro proveedor
+; @nutriappok.com.ar EN HOSTINGER; si el mail transaccional sale por otro proveedor
 ; (Resend/SES/Brevo/...), van los MX/SPF/DKIM DE ESE proveedor, no estos — con estos
 ; se autentica al remitente equivocado y las recetas caen en spam.
 ;@      14400 IN  MX    5 mx1.hostinger.com.
@@ -52,7 +58,7 @@ www     300   IN  CNAME nutriapp.com.ar.
 ;autoconfig     300 IN CNAME autoconfig.mail.hostinger.com.
 
 ; ---- Anti-spoofing (alternativa al bloque de correo, EXCLUYENTE con él) ----
-; Si nutriapp.com.ar NO va a mandar ni recibir mail, esto evita que alguien
+; Si nutriappok.com.ar NO va a mandar ni recibir mail, esto evita que alguien
 ; spoofee el dominio. Ojo: hay que sacarlo antes de conectar el email de Fase 2,
 ; o los propios mails de la app se rechazan.
 ;@      3600  IN  TXT   "v=spf1 -all"
