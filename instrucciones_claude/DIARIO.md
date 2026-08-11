@@ -32,6 +32,48 @@
 
 ## Entradas
 
+## 2026-08-11 — Santi — infra (🟢 **EN VIVO**: https://nutriappok.com.ar con TLS — deploy cerrado)
+**Qué:** El sitio responde por HTTPS público con certificado de Let's Encrypt, en modo pre-lanzamiento.
+Se destrabó el DNS y Caddy emitió los certs de `nutriappok.com.ar` y `www` **solo**, sin tocar nada del
+stack: sólo hizo falta un `docker restart edge-caddy-1` para sacarlo del backoff de ACME.
+
+**Cómo terminó la novela del DNS** (arrancó con el dominio equivocado, ver entrada de abajo):
+1. hPanel asignó a `nutriappok` el par **`nova/cosmos.dns-parking.com`** — distinto del `orbit/horizon`
+   que se había cargado en el registro copiándolo del dominio errado. **El par se asigna por dominio**,
+   no por cuenta (haltcatch → lunar/solar, jeianell → ns1/ns2, nutriappok → nova/cosmos).
+2. El import daba **409 "Domain is pending verification"**, y era circular: hPanel verifica resolviendo
+   los `NS` por DNS, y el dominio daba `SERVFAIL` porque el padre delegaba a NS que lo rechazaban. La
+   verificación pedía una respuesta que sólo existiría si la zona ya estuviera publicada. Se destrabó
+   alineando la delegación a nova/cosmos.
+3. Después el panel tiró **404 en `PATCH /api/dns/v1/direct/zone/resource-records`** al agregar un `A` a
+   mano: la zona existía en sus nameservers pero su propio panel no la encontraba. Se resolvió solo.
+4. Al importar, Hostinger **autopobló la zona apuntando a su hosting compartido** (`212.1.211.163` +
+   `MX`/`SPF` propios) — el `A` de parking que veníamos vigilando. Corregido a mano al VPS.
+
+**Problemas:**
+- **Casi diagnostico mal el final.** `dig @nova.dns-parking.com` devolvía la IP vieja mientras
+  `dig @172.64.52.46` (la misma máquina, por IP) devolvía la correcta: caché del resolver local
+  resolviendo el **nombre** del nameserver. **Contra un autoritativo, preguntar por IP**, o se termina
+  leyendo caché propia y creyendo que es el estado real. Estuve a punto de decir que el import no había
+  entrado cuando sí.
+- Caddy validó por **`tls-alpn-01`**, no por http-01. O sea que el webroot ACME de `nginx/acme/` no
+  intervino para nada — es material del modo front único nomás.
+
+**Verificado por HTTPS público** (sin `--resolve`, resolviendo por DNS real): `/`, `/registro`,
+`/ingresar` 200; `/actuator/health` UP; discovery OIDC con issuer `https://nutriappok.com.ar/auth/realms/nutriapp`;
+`/auth/realms/master` 404; `/api/v1/recetas` 401; HSTS/CSP/X-Frame-Options presentes; redirect 308 de
+HTTP a HTTPS; bundle servido con `VITE_API_BASE_URL=https://nutriappok.com.ar` y `VITE_COMING_SOON=true`;
+cert válido hasta el 2026-11-09. haltcatch y jeianell en 200.
+
+**Pendiente (no bloquea):** borrar el `MX` y el `TXT` de SPF que autopobló Hostinger — el mail de la app
+no sale por ahí, y ese SPF autenticaría al remitente equivocado cuando en Fase 2 se conecte el proveedor
+real, mandando las recetas a spam.
+
+**Impacto para el otro (Fran):** el sitio ya es público. Cualquier cambio de front necesita **rebuild con
+los `VITE_*` de prod + copiar `dist` + `nginx -s reload`** — pushear no alcanza. Y la CSP de prod tiene
+`script-src 'self'` sin `unsafe-inline`/`unsafe-eval`: si algo del bundle necesitara `eval`, rompe en prod
+y no en dev.
+
 ## 2026-08-11 — Santi — infra (**CORRECCIÓN**: el dominio es `nutriappok.com.ar`, no `nutriapp.com.ar`)
 **Qué:** Todo el deploy de la entrada de más abajo se había configurado con **el dominio equivocado**.
 El dominio del proyecto es **`nutriappok.com.ar`**. Renombrado en todos lados: `.env`

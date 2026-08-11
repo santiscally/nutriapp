@@ -14,9 +14,8 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-11** — **stack prod desplegado en el VPS, detrás del Caddy del host,
-en modo pre-lanzamiento.** Falta **sólo el DNS** para que sea alcanzable. Detalle en el DIARIO
-(entrada 2026-08-11 "deploy de nutriappok.com.ar").
+**Última actualización: 2026-08-11** — 🟢 **EN VIVO: https://nutriappok.com.ar** con cert de Let's
+Encrypt, en modo pre-lanzamiento. El deploy está **cerrado**. Detalle en el DIARIO.
 
 **🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
 con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`
@@ -44,6 +43,18 @@ y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido expl�
 el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
 `VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
 
+**✅ DNS RESUELTO (2026-08-11).** `nutriappok.com.ar` y `www` resuelven al VPS (`187.127.36.153` /
+`2a02:4780:6e:84b8::1`), Caddy emitió los certs por **tls-alpn-01** y renueva solo. Verificado por
+HTTPS público: `/` `/registro` `/ingresar` 200, `/actuator/health` UP, discovery OIDC con issuer
+`https://nutriappok.com.ar/auth/realms/nutriapp`, `/auth/realms/master` 404, `/api/v1/recetas` 401,
+security headers presentes, bundle con el origen correcto y `VITE_COMING_SOON=true`. haltcatch y
+jeianell siguen en 200.
+
+**⚠️ Pendiente de higiene DNS:** Hostinger autopobló `MX` (mx1/mx2.hostinger.com) y un `TXT`
+`v=spf1 include:_spf.mail.hostinger.com ~all`. Hay que **borrarlos**: el mail de la app no sale por
+Hostinger, y ese SPF va a autenticar al remitente equivocado cuando en Fase 2 se conecte el proveedor
+real (las recetas se irían a spam). No rompe nada hoy.
+
 **⛔ Bloqueantes del deploy — actualizado 2026-08-11 después de desplegar:**
 1. ~~Los 80/443 del VPS los tiene Caddy~~ **✅ RESUELTO (2026-08-11)**: nutriapp corre detrás de Caddy en la
    red `web`, sin publicar puertos. Los security headers y el rate-limit se mudaron al `server{}` de :80 de
@@ -53,21 +64,10 @@ el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md ten�
    recibe el "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3
    (aprobar es por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
    **Ahora es EL bloqueante funcional**: la infra ya no frena nada.
-3. **DNS: falta la zona en hPanel** — **sigue abierto y es el único bloqueante técnico**, pero es un paso
-   solo. ⚠️ **El dominio es `nutriappok.com.ar`**, no `nutriapp.com.ar` (ese es de otro; el 2026-08-11 se
-   configuró el equivocado y se renombró todo — ver la entrada de corrección del DIARIO).
-   - Zona en Hostinger: **✅ creada**, con el par **`nova/cosmos.dns-parking.com`** (los dos contestan
-     `NOERROR`, SOA `2026081101`) — pero **vacía**: sin `A`, sin `AAAA`, sin `www`.
-   - Delegación en el registro `.ar`: **❌ desalineada** — todavía apunta a `orbit/horizon`, que era el par
-     del dominio **equivocado**; se cargó así por el error de nombre. El par se asigna **por dominio**:
-     haltcatch → lunar/solar, jeianell → ns1/ns2, nutriapp (el errado) → orbit/horizon, nutriappok → nova/cosmos.
-
-   **Falta:** (1) cambiar los NS en el registro a `nova`/`cosmos` → (2) importar `nutriappok.com.ar.zone`
-   (o cargar los 3 registros a mano) → (3) chequear que no quede un `A` de parking. El import da hoy
-   **409 "Domain is pending verification"**: la verificación de hPanel resuelve los NS por DNS y el dominio
-   da `SERVFAIL`, así que no puede pasar hasta que la delegación caiga en nova/cosmos. Caddy ya tiene el
-   site block cargado y reintenta el cert con backoff: **en cuanto la zona resuelva con los registros
-   cargados, emite solo y el sitio queda arriba sin tocar nada más.** Detalle en DEPLOY.md §DNS.
+3. ~~DNS~~ **✅ RESUELTO (2026-08-11)** — ver el bloque de arriba. ⚠️ **El dominio es `nutriappok.com.ar`**,
+   no `nutriapp.com.ar` (ese es de otro; se configuró el equivocado y se renombró todo — ver la entrada de
+   corrección del DIARIO). El par de NS quedó en `nova/cosmos.dns-parking.com`; se asigna **por dominio**:
+   haltcatch → lunar/solar, jeianell → ns1/ns2, nutriappok → nova/cosmos.
 4. **`BACKUP_GPG_RECIPIENT` vacío** — no bloquea el deploy pero sí **abrir el registro**: los dumps traen PII
    real (DNI, CUIT, matrícula, archivo) desde la primera solicitud y hoy saldrían en texto plano.
 

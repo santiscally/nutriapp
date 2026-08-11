@@ -334,25 +334,32 @@ cada uno; son excluyentes entre sí).
 **Tres cosas a resolver antes de importar / deployar** — al 2026-08-11 queda **sólo la primera**;
 las otras dos se resolvieron al desplegar:
 
-1. **Falta alinear los NS y cargar los registros.** Estado verificado el 2026-08-11 (tarde):
-   - **Zona en Hostinger: ✅ creada**, con el par **`nova/cosmos.dns-parking.com`** — los dos
-     contestan `NOERROR` (SOA `2026081101`). Pero está **vacía**: sin `A`, sin `AAAA`, sin `www`.
-   - **Delegación en el registro `.ar`: ❌ desalineada.** Sigue en `orbit/horizon`, que era el par del
-     dominio **equivocado** (ver el recuadro de abajo); se cargó así por el error de nombre.
+1. ~~DNS~~ **✅ RESUELTO — el sitio está en vivo desde el 2026-08-11.** `nutriappok.com.ar` y `www`
+   resuelven al VPS y Caddy emitió los certs. Lo que costó, por si hay que repetirlo en otro dominio:
 
-   **El par de NS se asigna POR DOMINIO, no por cuenta** — `haltcatch.com.ar` en `lunar/solar`,
-   `jeianell.com.ar` en `ns1/ns2`, `nutriapp.com.ar` (el errado) en `orbit/horizon`,
-   `nutriappok.com.ar` en `nova/cosmos`. Siempre mirar el par que muestra hPanel **para ese** dominio.
+   - **El par de NS se asigna POR DOMINIO, no por cuenta** — `haltcatch.com.ar` en `lunar/solar`,
+     `jeianell.com.ar` en `ns1/ns2`, `nutriappok.com.ar` en `nova/cosmos`. Siempre mirar el par que
+     hPanel muestra **para ese** dominio; copiar el de otro deja la delegación apuntando a NS que
+     rechazan la zona.
+   - **`409 "Domain is pending verification"` al importar es circular.** hPanel verifica la titularidad
+     resolviendo los `NS` del dominio por DNS. Si el padre delega a NS que rechazan la zona, eso da
+     **`SERVFAIL`** —no "apunta a otro lado"— y la verificación pide una respuesta que sólo existiría
+     si la zona ya estuviera publicada. **No es propagación y esperar no lo arregla**: se destraba
+     alineando la delegación al par correcto.
+   - **`404` en `PATCH /api/dns/v1/direct/zone/resource-records`** al agregar registros a mano: la zona
+     existe en los nameservers pero el panel no la encuentra. Se destrabó solo al alinear la delegación.
+   - **Al importar, Hostinger autopobla la zona con su hosting compartido** (`A → 212.1.211.163`,
+     `AAAA`, más `MX` y `SPF` propios) y el importador **hace merge, no reemplazo**: no pisa lo que ya
+     estaba. Hay que corregir `A`/`AAAA` a mano al VPS y borrar el `MX`/`SPF` (el mail de la app no sale
+     por Hostinger; ese SPF autenticaría al remitente equivocado en Fase 2 y las recetas irían a spam).
 
-   Pasos: **(1)** cambiar los NS en el registro a `nova`/`cosmos` → **(2)** importar
-   `nutriappok.com.ar.zone` (son 3 registros: si el importador se hace el difícil, cargarlos a mano
-   es más rápido) → **(3)** chequear que no haya quedado un `A` de parking.
+   > ⚠️ **Contra un servidor autoritativo, consultar por IP, no por nombre.** `dig @nova.dns-parking.com`
+   > puede devolver datos viejos porque el resolver local cachea la resolución del **nombre** del
+   > nameserver; `dig @172.64.52.46` (la misma máquina) devuelve el estado real. Con esto casi
+   > diagnosticamos que un import no había entrado cuando sí.
 
-   > **Por qué el import da `409 "Domain is pending verification"`.** hPanel verifica la titularidad
-   > resolviendo los NS del dominio por DNS. Hoy eso devuelve **`SERVFAIL`** —no "apunta a otro
-   > lado"— porque el padre delega a `orbit/horizon` y esos NS **rechazan** el dominio. Es circular:
-   > la verificación necesita una respuesta que sólo existiría si la zona ya estuviera publicada.
-   > **No es propagación y esperar no lo arregla**; se destraba con el paso (1).
+   Caddy validó por **`tls-alpn-01`**, así que el webroot ACME de `nginx/acme/` no intervino: es
+   material del modo front único solamente.
 
    **Al importar, revisar que no quede un `A` de parking.** Hostinger puede autopoblar la zona
    apuntando el dominio a su hosting compartido cuando detecta la delegación. El estado final tiene
