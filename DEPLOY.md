@@ -168,14 +168,19 @@ cada uno; son excluyentes entre sí).
 
 **Tres cosas a resolver antes de importar / deployar:**
 
-1. **La zona de `nutriapp.com.ar` no existe todavía.** Al 2026-08-11 el dominio devuelve **SERVFAIL**
-   (no NXDOMAIN) desde `1.1.1.1`: hay delegación en nic.ar pero los nameservers no sirven la zona.
-   Orden correcto: agregar el dominio en hPanel (crea la zona) → poner en nic.ar el par de NS que
-   hPanel muestre para *este* dominio → importar el `.zone`. El archivo trae
-   `lunar/solar.dns-parking.com`, el par de `haltcatch.com.ar`, por estar en la misma cuenta/VPS —
-   pero **el par lo define hPanel, no el `.zone`**: el de haltcatch listaba `ns1/ns2` y la delegación
-   real quedó igual en `lunar/solar`, o sea que el importador ignora esas líneas. Si hPanel muestra
-   otro par, ese manda. (`jeianell.com.ar`, otra cuenta, quedó en `ns1/ns2.dns-parking.com`.)
+1. **Migración de DNS de DonWeb a Hostinger (en curso al 2026-08-11).** Estado verificado:
+   - Delegación en nic.ar: `ns1/ns2.donweb.com`, que responden **`Query refused`** para el dominio
+     (no tienen la zona) → de ahí el **SERVFAIL**. No hay ningún registro ni mail viviendo ahí, así
+     que el cambio no rompe nada.
+   - El alta del sitio en hPanel ya creó la zona en `orbit/horizon.dns-parking.com`
+     (SOA serial `2026081101`), pero está **vacía**: sin `A`, sin `AAAA`, sin `www`, sin `MX`.
+
+   Orden correcto (importar **antes** de mover los NS, para no delegar a una zona vacía):
+   **(1)** importar `nutriapp.com.ar.zone` en hPanel → **(2)** cambiar los nameservers a
+   `orbit.dns-parking.com` / `horizon.dns-parking.com`. El cambio va donde esté la delegación: nic.ar
+   (Clave Fiscal del CUIT titular) o el panel de DonWeb si el dominio se gestiona desde ahí.
+   El par de NS lo asigna hPanel **por dominio**, no por cuenta: `haltcatch.com.ar` quedó en
+   `lunar/solar` y `jeianell.com.ar` en `ns1/ns2`, de ahí que este sea un tercer par.
 2. **En el VPS los 80/443 los tiene Caddy, no nginx.** `haltcatch.com.ar` responde
    `Server: Caddy` en `:80` (308 → HTTPS) y en `:443` devuelve `Via: 1.1 Caddy` +
    `Server: nginx/1.27.5` → Caddy termina TLS y proxea a un nginx que sirve la landing. Entonces

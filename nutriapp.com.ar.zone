@@ -7,22 +7,22 @@ $TTL 3600
 ; (verificado por PTR: 187.127.36.153 y 2a02:4780:6e:84b8::1 resuelven
 ;  los dos a ese hostname → es UNA sola máquina, dual-stack).
 ;
-; ANTES DE IMPORTAR: hoy nutriapp.com.ar da SERVFAIL (2026-08-11), no NXDOMAIN.
-; O sea: hay delegación en nic.ar pero los nameservers no sirven la zona todavía.
-; Hay que (1) agregar el dominio en hPanel para que exista la zona y (2) poner en
-; nic.ar el par de NS que hPanel muestre para este dominio.
+; ORDEN DE LOS PASOS (importa, para no quedar con el dominio apuntando a la nada):
+;   1. Sitio dado de alta en hPanel  -> HECHO 2026-08-11: la zona ya existe en
+;      orbit/horizon (SOA serial 2026081101) pero está VACÍA (sin A/AAAA/www/MX).
+;   2. Importar ESTE archivo en hPanel -> la zona queda completa.
+;   3. Recién entonces cambiar los nameservers de nic.ar a orbit/horizon.
+; Al 2026-08-11 la delegación en nic.ar es ns1/ns2.donweb.com, que responden
+; "Query refused" para este dominio (no tienen la zona: de ahí el SERVFAIL).
+; No hay ningún registro ni mail viviendo en DonWeb -> el switch no rompe nada.
 ; ============================================================
 
-; Nameservers: los de haltcatch.com.ar, por estar en la misma cuenta/VPS.
-; Borrar estas 2 lineas si el importador da error.
-;
-; OJO: el par NO lo define este archivo. El .zone de haltcatch listaba
-; ns1/ns2.dns-parking.com y la delegación real quedó igual en lunar/solar → el
-; importador ignora estas líneas y manda lo que diga hPanel + nic.ar. Si hPanel
-; muestra otro par para nutriapp, ESE es el que va en nic.ar. (jeianell.com.ar,
-; que es otra cuenta, quedó en ns1/ns2.)
-@       3600  IN  NS    lunar.dns-parking.com.
-@       3600  IN  NS    solar.dns-parking.com.
+; Nameservers asignados por hPanel a ESTE dominio (2026-08-11). Ojo: el par varía
+; por dominio, no por cuenta — haltcatch.com.ar quedó en lunar/solar y
+; jeianell.com.ar en ns1/ns2. Borrar estas 2 lineas si el importador da error:
+; no las define este archivo sino hPanel + la delegación de nic.ar.
+@       3600  IN  NS    orbit.dns-parking.com.
+@       3600  IN  NS    horizon.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153
