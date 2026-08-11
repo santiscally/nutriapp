@@ -15,6 +15,17 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
 
+# Config desde .env, que es donde el runbook dice que viven estas variables. Sin esto,
+# setear BACKUP_GPG_RECIPIENT ahí no tenía ningún efecto y los dumps salían en TEXTO PLANO
+# con sólo un aviso por stderr — invisible desde cron. Lo que ya venga del entorno gana.
+if [ -f "${REPO_ROOT}/.env" ]; then
+  _env_user="${POSTGRES_USER-}"; _env_db="${POSTGRES_DB-}"; _env_gpg="${BACKUP_GPG_RECIPIENT-}"
+  set -a; . "${REPO_ROOT}/.env"; set +a
+  [ -n "${_env_user}" ] && POSTGRES_USER="${_env_user}"
+  [ -n "${_env_db}" ]   && POSTGRES_DB="${_env_db}"
+  [ -n "${_env_gpg}" ]  && BACKUP_GPG_RECIPIENT="${_env_gpg}"
+fi
+
 PGUSER="${POSTGRES_USER:-nutriapp}"
 APPDB="${POSTGRES_DB:-nutriapp}"
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.yml -f docker-compose.prod.yml}"

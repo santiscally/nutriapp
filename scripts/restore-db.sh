@@ -12,6 +12,15 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}"
 
+# Misma carga de .env que backup-db.sh: el usuario/DB de Postgres viven ahí.
+# Lo que ya venga del entorno gana.
+if [ -f "${REPO_ROOT}/.env" ]; then
+  _env_user="${POSTGRES_USER-}"; _env_db="${POSTGRES_DB-}"
+  set -a; . "${REPO_ROOT}/.env"; set +a
+  [ -n "${_env_user}" ] && POSTGRES_USER="${_env_user}"
+  [ -n "${_env_db}" ]   && POSTGRES_DB="${_env_db}"
+fi
+
 DUMP_FILE="${1:-}"
 TARGET_DB="${2:-}"
 CONFIRM=""

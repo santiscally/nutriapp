@@ -65,6 +65,16 @@ stack: sólo hizo falta un `docker restart edge-caddy-1` para sacarlo del backof
 HTTP a HTTPS; bundle servido con `VITE_API_BASE_URL=https://nutriappok.com.ar` y `VITE_COMING_SOON=true`;
 cert válido hasta el 2026-11-09. haltcatch y jeianell en 200.
 
+**Backups cifrados, cerrado en la misma sesión.** Clave `ed25519/CEE22F19C64220E5`
+(`backups@nutriappok.com.ar`) generada en el VPS + `BACKUP_GPG_RECIPIENT` en el `.env`. Verificado de
+punta a punta: cifra → descifra → `pg_restore -l` lista 79 objetos con `nutricionistas`/`recetas`/
+`productos`. **Y apareció un bug real de paso: `backup-db.sh` y `restore-db.sh` no leían el `.env`.**
+Setear `BACKUP_GPG_RECIPIENT` ahí —que es donde el runbook dice que va— no tenía ningún efecto: los
+dumps salían en **texto plano** con sólo un aviso por stderr, o sea invisible desde cron. Ahora los dos
+scripts cargan `.env` (lo que ya venga del entorno le gana). **Queda un paso manual:** la privada está
+en `/root/nutriapp-backup-gpg-PRIVATE.asc` → guardarla afuera y borrarla del host; cifrar sólo necesita
+la pública. Sin la privada no hay restore.
+
 **Pendiente (no bloquea):** borrar el `MX` y el `TXT` de SPF que autopobló Hostinger — el mail de la app
 no sale por ahí, y ese SPF autenticaría al remitente equivocado cuando en Fase 2 se conecte el proveedor
 real, mandando las recetas a spam.

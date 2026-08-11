@@ -416,13 +416,36 @@ hPanel pueden tardar bastante más. Mientras siga dando SERVFAIL, el problema es
 
 ## Backup / restore de la DB
 ```
-# Cifrado (recomendado): setear BACKUP_GPG_RECIPIENT → dumps .dump.gpg
-bash scripts/backup-db.sh                                       # → backups/{nutriapp,keycloak}-<ts>.dump[.gpg]
+bash scripts/backup-db.sh                                       # → backups/{nutriapp,keycloak}-<ts>.dump.gpg
 bash scripts/restore-db.sh backups/nutriapp-<ts>.dump.gpg --yes # DESTRUCTIVO (--clean); autodetecta .gpg; exige --yes
 ```
-Los dumps traen **PII** (pacientes/recetas) + el **store de credenciales de Keycloak** → setear
-`BACKUP_GPG_RECIPIENT` para cifrarlos antes de sacarlos del host. Los `.dump*` NO se commitean
-(`.gitignore`). Guardar copias fuera del host para DR.
+Los dumps traen **PII** (pacientes/recetas: DNI, CUIT, matrícula, archivos) + el **store de
+credenciales de Keycloak**. Los `.dump*` NO se commitean (`.gitignore`). Guardar copias fuera del
+host para DR.
+
+**Cifrado: ✅ activo en el VPS desde el 2026-08-11.** `BACKUP_GPG_RECIPIENT=backups@nutriappok.com.ar`
+en el `.env`, contra la clave `ed25519/CEE22F19C64220E5` generada en el host. Verificado de punta a
+punta: cifra → descifra → `pg_restore -l` lista 79 objetos con las tablas reales.
+
+> ⚠️ **La clave privada está en el VPS y hay que sacarla de ahí.** Exportada en
+> `/root/nutriapp-backup-gpg-PRIVATE.asc` (fuera del repo, `chmod 600`). Guardarla en un gestor de
+> contraseñas o un disco offline y después borrarla del host:
+>
+> ```
+> gpg --batch --yes --delete-secret-keys CEE22F19C64220E5   # deja sólo la pública: sigue cifrando
+> rm -f /root/nutriapp-backup-gpg-PRIVATE.asc
+> ```
+>
+> Cifrar sólo hace falta la clave **pública**, así que los backups siguen funcionando igual. Mientras
+> la privada viva en el host, un compromiso del VPS descifra también las copias que estén afuera.
+> **Sin la privada no hay restore posible** — si se pierde el export, los dumps son papel picado.
+
+Para restaurar en una máquina nueva, importar la privada primero:
+`gpg --import nutriapp-backup-gpg-PRIVATE.asc`.
+
+> **Los scripts leen el `.env`** (agregado 2026-08-11). Antes no lo hacían: `BACKUP_GPG_RECIPIENT`
+> seteado ahí no tenía ningún efecto y los dumps salían en **texto plano** con sólo un aviso por
+> stderr — invisible desde cron. Lo que ya venga del entorno le gana al `.env`.
 
 ---
 

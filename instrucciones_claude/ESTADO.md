@@ -68,8 +68,13 @@ real (las recetas se irían a spam). No rompe nada hoy.
    no `nutriapp.com.ar` (ese es de otro; se configuró el equivocado y se renombró todo — ver la entrada de
    corrección del DIARIO). El par de NS quedó en `nova/cosmos.dns-parking.com`; se asigna **por dominio**:
    haltcatch → lunar/solar, jeianell → ns1/ns2, nutriappok → nova/cosmos.
-4. **`BACKUP_GPG_RECIPIENT` vacío** — no bloquea el deploy pero sí **abrir el registro**: los dumps traen PII
-   real (DNI, CUIT, matrícula, archivo) desde la primera solicitud y hoy saldrían en texto plano.
+4. ~~`BACKUP_GPG_RECIPIENT` vacío~~ **✅ RESUELTO (2026-08-11)**: clave `ed25519/CEE22F19C64220E5` generada
+   en el VPS, `BACKUP_GPG_RECIPIENT` en el `.env`, round-trip verificado (cifra → descifra →
+   `pg_restore -l` con 79 objetos). **De paso se arregló un bug real: los scripts no leían el `.env`**, así
+   que setear esa variable ahí no hacía nada y los dumps salían en texto plano con sólo un aviso por stderr.
+   ⚠️ **Queda un paso manual de Santi:** la privada está exportada en `/root/nutriapp-backup-gpg-PRIVATE.asc`
+   → guardarla fuera del host y borrarla del VPS (comandos en DEPLOY.md §Backup). Sin la privada no hay
+   restore; mientras viva en el host, un compromiso del VPS descifra también las copias de afuera.
 
 **Estado previo (2026-08-04)** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
 las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**
