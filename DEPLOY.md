@@ -226,6 +226,18 @@ Resolve-DnsName nutriapp.com.ar     -Server 1.1.1.1 -Type AAAA
 Resolve-DnsName www.nutriapp.com.ar -Server 1.1.1.1 -Type CNAME
 curl.exe -I https://nutriapp.com.ar
 ```
+
+**¿La delegación ya está publicada?** Mientras el dominio dé **SERVFAIL** los resolvers públicos no
+sirven para diagnosticar (van a los NS viejos, que responden `REFUSED`, y eso se ve igual esté el
+cambio pendiente o mal guardado). Hay que preguntarle al **registro `.ar`**, que es el padre:
+```powershell
+Resolve-DnsName nutriapp.com.ar -Server 192.140.126.50 -Type NS   # d.dns.ar (TLD .ar)
+Resolve-DnsName nutriapp.com.ar -Server 130.59.31.20   -Type NS   # f.dns.ar (segunda opinión)
+```
+Si eso devuelve `ns1/ns2.donweb.com`, el cambio **no está en el padre**: o nic.ar todavía no publicó,
+o se cargaron los `NS` dentro del editor de zona de nic.ar en vez de cambiar la *delegación* del
+dominio (error clásico: no toca el padre). Cuando devuelva `orbit`/`horizon`, los resolvers públicos
+lo siguen en minutos y la app responde enseguida, porque la zona en Hostinger ya está autoritativa.
 Propagación: con TTL 300 son minutos, pero la delegación en nic.ar + la creación de la zona en
 hPanel pueden tardar bastante más. Mientras siga dando SERVFAIL, el problema está antes del `.zone`.
 
