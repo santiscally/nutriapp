@@ -50,16 +50,16 @@ export function Recetas() {
     <section>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Recetas</h1>
+          <h1 className="page-title">Bonos profesionales</h1>
           <p className="muted">
             {data
-              ? `${data.totalElements} receta${data.totalElements === 1 ? "" : "s"} emitida${data.totalElements === 1 ? "" : "s"}`
-              : "Historial de recetas emitidas"}
+              ? `${data.totalElements} bono${data.totalElements === 1 ? "" : "s"} emitido${data.totalElements === 1 ? "" : "s"}`
+              : "Historial de bonos emitidos"}
           </p>
         </div>
         <Link className="btn btn--primary" to="/recetas/nueva">
           <Icon name="file-plus" />
-          Emitir receta
+          Emitir bono
         </Link>
       </div>
 
@@ -105,13 +105,13 @@ export function Recetas() {
       {data && data.content.length === 0 && (
         <EmptyState
           icon="clipboard"
-          title={hasFilters ? "Sin recetas para esos filtros" : "Todavía no emitiste recetas"}
+          title={hasFilters ? "Sin bonos para esos filtros" : "Todavía no emitiste bonos"}
           hint={hasFilters ? "Ajustá los filtros." : undefined}
           action={
             !hasFilters && (
               <Link className="btn btn--primary" to="/recetas/nueva">
                 <Icon name="file-plus" />
-                Emitir receta
+                Emitir bono
               </Link>
             )
           }

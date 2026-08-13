@@ -53,8 +53,8 @@ export function Pacientes() {
     const ok = await confirmar({
       titulo: `¿Eliminar a ${p.nombre} ${p.apellido}?`,
       mensaje:
-        "Se va a quitar de tu lista de pacientes. Sus recetas ya emitidas no se tocan. " +
-        "Si tiene recetas pendientes, el sistema no te va a dejar.",
+        "Se va a quitar de tu lista de pacientes. Sus bonos ya emitidos no se tocan. " +
+        "Si tiene bonos pendientes, el sistema no te va a dejar.",
       confirmar: "Eliminar",
       peligro: true,
     });
@@ -101,7 +101,7 @@ export function Pacientes() {
         <EmptyState
           icon="users"
           title={q ? `Sin resultados para “${q}”` : "Todavía no hay pacientes"}
-          hint={q ? "Probá con otro término." : "Cargá tu primer paciente para empezar a emitir recetas."}
+          hint={q ? "Probá con otro término." : "Cargá tu primer paciente para empezar a emitir bonos."}
           action={
             !q && (
               <button className="btn btn--primary" onClick={() => setForm({ paciente: null })}>

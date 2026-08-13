@@ -47,7 +47,7 @@ public class WebhookSimulacionController {
     @PostMapping("/orden-pagada")
     public ResponseEntity<Map<String, Object>> simularOrdenPagada(@Valid @RequestBody SimularOrdenRequest req) {
         Receta receta = recetaRepository.findByCodigoAndDeletedAtIsNull(req.recetaCodigo())
-                .orElseThrow(() -> new NotFoundException("Receta no encontrada: " + req.recetaCodigo()));
+                .orElseThrow(() -> new NotFoundException("Bono no encontrado: " + req.recetaCodigo()));
 
         BigDecimal total = req.ordenTotal() != null ? req.ordenTotal() : totalConDescuento(receta);
         long ordenId = req.ordenTiendanubeId() != null

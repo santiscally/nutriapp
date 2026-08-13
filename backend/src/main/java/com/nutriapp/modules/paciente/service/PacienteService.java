@@ -76,7 +76,7 @@ public class PacienteService {
     public void delete(UUID id) {
         Paciente p = getOwned(id);
         if (recetaRepository.existsByPacienteIdAndEstadoAndDeletedAtIsNull(p.getId(), EstadoReceta.PENDIENTE)) {
-            throw new ConflictException("No se puede eliminar: el paciente tiene recetas pendientes");
+            throw new ConflictException("No se puede eliminar: el paciente tiene bonos profesionales pendientes");
         }
         p.softDelete();
         repository.save(p);

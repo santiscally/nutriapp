@@ -32,6 +32,99 @@
 
 ## Entradas
 
+## 2026-08-13 — Fran — integraciones/email (Resend elegido como proveedor de mail; anda en local, falta setup de PROD)
+**Qué:** Elegí **Resend** como proveedor de email y lo dejé andando **en local** contra el `SmtpMailSender` que ya
+existía. **CERO cambios de código** — Resend expone SMTP nativo, así que se prende con puras envs. En mi `.env`
+(gitignored): `MAIL_MODE=live`, `MAIL_SMTP_HOST=smtp.resend.com`, `MAIL_SMTP_PORT=587`, `MAIL_SMTP_USERNAME=resend`
+(literal, igual para todos), `MAIL_SMTP_PASSWORD=<API key re_...>`, `MAIL_FROM_ADDRESS=onboarding@resend.dev`,
+`MAIL_FROM_NAME=NutriApp`. Probado emitiendo un bono a un paciente de prueba → mail entregado.
+**Por qué:** desbloquear el canal automático de notificación (hoy era el único que faltaba conectar).
+**⚠️ Impacto para Santi — qué falta para que el mail sea PROD (tarea de infra/DevOps):**
+  1. **Verificar el dominio `nutriappok.com.ar` en Resend** (panel → Domains → Add). Resend devuelve 3 registros DNS
+     (un **MX** de bounce sobre un subdominio `send.`, un **TXT/SPF**, y el **DKIM** `resend._domainkey`) → cargarlos
+     en **Hostinger**. Van donde antes estaban los de Hostinger (el `.zone` del repo los documenta comentados).
+     **Hasta verificar el dominio, Resend solo permite remitente `onboarding@resend.dev` y solo entrega a la casilla
+     de la cuenta** — por eso en local mando a `franallende2000@gmail.com`. Sin esto NO se puede mandar a pacientes reales.
+  2. **Env de prod:** `MAIL_MODE=live` + los `MAIL_SMTP_*` de arriba, pero con una **API key de PROD separada** (crear
+     otra en Resend, no reusar la de test) y `MAIL_FROM_ADDRESS=info@nutriappok.com.ar` (o `no-reply@…`). La key va
+     **solo en el secret manager del hosting**, jamás al repo (regla de secretos).
+  3. **Recepción ≠ envío:** Resend solo **envía**. La casilla **`INFO@nutriappok.com.ar`** donde caen los registros/
+     respuestas hay que crearla aparte en Hostinger (buzón o forwarding). Son dos cosas distintas del mismo dominio.
+  4. (Opcional, tarea 2.3) el cuerpo del mail hoy es **texto plano**; el HTML con logo queda para después.
+**Refs:** `.env` (local, gitignored), `spring.mail.*` + `SmtpMailSender.java` (sin cambios), `nutriappok.com.ar.zone`.
+
+## 2026-08-13 — Fran — frontend (emisor de bonos: buscador sin flicker + CTA contextual; productos de prueba en DB local)
+**Qué:** Pulido del emisor de bonos y datos de prueba para poder testear el flujo mail end-to-end.
+- **Flicker del buscador** (`ProductoBuscador.tsx`): "Buscando…" ahora sale **solo en la primera carga** (`loading && !data`)
+  y "Sin productos" **solo con `!loading`**. Antes, en cada tecla parpadeaba entre lista y estado vacío (el `useFetch`
+  marca `loading=true` en cada refetch); ahora se mantiene la lista anterior visible durante el refetch.
+- **CTA "Nuevo bono"** (`AppLayout.tsx`): se **esconde** cuando ya estás en `/recetas/nueva` (`useLocation`).
+- **Productos de prueba:** la DB estaba en **0 productos** (el `down -v` de esta sesión los borró y Contabilium está
+  `stub` en local → no hay sync que los traiga). Cargué **12 suplementos** directo por SQL (`publicado=true`, `origen=SEED`)
+  para poder probar. **⚠️ Son data LOCAL, NO commiteada; se pierden con `docker compose down -v`.** Si conviene un seed
+  reproducible, es una **migración Flyway de seed** en `backend/` (área de Santi) — a coordinar.
+**Refs:** `frontend/.../ProductoBuscador.tsx`, `frontend/.../layout/AppLayout.tsx`.
+
+## 2026-08-13 — Santi (nota de Fran) — infra/build (flag: falta `*.properties text eol=lf` en `.gitattributes`)
+**Qué:** En Windows, `backend/.mvn/wrapper/maven-wrapper.properties` se checkoutea con CRLF (cae bajo `* text=auto`,
+no está cubierto por las reglas `eol=lf` de `mvnw`/`*.sh`/`*.sql`). El `\r` corrompe la `wrapperUrl` → el build baja
+el wrapper con HTTP 400. Workaround local: `sed -i 's/\r$//'`. **Fix definitivo (Santi):** agregar
+`*.properties text eol=lf` al `.gitattributes`. Ídem conviene revisar `package-lock.json` (mismo síntoma CRLF).
+
+## 2026-08-13 — Fran — backend + dns (rename "receta → bono profesional" en texto de usuario; DNS ya limpio)
+**Qué:** Con **autorización explícita de Santi** (Fran se hace cargo de todo el rebranding), completé el rename
+"receta → bono profesional" en el **texto de cara al usuario que genera el backend** — solo strings, NO toqué
+entidades/tablas/enums/DTOs/servicios (`Receta`, `receta_items`, `EstadoReceta`, etc. quedan igual):
+- **Email al paciente** (`NotificacionTemplates`): asunto "Tu bono profesional {código}…" + cuerpo.
+- **Texto de WhatsApp** (`WaMeLinkBuilder`): "Tu bono profesional con X% de descuento ya está listo…".
+- **7 mensajes de error** (`ConflictException`/`NotFoundException`) que el front surfacea como toast:
+  `RecetaService` (max-items, anular/reenviar sólo pendientes, paciente/bono no encontrado, código único),
+  `PacienteService` (409 baja con bonos pendientes), `AdminNutricionistaService` (409 borrar con bonos emitidos),
+  `WebhookSimulacionController` (dev). Los `log.info(...)` con "receta" quedaron (son logs, no los ve nadie).
+- Backend rebuildeado (`up -d --build backend`).
+**DNS — nada que borrar:** Fran pidió borrar el MX/SPF que autopobló Hostinger porque va a buscar **otro proveedor de
+email**. Verifiqué el DNS en vivo de `nutriappok.com.ar` (nslookup vía 8.8.8.8): **NO hay MX ni TXT/SPF** (solo SOA);
+los registros web (A/AAAA/www → VPS) están OK. Ya se limpiaron (o estaban en el dominio equivocado). El `.zone` del
+repo los tiene comentados. **Cuando se elija el proveedor** (Resend/SES/Brevo/…), van los MX/SPF/DKIM **de ese
+proveedor** (el `.zone` documenta dónde) — no los de Hostinger.
+**Refs:** `backend/.../NotificacionTemplates.java`, `WaMeLinkBuilder.java`, `RecetaService.java`, `PacienteService.java`, `AdminNutricionistaService.java`, `WebhookSimulacionController.java`; `nutriappok.com.ar.zone` (sin cambios).
+
+## 2026-08-13 — Fran — frontend (feedback de Gon: landing + registro + rename "Receta → Bono Profesional")
+**Qué:** Tanda de cambios de texto/UX pedidos por Gon. `build`+`lint` verdes.
+- **Landing `/` (Proximamente.tsx):** título → "Recomendaciones Profesionales, con beneficios exclusivos"; nuevo
+  párrafo lead; los 3 recuadros reescritos (Emitís bono profesional / Tu paciente adquiere / Seguís todo acá);
+  nota de validación → "Cada cuenta se valida individualmente… Te avisaremos por mail cuando la misma esté habilitada".
+- **Registro:** campo Teléfono → "Whatsapp / Teléfono"; **"Matrícula nacional" se partió en dos**: "Jurisdicción de
+  matrícula" + "N° de matrícula"; paso 3 → "…ya podés emitir bonos profesionales".
+- **Rename global "Receta → Bono Profesional"** en TODO el texto visible del front (nav, dashboard, cierre mensual/
+  consolidado, emisión, detalle, éxito, pacientes, perfil, catálogo, estadísticas). No toqué rutas (`/recetas`),
+  tipos ni identificadores. En el catálogo, "recetable/no recetable" → "disponible/no disponible".
+**⚠️ PARA SANTI (backend, tu área — el rename es "en cualquier lugar de la webapp"):**
+1. **Falta el rename "receta → bono profesional" en lo que genera el backend:** plantillas de **email** (lo recibe
+   la paciente), el mensaje 409 "tiene recetas PENDIENTES", y cualquier otro texto de `ApiError`/mensajes de usuario.
+2. **Jurisdicción de matrícula:** hoy la combino en el string `matricula` que ya existe (`"<jurisdicción> · N° <número>"`)
+   para no romper el contrato. Si querés guardarla estructurada, hace falta una columna/campo `jurisdiccion` en el back.
+**Consulta abierta (ops, no código):** Gon pide crear el mailbox **INFO@nutriappok.com.ar** (donde caen los registros).
+Es tarea de Hostinger + hay que sacar el MX/SPF autogenerado (ya flageado por Santi el 2026-08-11) antes de conectar
+el proveedor de mail real; además el envío de la app sigue en `MAIL_MODE=stub`. Coordinar con Santi/Gon.
+**Pendiente:** el **isotipo** (logo TBC multicolor) — Gon dijo que adjunta el archivo pero no llegó; queda para cuando lo pase.
+**Refs:** `frontend/src/pages/{Proximamente,Registro,Login,Dashboard,Recetas,EmitirReceta,CierreMensual,CierreConsolidado,CatalogoAdmin,Pacientes,Perfil}.tsx`, `components/{layout/AppLayout,receta/*,dashboard/EstadisticasCharts,nutricionista/ParametrosModal}`.
+
+## 2026-08-13 — Fran — frontend/infra local (vuelta de vacaciones: sync + puertos + limpieza CRLF)
+**Qué:** Vuelvo de vacaciones y me pongo al día con el pull (deploy en prod + Fase 1/2 + olas post-demo, todo de Santi).
+Puesta a punto de mi entorno local:
+- **Puertos alineados con Santi** para esquivar imedba/GIA: `.env` local nuevo con `BACKEND_PORT=8088`,
+  `frontend/.env.local` → `VITE_API_BASE_URL=http://localhost:8088`, y front en `:5174`. `vite.config.ts` ahora
+  lee el puerto de **`VITE_DEV_PORT`** (default 5173) en vez de hardcodear — así cada máquina elige sin tocar el repo.
+- **Dropeé mis 3 fixes CRLF locales** (`git checkout`) ya que el `.gitattributes` de Santi cubre `mvnw` y `db/init/*.sh`.
+- **Levanté el stack local** (back `:8088`, keycloak `:8081`, db `:5432`) + front `:5174` para revisar las pantallas nuevas.
+**⚠️ PARA SANTI — hueco en `.gitattributes`:** NO cubre `backend/.mvn/wrapper/maven-wrapper.properties` → cae en
+`* text=auto` → en Windows (autocrlf=true) se checkoutea **CRLF**, el `\r` se cuela en `wrapperUrl` y el build del
+backend muere con `HTTP 400` al bajar el maven-wrapper. Lo volví a arreglar local (LF), pero se re-rompe en cada
+clone/checkout. **Falta agregar `*.properties text eol=lf`** (o `.mvn/wrapper/** text eol=lf`) al `.gitattributes` y
+`git add --renormalize`.
+**Refs:** `.env` (local), `frontend/.env.local`, `frontend/vite.config.ts`, `backend/.mvn/wrapper/maven-wrapper.properties`.
+
 ## 2026-08-11 — Santi — infra (🟢 **EN VIVO**: https://nutriappok.com.ar con TLS — deploy cerrado)
 **Qué:** El sitio responde por HTTPS público con certificado de Let's Encrypt, en modo pre-lanzamiento.
 Se destrabó el DNS y Caddy emitió los certs de `nutriappok.com.ar` y `www` **solo**, sin tocar nada del

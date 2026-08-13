@@ -82,7 +82,7 @@ public class RecetaService {
                 .orElseThrow(() -> new NotFoundException("Paciente no encontrado"));
 
         if (req.items().size() > props.maxItems()) {
-            throw new ConflictException("La receta admite hasta " + props.maxItems() + " producto(s) por ahora");
+            throw new ConflictException("El bono profesional admite hasta " + props.maxItems() + " producto(s) por ahora");
         }
 
         Receta receta = new Receta();
@@ -131,7 +131,7 @@ public class RecetaService {
     public RecetaResponse anular(UUID id) {
         Receta receta = getOwned(id);
         if (receta.getEstado() != EstadoReceta.PENDIENTE) {
-            throw new ConflictException("Sólo se pueden anular recetas pendientes (esta está "
+            throw new ConflictException("Sólo se pueden anular bonos pendientes (este está "
                     + receta.getEstado().name().toLowerCase() + ")");
         }
         if (receta.getCuponTiendanubeId() != null) {
@@ -156,11 +156,11 @@ public class RecetaService {
     public RecetaResponse reenviar(UUID id) {
         Receta receta = getOwned(id);
         if (receta.getEstado() != EstadoReceta.PENDIENTE) {
-            throw new ConflictException("Sólo se pueden reenviar recetas pendientes (esta está "
+            throw new ConflictException("Sólo se pueden reenviar bonos pendientes (este está "
                     + receta.getEstado().name().toLowerCase() + ")");
         }
         Paciente paciente = pacienteRepository.findById(receta.getPacienteId())
-                .orElseThrow(() -> new NotFoundException("Paciente de la receta no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Paciente del bono no encontrado"));
         notificacionService.reencolar(receta, paciente);
         log.info("Notificaciones de receta {} reencoladas", receta.getCodigo());
         return toResponseDetalle(receta);
@@ -173,13 +173,13 @@ public class RecetaService {
                 return candidato;
             }
         }
-        throw new IllegalStateException("No se pudo generar un código único de receta");
+        throw new IllegalStateException("No se pudo generar un código único de bono profesional");
     }
 
     private Receta getOwned(UUID id) {
         UUID nutriId = nutricionistaService.getCurrent().getId();
         return repo.findByIdAndNutricionistaIdAndDeletedAtIsNull(id, nutriId)
-                .orElseThrow(() -> new NotFoundException("Receta no encontrada"));
+                .orElseThrow(() -> new NotFoundException("Bono no encontrado"));
     }
 
     /**

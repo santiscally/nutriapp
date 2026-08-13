@@ -45,7 +45,7 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
   const esPendiente = data?.estado === "PENDIENTE";
 
   return (
-    <Modal title={data ? `Receta ${data.codigo}` : "Receta"} onClose={onClose}>
+    <Modal title={data ? `Bono ${data.codigo}` : "Bono"} onClose={onClose}>
       {loading && <p className="muted">Cargando…</p>}
       {error && <div className="alert alert--error">{error}</div>}
 
@@ -161,14 +161,14 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                   run(
                     anularReceta,
                     {
-                      titulo: `¿Anular la receta ${data.codigo}?`,
+                      titulo: `¿Anular el bono ${data.codigo}?`,
                       mensaje:
                         "El cupón se da de baja en la tienda y la paciente ya no va a poder usarlo. " +
                         "No se puede deshacer.",
-                      confirmar: "Anular receta",
+                      confirmar: "Anular bono",
                       peligro: true,
                     },
-                    "Receta anulada.",
+                    "Bono anulado.",
                   )
                 }
               >

@@ -20,12 +20,12 @@ public class NotificacionTemplates {
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     public String asuntoEmail(Receta receta) {
-        return "Tu receta " + receta.getCodigo() + " con descuento en TBC";
+        return "Tu bono profesional " + receta.getCodigo() + " con descuento en TBC";
     }
 
     public String cuerpoEmail(Receta receta, Paciente paciente) {
         return "Hola " + paciente.getNombre() + ",\n\n"
-                + "Tu nutricionista te emitió una receta con un " + pct(receta.getDescuentoPct())
+                + "Tu nutricionista te emitió un bono profesional con un " + pct(receta.getDescuentoPct())
                 + " de descuento.\n\n"
                 + "Código de descuento: " + receta.getCodigo() + "\n"
                 + "Válido hasta: " + FECHA.format(receta.getVenceAt()) + "\n\n"

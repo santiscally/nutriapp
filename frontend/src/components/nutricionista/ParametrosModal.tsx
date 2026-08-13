@@ -108,7 +108,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
       titulo: `Desactivar a ${nutri.nombre} ${nutri.apellido}`,
       mensaje: (
         <>
-          <p>Deja de poder entrar, pero se conservan sus recetas, sus pacientes y sus datos.</p>
+          <p>Deja de poder entrar, pero se conservan sus bonos, sus pacientes y sus datos.</p>
           <p>Podés devolverle el acceso cuando quieras.</p>
         </>
       ),
@@ -223,7 +223,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
           <h3 className="ficha__titulo">Porcentajes</h3>
           <div className="ficha__pcts">
             <label className="field">
-              <span>Descuento de recetas (%)</span>
+              <span>Descuento de bonos (%)</span>
               <input
                 type="number"
                 min={0}
@@ -247,7 +247,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
               />
             </label>
             <p className="ficha__hint">
-              Aplican a las recetas futuras: las emitidas conservan su porcentaje.
+              Aplican a los bonos futuros: los emitidos conservan su porcentaje.
             </p>
           </div>
         </section>
@@ -293,7 +293,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
                   Borrar
                 </button>
                 <span className="ficha__hint">
-                  Elimina usuario, perfil y pacientes. Sólo si nunca emitió una receta.
+                  Elimina usuario, perfil y pacientes. Sólo si nunca emitió un bono.
                 </span>
               </div>
             </div>

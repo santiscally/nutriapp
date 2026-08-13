@@ -25,7 +25,7 @@ export function EstadisticasCharts({ stats }: { stats: Estadisticas }) {
     <div className="charts">
       <div className="card chart-card">
         <div className="chart-card__head">
-          <h2 className="chart-card__title">Recetas por mes</h2>
+          <h2 className="chart-card__title">Bonos por mes</h2>
           <span className="muted">Últimos {meses.length} meses</span>
         </div>
         <div className="bars">
@@ -78,7 +78,7 @@ export function EstadisticasCharts({ stats }: { stats: Estadisticas }) {
         </div>
         <dl className="chart-card__stats">
           <div>
-            <dt>Recetas aplicadas</dt>
+            <dt>Bonos aplicados</dt>
             <dd>{actual.recetasAplicadas}</dd>
           </div>
           <div>

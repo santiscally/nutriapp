@@ -159,7 +159,7 @@ export function Perfil() {
             </div>
             {me?.descuentoPct != null && (
               <div>
-                <dt>Descuento de tus recetas</dt>
+                <dt>Descuento de tus bonos</dt>
                 <dd>{me.descuentoPct}%</dd>
               </div>
             )}

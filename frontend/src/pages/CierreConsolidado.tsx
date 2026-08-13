@@ -41,7 +41,7 @@ export function CierreConsolidado() {
   function exportar() {
     if (!data || data.filas.length === 0) return;
     const csv = generarCsv(
-      ["Nutricionista", "CUIT", "Email", "Recetas", "Facturado", "Comisión", "Comisión pendiente"],
+      ["Nutricionista", "CUIT", "Email", "Bonos", "Facturado", "Comisión", "Comisión pendiente"],
       data.filas.map((f) => [
         `${f.nombre ?? ""} ${f.apellido ?? ""}`.trim(),
         f.cuit ?? "",
@@ -58,14 +58,14 @@ export function CierreConsolidado() {
   async function liquidar(f: CierreFila) {
     const cuantas = f.recetasPendientes;
     const ok = await confirmar({
-      titulo: `Liquidar ${cuantas} receta${cuantas === 1 ? "" : "s"} de ${f.nombre} ${f.apellido}`,
+      titulo: `Liquidar ${cuantas} bono${cuantas === 1 ? "" : "s"} de ${f.nombre} ${f.apellido}`,
       mensaje: (
         <>
           <p>
             Vas a registrar el pago de <strong>{money(f.comisionPendiente)}</strong> de comisión.
           </p>
           <p>
-            Esas recetas dejan de figurar como pendientes de liquidar, pero siguen contando en el
+            Esos bonos dejan de figurar como pendientes de liquidar, pero siguen contando en el
             histórico.
           </p>
         </>
@@ -76,7 +76,7 @@ export function CierreConsolidado() {
     setLiquidando(f.nutricionistaId);
     try {
       const r = await liquidarRecetas(f.recetaIdsPendientes);
-      toast.success(`${r.liquidadas} receta(s) liquidadas por ${money(r.comisionTotal)}.`);
+      toast.success(`${r.liquidadas} bono(s) liquidados por ${money(r.comisionTotal)}.`);
       if (r.omitidas.length > 0) {
         toast.error(`${r.omitidas.length} quedaron afuera: ${r.omitidas[0].motivo}.`);
       }
@@ -132,7 +132,7 @@ export function CierreConsolidado() {
           <div className="tiles">
             <div className="card tile">
               <span className="tile__body">
-                <span className="tile__label">Recetas convertidas</span>
+                <span className="tile__label">Bonos convertidos</span>
                 <span className="tile__value">{data.totales.recetas}</span>
               </span>
             </div>
@@ -160,7 +160,7 @@ export function CierreConsolidado() {
             <thead>
               <tr>
                 <th>Nutricionista</th>
-                <th className="ta-right">Recetas</th>
+                <th className="ta-right">Bonos</th>
                 <th className="ta-right">Facturado</th>
                 <th className="ta-right">Comisión</th>
                 <th className="ta-right">Pendiente</th>
@@ -207,7 +207,7 @@ export function CierreConsolidado() {
 
           <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.9rem" }}>
             Los importes salen de lo que cada paciente pagó realmente en TiendaNube, no del precio
-            de lista. El período se corta por fecha de compra, no por fecha de emisión de la receta.
+            de lista. El período se corta por fecha de compra, no por fecha de emisión del bono.
           </p>
         </>
       )}

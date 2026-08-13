@@ -153,7 +153,7 @@ public class AdminNutricionistaService {
         long recetas = recetaRepository.countByNutricionistaId(n.getId());
         if (recetas > 0) {
             throw new ConflictException("No se puede borrar: tiene " + recetas
-                    + (recetas == 1 ? " receta emitida" : " recetas emitidas")
+                    + (recetas == 1 ? " bono profesional emitido" : " bonos profesionales emitidos")
                     + " que forman parte de los cierres. Desactivala para quitarle el acceso.");
         }
         if (n.getKeycloakUserId() != null) {

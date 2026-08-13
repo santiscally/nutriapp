@@ -46,8 +46,8 @@ public class WaMeLinkBuilder {
 
     /** Mismo texto que usaba el template de la cola, ahora que el envío es manual. */
     private String mensaje(Receta receta, Paciente paciente) {
-        return "Hola " + paciente.getNombre() + "! 🌱 Tu receta con " + pct(receta.getDescuentoPct())
-                + " de descuento ya está lista. Código: *" + receta.getCodigo() + "* "
+        return "Hola " + paciente.getNombre() + "! 🌱 Tu bono profesional con " + pct(receta.getDescuentoPct())
+                + " de descuento ya está listo. Código: *" + receta.getCodigo() + "* "
                 + "(válido hasta el " + FECHA.format(receta.getVenceAt()) + "). "
                 + "Usalo al comprar en la tienda online.";
     }

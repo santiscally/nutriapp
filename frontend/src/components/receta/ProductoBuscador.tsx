@@ -300,9 +300,12 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
         )}
       </div>
 
-      {productos.loading && <p className="muted">Buscando productos…</p>}
+      {/* "Buscando…" solo en la primera carga (sin data todavía). En los refetch por tecleo se
+          mantiene la lista anterior visible: si no, parpadea entre lista y estado vacío en cada
+          tecla. Igual con "Sin productos": solo cuando terminó de cargar y de verdad no hay nada. */}
+      {productos.loading && !data && <p className="muted">Buscando productos…</p>}
       {productos.error && <div className="alert alert--error">{productos.error}</div>}
-      {data && data.content.length === 0 && (
+      {!productos.loading && data && data.content.length === 0 && (
         <p className="muted">Sin productos para esa búsqueda.</p>
       )}
 

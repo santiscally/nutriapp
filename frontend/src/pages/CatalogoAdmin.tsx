@@ -1,4 +1,4 @@
-// Catálogo visto por el admin. Es el reverso del buscador de recetas: ahí se ve lo que se puede
+// Catálogo visto por el admin. Es el reverso del buscador de bonos: ahí se ve lo que se puede
 // recetar, acá lo que NO y por qué.
 //
 // El caso que motivó la pantalla: después de importar el maestro quedaron artículos sin match
@@ -23,23 +23,23 @@ type Filtro = "todos" | "sinMaestro" | "noPublicados";
 const FILTROS: { key: Filtro; label: string }[] = [
   { key: "todos", label: "Todos" },
   { key: "sinMaestro", label: "Sin match del maestro" },
-  { key: "noPublicados", label: "No recetables" },
+  { key: "noPublicados", label: "No disponibles" },
 ];
 
 function Etiquetas({ p }: { p: ProductoAdmin }) {
   return (
     <span className="labels">
       {p.producto.publicado ? (
-        <span className="badge badge--ok">Recetable</span>
+        <span className="badge badge--ok">Disponible</span>
       ) : (
         <span className="badge badge--off" title={p.motivoNoPublicado ?? undefined}>
-          {p.motivoNoPublicado ?? "No recetable"}
+          {p.motivoNoPublicado ?? "No disponible"}
         </span>
       )}
       {!p.enMaestro && (
         <span
           className="badge badge--warn"
-          title="Está en Contabilium pero no en el Excel maestro: se receta sin categoría, laboratorio, imagen ni tags."
+          title="Está en Contabilium pero no en el Excel maestro: se emite sin categoría, laboratorio, imagen ni tags."
         >
           Sin maestro
         </span>
@@ -87,7 +87,7 @@ function Detalle({ p }: { p: ProductoAdmin }) {
 
         {/* Los tags son la vía de búsqueda por propiedad ("magnesio", "vegano", "sin TACC"): el
             catálogo no tiene esos campos como columnas, los cubre el maestro con esta lista. Acá
-            van sólo para ver qué quedó cargado — en el buscador de recetas sí son clickeables. */}
+            van sólo para ver qué quedó cargado — en el buscador de bonos sí son clickeables. */}
         <div className="prod-admin__tags">
           <span className="prod-admin__tags-label">
             Tags del maestro
@@ -150,7 +150,7 @@ export function CatalogoAdmin() {
         <div>
           <h1 className="page-title">Productos</h1>
           <p className="muted">
-            Todo lo que bajó de Contabilium, incluido lo que no se puede recetar. Tocá una fila para
+            Todo lo que bajó de Contabilium, incluido lo que no se puede emitir. Tocá una fila para
             ver el detalle. El catálogo se actualiza desde <strong>Integraciones</strong>.
           </p>
         </div>
@@ -166,7 +166,7 @@ export function CatalogoAdmin() {
           </div>
           <div className="card tile">
             <span className="tile__body">
-              <span className="tile__label">Recetables</span>
+              <span className="tile__label">Disponibles</span>
               <span className="tile__value">{resumen.publicados}</span>
             </span>
           </div>

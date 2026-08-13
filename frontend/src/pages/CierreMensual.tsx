@@ -53,7 +53,7 @@ export function CierreMensual() {
         <div>
           <h1 className="page-title">Cierre mensual</h1>
           <p className="muted">
-            Comisiones por recetas aplicadas. Solo suman las recetas con compra confirmada en la
+            Comisiones por bonos aplicados. Solo suman los bonos con compra confirmada en la
             tienda.
           </p>
         </div>
@@ -71,7 +71,7 @@ export function CierreMensual() {
         <>
           <TilesSkeleton />
           <div className="section-head">
-            <h2 className="section-title">Recetas que suman al cierre</h2>
+            <h2 className="section-title">Bonos que suman al cierre</h2>
           </div>
           <TableSkeleton rows={5} cols={5} />
         </>
@@ -82,7 +82,7 @@ export function CierreMensual() {
         <>
           <div className="tiles">
             <div className="card">
-              <div className="tile__label">Recetas aplicadas</div>
+              <div className="tile__label">Bonos aplicados</div>
               <div className="tile__value">{data.recetasAplicadas}</div>
               <div className="muted">
                 de {data.recetasEmitidas} emitidas · {conversion}% de conversión
@@ -107,11 +107,11 @@ export function CierreMensual() {
           </div>
 
           <div className="section-head">
-            <h2 className="section-title">Recetas que suman al cierre</h2>
+            <h2 className="section-title">Bonos que suman al cierre</h2>
           </div>
 
           {data.detalle.length === 0 ? (
-            <p className="muted">No hay recetas aplicadas en este mes todavía.</p>
+            <p className="muted">No hay bonos aplicados en este mes todavía.</p>
           ) : (
             <table className="table">
               <thead>
@@ -137,7 +137,7 @@ export function CierreMensual() {
               <tfoot>
                 <tr>
                   <td colSpan={2} className="muted">
-                    {data.recetasAplicadas} recetas aplicadas
+                    {data.recetasAplicadas} bonos aplicados
                   </td>
                   <td className="ta-right" style={{ fontWeight: 700 }}>
                     {money(data.comisionTotal)}

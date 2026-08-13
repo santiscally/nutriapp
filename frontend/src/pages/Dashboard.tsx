@@ -56,7 +56,7 @@ export function Dashboard() {
         <>
           <TilesSkeleton />
           <div className="section-head">
-            <h2 className="section-title">Últimas recetas</h2>
+            <h2 className="section-title">Últimos bonos</h2>
           </div>
           <TableSkeleton rows={5} cols={6} />
         </>
@@ -71,7 +71,7 @@ export function Dashboard() {
                 <Icon name="clock" />
               </span>
               <span className="tile__body">
-                <span className="tile__label">Recetas pendientes</span>
+                <span className="tile__label">Bonos pendientes</span>
                 <span className="tile__value">{data.recetasPendientes}</span>
               </span>
             </div>
@@ -98,14 +98,14 @@ export function Dashboard() {
           {stats && <EstadisticasCharts stats={stats} />}
 
           <div className="section-head">
-            <h2 className="section-title">Últimas recetas</h2>
+            <h2 className="section-title">Últimos bonos</h2>
             <Link className="section-head__link" to="/recetas">
               Ver todas →
             </Link>
           </div>
 
           {data.ultimasRecetas.length === 0 ? (
-            <p className="muted">Todavía no emitiste recetas.</p>
+            <p className="muted">Todavía no emitiste bonos.</p>
           ) : (
             <table className="table">
               <thead>

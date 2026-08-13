@@ -72,7 +72,7 @@ export function EmitirReceta() {
       });
       setResult(receta);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "No se pudo emitir la receta.");
+      setError(err instanceof ApiRequestError ? err.message : "No se pudo emitir el bono.");
     } finally {
       setSubmitting(false);
     }
@@ -92,7 +92,7 @@ export function EmitirReceta() {
       {/* Barra superior: título + paciente. El paciente ocupaba una tarjeta entera para mostrar
           un solo dato; acá va en la misma línea y libera todo ese alto para el buscador. */}
       <header className="emitir__head">
-        <h1 className="emitir__titulo">Emitir receta</h1>
+        <h1 className="emitir__titulo">Emitir bono</h1>
         <div className="emitir__paciente">
           {paciente ? (
             <>
@@ -123,7 +123,7 @@ export function EmitirReceta() {
 
         <aside className="card emitir__panel emitir__resumen">
           <div className="emitir__resumen-head">
-            <h2 className="resumen-card__title">Receta</h2>
+            <h2 className="resumen-card__title">Bono profesional</h2>
             {items.length > 0 && (
               <span className="muted">
                 {items.length} producto{items.length === 1 ? "" : "s"}
@@ -216,7 +216,7 @@ export function EmitirReceta() {
               onClick={onSubmit}
             >
               <Icon name="send" size={17} />
-              {submitting ? "Emitiendo…" : "Emitir receta"}
+              {submitting ? "Emitiendo…" : "Emitir bono"}
             </button>
           </div>
         </aside>

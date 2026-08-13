@@ -13,18 +13,20 @@ import { Icon } from "../components/ui/Icon";
 const PASOS = [
   {
     icon: "file-plus",
-    titulo: "Emitís la receta",
-    texto: "Elegís paciente y productos, y sale con un código de descuento único.",
+    titulo: "Emitís bono profesional",
+    texto: "Elegís paciente y productos, y se emite el descuento exclusivo.",
   },
   {
     icon: "send",
-    titulo: "Tu paciente compra",
-    texto: "Le llega por mail —y por WhatsApp si querés— y usa el código en la tienda online.",
+    titulo: "Tu paciente adquiere",
+    texto:
+      "Le llega por mail y/o WhatsApp el bono profesional, que podrá usar en una tienda especializada.",
   },
   {
     icon: "trending-up",
-    titulo: "Seguís el resultado",
-    texto: "Ves qué recetas se convirtieron y tu comisión del mes, al día.",
+    titulo: "Seguís todo acá",
+    texto:
+      "Podés ver el seguimiento de los bonos, y si el paciente convierte, recibirás beneficios exclusivos.",
   },
 ] as const;
 
@@ -46,12 +48,12 @@ export function Proximamente() {
           Próximamente
         </p>
 
-        <h1 className="soon__title">Recetas con descuento, en dos minutos.</h1>
+        <h1 className="soon__title">Recomendaciones Profesionales, con beneficios exclusivos.</h1>
 
         <p className="soon__lead">
-          Estamos terminando la plataforma para que las nutricionistas emitan recetas digitales con
-          descuento sobre productos reales, y sus pacientes compren online con un código único. Si
-          querés estar desde el primer día, dejanos tu solicitud.
+          Próximamente estará disponible la plataforma digital para profesionales de nutrición, salud
+          y bienestar; en la que podrán emitir bonos profesionales, con descuentos y beneficios
+          exclusivos para sus pacientes.
         </p>
 
         <ul className="soon__pasos">
@@ -71,8 +73,8 @@ export function Proximamente() {
         </Link>
 
         <p className="soon__note">
-          Cada cuenta se valida a mano: verificamos tu matrícula antes de habilitarte. Te avisamos
-          por email cuando esté aprobada.
+          Cada cuenta se valida individualmente: verificamos tu matrícula antes de habilitarte. Te
+          avisaremos por mail cuando la misma esté habilitada.
         </p>
       </main>
 

@@ -18,6 +18,7 @@ type Field =
   | "apellido"
   | "email"
   | "telefono"
+  | "jurisdiccion"
   | "matricula"
   | "dni"
   | "cuit"
@@ -38,6 +39,7 @@ export function Registro() {
     apellido: "",
     email: "",
     telefono: "",
+    jurisdiccion: "",
     matricula: "",
     dni: "",
     cuit: "",
@@ -64,6 +66,7 @@ export function Registro() {
     else if (!EMAIL.test(f.email.trim())) e.email = "Email inválido.";
     if (!f.telefono.trim()) e.telefono = "Requerido.";
     else if (!E164.test(f.telefono.trim())) e.telefono = "Formato E.164, ej. +5491133334444.";
+    if (!f.jurisdiccion.trim()) e.jurisdiccion = "Requerido.";
     if (!f.matricula.trim()) e.matricula = "Requerido.";
     if (!f.dni.trim()) e.dni = "Requerido.";
     else if (!DNI.test(f.dni.trim())) e.dni = "Sólo números, sin puntos.";
@@ -96,7 +99,9 @@ export function Registro() {
           apellido: f.apellido.trim(),
           email: f.email.trim(),
           telefono: f.telefono.trim(),
-          matricula: f.matricula.trim(),
+          // El backend guarda un solo campo `matricula`; combinamos jurisdicción + número hasta que
+          // exista una columna propia de jurisdicción (flageado a Santi en el DIARIO).
+          matricula: `${f.jurisdiccion.trim()} · N° ${f.matricula.trim()}`,
           dni: f.dni.trim(),
           cuit: f.cuit.trim(),
           condicionFiscal: f.condicionFiscal,
@@ -160,7 +165,7 @@ export function Registro() {
               <b>2.</b> El administrador verifica y aprueba la cuenta.
             </li>
             <li>
-              <b>3.</b> Recibís un mail y ya podés emitir recetas.
+              <b>3.</b> Recibís un mail y ya podés emitir bonos profesionales.
             </li>
           </ul>
         </div>
@@ -189,7 +194,7 @@ export function Registro() {
               {errors.apellido && <small className="auth__err">{errors.apellido}</small>}
             </label>
             <label className="field">
-              <span>Teléfono</span>
+              <span>Whatsapp / Teléfono</span>
               <input placeholder="+5491133334444" value={f.telefono} onChange={set("telefono")} />
               {errors.telefono && <small className="auth__err">{errors.telefono}</small>}
             </label>
@@ -204,8 +209,17 @@ export function Registro() {
               {errors.dni && <small className="auth__err">{errors.dni}</small>}
             </label>
             <label className="field">
-              <span>Matrícula nacional</span>
-              <input placeholder="MN 12.483" value={f.matricula} onChange={set("matricula")} />
+              <span>Jurisdicción de matrícula</span>
+              <input
+                placeholder="Nacional / Buenos Aires / …"
+                value={f.jurisdiccion}
+                onChange={set("jurisdiccion")}
+              />
+              {errors.jurisdiccion && <small className="auth__err">{errors.jurisdiccion}</small>}
+            </label>
+            <label className="field">
+              <span>N° de matrícula</span>
+              <input placeholder="12.483" value={f.matricula} onChange={set("matricula")} />
               {errors.matricula && <small className="auth__err">{errors.matricula}</small>}
             </label>
             <label className="field">

@@ -43,7 +43,7 @@ export function Login() {
         </div>
 
         <div className="auth__value">
-          <h2 className="auth__headline">Recetas digitales con descuento, en dos minutos.</h2>
+          <h2 className="auth__headline">Recomendaciones profesionales, con beneficios exclusivos.</h2>
         </div>
 
         <p className="auth__note">

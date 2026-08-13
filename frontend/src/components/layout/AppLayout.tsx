@@ -1,7 +1,7 @@
 // Layout autenticado (rediseño 2026-07-26): top NavBar (marca + navegación + CTA + usuario) +
 // contenido centrado (<Outlet/>) + Footer. Reemplaza el sidebar/topbar anterior.
 
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
@@ -12,7 +12,7 @@ import { Footer } from "./Footer";
 // no arrastra recetas:*/pacientes:*/dashboard:read, así que esos endpoints le dan 403.
 const NAV_NUTRI: { to: string; label: string; end?: boolean }[] = [
   { to: "/dashboard", label: "Panel" },
-  { to: "/recetas", label: "Recetas", end: true },
+  { to: "/recetas", label: "Bonos", end: true },
   { to: "/pacientes", label: "Pacientes" },
   { to: "/cierre-mensual", label: "Cierre mensual" },
   { to: "/perfil", label: "Mi perfil" },
@@ -32,6 +32,8 @@ export function AppLayout() {
   const { me, logout } = useAuth();
   const isAdmin = me?.roles.includes("ADMIN") ?? false;
   const nav = isAdmin ? NAV_ADMIN : NAV_NUTRI;
+  // Estando ya en el emisor, el CTA "Nuevo bono" no lleva a ningún lado: se esconde.
+  const enEmision = useLocation().pathname === "/recetas/nueva";
 
   return (
     <div className="app-shell">
@@ -60,10 +62,10 @@ export function AppLayout() {
           </nav>
 
           <div className="navbar__right">
-            {!isAdmin && (
+            {!isAdmin && !enEmision && (
               <Link to="/recetas/nueva" className="navbar__cta">
                 <Icon name="plus" size={17} />
-                Nueva receta
+                Nuevo bono
               </Link>
             )}
             <div className="navbar__divider" />
