@@ -1974,8 +1974,11 @@ html, body { overflow-x: hidden; }
   text-align: center;
   align-self: center;
 }
+/* Fila propia: `flex` y no `inline-flex`. Siendo inline-level compartía línea con la píldora
+   "Próximamente" (que también es inline-flex) y el isotipo se le venía encima. */
 .soon__brand {
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
   align-items: center;
   gap: 11px;
   margin-bottom: 30px;

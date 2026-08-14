@@ -32,6 +32,44 @@
 
 ## Entradas
 
+## 2026-08-14 — Santi — frontend (la píldora "Próximamente" se chocaba con el isotipo en la landing)
+**Qué:** En `/` (landing pre-lanzamiento) el bloque de marca (isotipo + "NutriApp") y la píldora
+"Próximamente" caían **en la misma línea**: `.soon__brand` y `.soon__eyebrow` eran los dos `inline-flex`
+→ dos cajas inline-level que comparten line box mientras entren en los 612px útiles del `.soon__inner`
+(~283px entre las dos), y el isotipo de 36px se le venía encima a la píldora. `.soon__brand` pasa a
+`display: flex` + `justify-content: center`: block-level, fila propia, y el `margin-bottom: 30px` que ya
+tenía queda de separación real.
+**Por qué:** lo pidió el usuario al ver la landing desplegada.
+**Problemas:** ninguno. Es un bug viejo de la landing, no lo introdujo el isotipo — con el badge `leaf`
+anterior pasaba lo mismo, sólo que un ícono chato dentro de una píldora disimulaba el choque.
+**Impacto para el otro (Fran):** toqué `frontend/src/index.css` (tu área) por pedido explícito, 1 regla.
+Ojo si tenés algo en vuelo sobre la landing. `.auth__brand-top` (login/registro) ya era `flex`, no se tocó.
+**Verificación:** lint verde, build verde, redeploy hecho (bundle `index-Cp6tiKN0.js`, CSS `index-CSJsWVJJ.css`,
+regla confirmada en el CSS servido por HTTPS). **Sigue faltando la mirada humana en el browser.**
+**Refs:** `frontend/src/index.css` (`.soon__brand`), `frontend/src/pages/Proximamente.tsx`.
+
+## 2026-08-14 — Santi — infra (segundo redeploy del día: `ff47af2` en vivo, solo SPA)
+**Qué:** `git pull` de `ff47af2` (isotipo de Gon + 3 huecos del rename) y publicación en `nutriappok.com.ar`.
+- **Solo SPA**: el commit no toca `backend/ db/ nginx/ keycloak/ docker-compose*` → **no se reconstruyó ni
+  reinició el backend**, no hubo migraciones y **no se tocó la DB** (por eso tampoco backup nuevo: el de las
+  18:25 sigue siendo el último estado y nada lo invalidó).
+- Bundle recompilado en `node:22-alpine` descartable con los `VITE_*` de prod y **`VITE_COMING_SOON=true`**
+  (verificado horneado): `index-DTq62RVv.js` → **`index-D4rP5iq7.js`**. Vite vacía `dist/`, así que el
+  `favicon.svg` borrado en el commit desapareció del servido. `nginx -s reload` (el `dist` es bind-mount ro).
+- **Merge de docs a mano**: las entradas del redeploy de las 18:25 estaban sin commitear y chocaban con las
+  que traía `ff47af2` en DIARIO/ESTADO. Se resolvió conservando ambas (stash → pull → pop → resolución).
+**Por qué:** el pedido fue publicar el contenido nuevo; el pre-lanzamiento se mantiene igual.
+**Problemas:** ninguno.
+**Verificación (HTTPS público):** `/` `/registro` `/ingresar` → 200 sirviendo el bundle nuevo; assets de marca
+`/favicon.png` `/apple-touch-icon.png` `/og-image.png` `/assets/logo-DRT11zeO.png` → 200 `image/png`;
+`<title>`/`og:*` ya dicen "Bonos profesionales"; `/actuator/health` UP; issuer OIDC
+`https://nutriappok.com.ar/auth/realms/nutriapp`; `/api/v1/recetas` → 401; `/auth/admin` y `/auth/realms/master`
+→ 404; haltcatch y jeianell en 200. **Falta igual la verificación visual en el browser** que pedía Fran en su
+entrada — se comprobó que los assets se sirven, no cómo se ven las pantallas.
+**Impacto:** sigue en pie lo del mail — `MAIL_MODE=stub` en prod, el registro no notifica a nadie (ver entrada
+de las 18:25 y ESTADO).
+**Refs:** `DEPLOY.md` §2, `docker-compose.prod.yml`.
+
 ## 2026-08-14 — Santi — frontend (isotipo de Gon puesto en la marca + 3 huecos del rename "receta → bono")
 **Qué:** Llegó el archivo del isotipo (el ramo multicolor de TBC) que quedó pendiente el 13/08, y de paso
 audité el rename contra lo que había quedado sin tocar.
@@ -58,6 +96,31 @@ pero nadie miró las pantallas.
 **Refs:** `frontend/src/components/ui/Logo.tsx` (nuevo), `components/layout/{AppLayout,Footer}.tsx`,
 `pages/{Login,Registro,Proximamente,Dashboard,Recetas}.tsx`, `src/index.css`, `index.html`, `src/assets/logo.png`,
 `public/{favicon,apple-touch-icon,og-image}.png`.
+
+## 2026-08-14 — Santi — infra (redeploy de prod con los cambios de Fran, sigue en pre-lanzamiento)
+**Qué:** Se subió a `nutriappok.com.ar` el estado de `ccf69b0` (rename "receta → bono profesional",
+feedback de Gon en landing/registro, emisor pulido). Lo que corría era el build del 2026-08-11.
+- **Backup cifrado previo** (`backups/*-20260814-182505.dump.gpg`, nutriapp + keycloak).
+- **SPA** recompilada en `node:22-alpine` descartable con los `VITE_*` de prod y **`VITE_COMING_SOON=true`**
+  (verificado horneado en el bundle). El pre-lanzamiento **se mantiene**: `/` = landing "Próximamente"
+  con CTA a `/registro`, login en `/ingresar` sin link desde ningún lado.
+- **Backend** reconstruido (`nutriapp/backend:prod`) y recreado. **Sin migraciones nuevas**: Flyway validó
+  12 y el schema ya estaba en 012 — el commit sólo tocaba texto de usuario en Java.
+**Por qué:** el pedido era publicar los cambios manteniendo la restricción de que sólo se vea el registro,
+para poder difundir el link y sumar nutricionistas.
+**Problemas:** ninguno. Nada que reportar del build ni del arranque (48s, `Started NutriappApplication`).
+**Verificación (HTTPS público):** `/` `/registro` `/ingresar` → 200; `/actuator/health` UP; issuer OIDC
+`https://nutriappok.com.ar/auth/realms/nutriapp`; `/api/v1/recetas` → 401; `/auth/admin` y
+`/auth/realms/master` → 404; bundle servido = el recién compilado (`index-DTq62RVv.js`);
+`POST /api/v1/registro` con payload inválido → 400 `ApiError` con los errores por campo (probado sin
+crear registro basura). haltcatch y jeianell siguen en 200 (no se tocó Caddy).
+**⚠️ Impacto para Fran — el link se puede difundir, pero el mail sigue sin salir en prod:** `MAIL_MODE=stub`
+en el `.env` del VPS y `RegistroService` no encola notificación, así que quien se registre no recibe el
+"solicitud recibida" y **al admin tampoco le llega aviso**. Tu setup de Resend (2026-08-13) resuelve el
+proveedor pero falta lo de prod: verificar el dominio en Resend + los 3 DNS en Hostinger, API key de prod
+aparte, `MAIL_FROM_ADDRESS=info@nutriappok.com.ar` y crear esa casilla. Mientras tanto las solicitudes se
+miran en la tabla `nutricionistas` y se aprueban por API/SQL.
+**Refs:** `DEPLOY.md` §2 y §Modo pre-lanzamiento, `docker-compose.prod.yml`, `.env` del VPS (gitignored).
 
 ## 2026-08-13 — Fran — integraciones/email (Resend elegido como proveedor de mail; anda en local, falta setup de PROD)
 **Qué:** Elegí **Resend** como proveedor de email y lo dejé andando **en local** contra el `SmtpMailSender` que ya

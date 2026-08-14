@@ -22,8 +22,30 @@ pendiente del feedback del 13/08. Reemplaza al ícono `leaf` en navbar, footer, 
 (componente nuevo `ui/Logo.tsx`); favicon, apple-touch-icon y `og-image` generados del mismo PNG. **De paso
 se taparon 3 huecos del rename "receta → bono profesional"**: `index.html` (título + metadatos de preview del
 link, que es lo que ve quien recibe la URL por WhatsApp), el saludo del Dashboard y el paginador de `/recetas`.
-**Toqué `frontend/` (área de Fran) por pedido explícito.** Build + lint verdes; **falta mirarlo en el browser**
-y **redesplegar** para que se vea en prod.
+**Toqué `frontend/` (área de Fran) por pedido explícito.** Build + lint verdes; **ya desplegado** (abajo);
+**falta mirarlo en el browser**. Único ajuste posterior: en la landing, `.soon__brand` pasó de `inline-flex`
+a `flex` — compartía línea con la píldora "Próximamente" y el isotipo se le encimaba (bug viejo de la
+landing, no del logo).
+
+**🔄 EN PROD CORRE `ff47af2` (2026-08-14, dos redeploys en el día).** Primero se subió `ccf69b0`
+(rename "receta → bono profesional" + feedback de Gon + emisor pulido): SPA recompilada **y backend
+reconstruido**, sin migraciones nuevas (12 validadas, schema en 012) → **sin cambios de DB**, con backup
+cifrado previo (`backups/*-20260814-182505.dump.gpg`). Después `ff47af2` (isotipo + huecos del rename):
+**solo SPA**, sin tocar backend ni DB, más el fix de alineación de la landing. Bundle vivo:
+**`index-Cp6tiKN0.js`** + CSS `index-CSJsWVJJ.css`. Sigue en **pre-lanzamiento**
+(`VITE_COMING_SOON=true`: `/` es la landing con CTA a `/registro`, el login en `/ingresar` sin link).
+Verificado por HTTPS público: `/` `/registro` `/ingresar` 200 con el bundle nuevo, assets de marca
+(`favicon.png`, `apple-touch-icon.png`, `og-image.png`, logo) 200, `<title>`/`og:*` con "Bonos profesionales",
+`/actuator/health` UP, issuer OIDC correcto, `/api/v1/recetas` 401, `/auth/admin` y `/auth/realms/master` 404,
+`POST /api/v1/registro` inválido → 400 `ApiError`. haltcatch y jeianell siguen en 200.
+
+**⛔ Lo que falta para difundir el link (no lo desbloquea el deploy):** el registro **sigue sin mandar
+mail** — `MAIL_MODE=stub` en el `.env` de prod, y `RegistroService` ni siquiera encola notificación.
+Fran ya eligió proveedor (**Resend**, andando en local, ver DIARIO 2026-08-13), pero prod necesita:
+verificar `nutriappok.com.ar` en Resend + cargar sus 3 registros DNS en Hostinger, una **API key de
+prod** aparte, `MAIL_FROM_ADDRESS=info@nutriappok.com.ar`, y crear esa casilla (Resend sólo envía).
+Hasta entonces, quien se registre no recibe nada y **al admin no le llega aviso**: hay que mirar la
+tabla `nutricionistas` a mano y aprobar por API/SQL (la bandeja del admin sigue diferida a Fase 3).
 
 **🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
 con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`
