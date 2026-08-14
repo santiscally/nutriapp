@@ -6,14 +6,14 @@
 // de admin era directamente inservible — esas cuatro rutas son sólo de nutricionista (C-07), así
 // que al admin lo mandaban a un 403 o lo rebotaban al home. La marca con el isotipo sí se conserva.
 
-import { Icon } from "../ui/Icon";
+import { Logo } from "../ui/Logo";
 
 export function Footer() {
   return (
     <footer className="footer">
       <div className="footer__bar-inner">
         <span className="footer__marca">
-          <Icon name="leaf" size={15} />
+          <Logo size={20} />
           NutriApp
         </span>
         <span className="footer__copy">

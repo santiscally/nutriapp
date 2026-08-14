@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { homeDe } from "../lib/home";
-import { Icon } from "../components/ui/Icon";
+import { Logo } from "../components/ui/Logo";
 
 export function Login() {
   const { me, initializing, login } = useAuth();
@@ -36,9 +36,7 @@ export function Login() {
       {/* Panel izquierdo: marca + propuesta de valor */}
       <aside className="auth__brand">
         <div className="auth__brand-top">
-          <span className="auth__brand-badge">
-            <Icon name="leaf" />
-          </span>
+          <Logo size={36} />
           <span className="auth__brand-name">NutriApp</span>
         </div>
 

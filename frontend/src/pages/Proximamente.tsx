@@ -9,6 +9,7 @@
 
 import { Link } from "react-router-dom";
 import { Icon } from "../components/ui/Icon";
+import { Logo } from "../components/ui/Logo";
 
 const PASOS = [
   {
@@ -37,9 +38,7 @@ export function Proximamente() {
 
       <main className="soon__inner">
         <div className="soon__brand">
-          <span className="auth__brand-badge">
-            <Icon name="leaf" />
-          </span>
+          <Logo size={36} />
           <span className="auth__brand-name">NutriApp</span>
         </div>
 

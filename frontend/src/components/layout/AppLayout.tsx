@@ -5,6 +5,7 @@ import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Avatar } from "../ui/Avatar";
 import { Icon } from "../ui/Icon";
+import { Logo } from "../ui/Logo";
 import { Footer } from "./Footer";
 
 // C-07 (call 56:17): el admin NO emite recetas — Gon fue explícito en que si quieren recetar se
@@ -40,9 +41,7 @@ export function AppLayout() {
       <header className="navbar">
         <div className="navbar__inner">
           <Link to={isAdmin ? "/nutricionistas" : "/dashboard"} className="navbar__brand">
-            <span className="navbar__brand-badge">
-              <Icon name="leaf" />
-            </span>
+            <Logo size={34} />
             NutriApp
           </Link>
 

@@ -36,7 +36,7 @@ export function Dashboard() {
           <h1 className="page-title">Hola, {me?.nombre} 👋</h1>
           <p className="muted">
             {data
-              ? `Tenés ${data.recetasPendientes} receta${data.recetasPendientes === 1 ? "" : "s"} pendiente${data.recetasPendientes === 1 ? "" : "s"}.`
+              ? `Tenés ${data.recetasPendientes} bono${data.recetasPendientes === 1 ? "" : "s"} pendiente${data.recetasPendientes === 1 ? "" : "s"}.`
               : "Tu resumen de hoy."}
           </p>
         </div>

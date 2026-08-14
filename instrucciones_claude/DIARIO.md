@@ -32,6 +32,33 @@
 
 ## Entradas
 
+## 2026-08-14 — Santi — frontend (isotipo de Gon puesto en la marca + 3 huecos del rename "receta → bono")
+**Qué:** Llegó el archivo del isotipo (el ramo multicolor de TBC) que quedó pendiente el 13/08, y de paso
+audité el rename contra lo que había quedado sin tocar.
+- **Logo**: componente nuevo `components/ui/Logo.tsx` (`<img>` sobre `src/assets/logo.png`) reemplazando al
+  ícono genérico `leaf` en los **5 lugares de marca**: navbar, footer, login, registro y landing. El isotipo es
+  multicolor → se sacaron las píldoras teñidas `.navbar__brand-badge` / `.auth__brand-badge` (quedaban de fondo
+  contra un logo de 7 colores); ahora va suelto, con `.logo { object-fit: contain }`.
+- **Assets generados del PNG original** (8488×11240 RGBA, recortado por bbox de alpha): `src/assets/logo.png`
+  (320px, 57 KB, entra al build con hash), `public/favicon.png` (64px), `public/apple-touch-icon.png` (180px
+  sobre blanco: iOS compone los transparentes contra negro) y `public/og-image.png` (1200×630 sobre `#16302c`).
+  **Se borró `public/favicon.svg`**: era el favicon violeta del template de Vite, sin referencias.
+- **3 huecos del rename** que quedaron con "receta" a la vista: `index.html` (`<title>`, `description`, `og:title`,
+  `og:description` — es lo que ve cualquiera a quien Gon le pase el link por WhatsApp), el saludo del Dashboard
+  ("Tenés N recetas pendientes") y el paginador de `/recetas` ("N recetas"). También `lang="en"` → `es-AR`.
+**Por qué:** el isotipo era el único ítem del feedback de Gon marcado como pendiente, y el rename estaba
+declarado como "en cualquier lugar de la webapp".
+**Problemas:** a 17px (footer) el isotipo se empasta — las nervaduras claras desaparecen. Se subió a 20px;
+de 34px para arriba lee bien tanto sobre blanco como sobre el `--ink`.
+**Impacto para el otro (Fran):** toqué `frontend/` (tu área) por pedido explícito del usuario — 9 archivos.
+Si tenés algo en vuelo sobre navbar/footer/login/registro/landing o `index.css`, ojo con el merge. El `og:image`
+apunta a `https://nutriappok.com.ar/og-image.png` (absoluta a propósito: los scrapers no resuelven relativas),
+así que **recién se ve cuando se despliegue**. Falta **verificación visual en el browser**: build y lint verdes,
+pero nadie miró las pantallas.
+**Refs:** `frontend/src/components/ui/Logo.tsx` (nuevo), `components/layout/{AppLayout,Footer}.tsx`,
+`pages/{Login,Registro,Proximamente,Dashboard,Recetas}.tsx`, `src/index.css`, `index.html`, `src/assets/logo.png`,
+`public/{favicon,apple-touch-icon,og-image}.png`.
+
 ## 2026-08-13 — Fran — integraciones/email (Resend elegido como proveedor de mail; anda en local, falta setup de PROD)
 **Qué:** Elegí **Resend** como proveedor de email y lo dejé andando **en local** contra el `SmtpMailSender` que ya
 existía. **CERO cambios de código** — Resend expone SMTP nativo, así que se prende con puras envs. En mi `.env`

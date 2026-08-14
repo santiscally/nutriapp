@@ -9,6 +9,7 @@ import { registrar } from "../api/registro";
 import { config } from "../config";
 import { CONDICIONES_FISCALES } from "../types/registro";
 import { Icon } from "../components/ui/Icon";
+import { Logo } from "../components/ui/Logo";
 
 const E164 = /^\+[1-9]\d{7,14}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -146,9 +147,7 @@ export function Registro() {
       {/* Panel izquierdo: cómo funciona la validación */}
       <aside className="auth__brand">
         <div className="auth__brand-top">
-          <span className="auth__brand-badge">
-            <Icon name="leaf" />
-          </span>
+          <Logo size={36} />
           <span className="auth__brand-name">NutriApp</span>
         </div>
 

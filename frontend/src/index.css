@@ -208,15 +208,8 @@ button {
   letter-spacing: -0.01em;
   flex: none;
 }
-.navbar__brand-badge {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: var(--primary-soft);
-  display: grid;
-  place-items: center;
-}
-.navbar__brand-badge .icon { color: var(--primary); width: 20px; height: 20px; }
+/* Isotipo de marca: es multicolor, así que va sin píldora de fondo. El tamaño lo fija el <img>. */
+.logo { object-fit: contain; flex: none; display: block; }
 .navbar__nav {
   display: flex;
   align-items: center;
@@ -343,7 +336,6 @@ button {
   color: var(--text);
   font-size: 0.8rem;
 }
-.footer__marca .icon { color: var(--primary); }
 .footer__copy { flex: 1; }
 /* Píldora "powered by <s/a>" (Simple Apps): logo navy fijo, resto con la paleta del sitio. */
 .powered-by {
@@ -1233,15 +1225,6 @@ select {
   gap: 2rem;
 }
 .auth__brand-top { display: flex; align-items: center; gap: 11px; }
-.auth__brand-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.1);
-  display: grid;
-  place-items: center;
-}
-.auth__brand-badge .icon { color: var(--primary-mint); width: 21px; height: 21px; }
 .auth__brand-name { font-size: 1.25rem; font-weight: 700; }
 .auth__value { max-width: 420px; }
 .auth__headline {
@@ -1963,8 +1946,8 @@ html, body { overflow-x: hidden; }
 
 /* ---- Próximamente (landing pre-lanzamiento, VITE_COMING_SOON=true) ----
    Pantalla única sobre el verde oscuro de marca (mismo `--ink` del panel de Login/Registro),
-   centrada y sin scroll en desktop. Reusa .auth__brand-badge/-name y .powered-by para no
-   duplicar la identidad. Todo el arte es CSS: no agrega ningún asset ni pedido externo. */
+   centrada y sin scroll en desktop. Reusa el isotipo, .auth__brand-name y .powered-by para no
+   duplicar la identidad. */
 .soon {
   position: relative;
   min-height: 100vh;

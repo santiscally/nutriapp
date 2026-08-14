@@ -14,8 +14,16 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-11** — 🟢 **EN VIVO: https://nutriappok.com.ar** con cert de Let's
+**Última actualización: 2026-08-14** — 🟢 **EN VIVO: https://nutriappok.com.ar** con cert de Let's
 Encrypt, en modo pre-lanzamiento. El deploy está **cerrado**. Detalle en el DIARIO.
+
+**🎨 ISOTIPO PUESTO (2026-08-14)** — llegó el archivo de Gon (el ramo multicolor) y cerró el único
+pendiente del feedback del 13/08. Reemplaza al ícono `leaf` en navbar, footer, login, registro y landing
+(componente nuevo `ui/Logo.tsx`); favicon, apple-touch-icon y `og-image` generados del mismo PNG. **De paso
+se taparon 3 huecos del rename "receta → bono profesional"**: `index.html` (título + metadatos de preview del
+link, que es lo que ve quien recibe la URL por WhatsApp), el saludo del Dashboard y el paginador de `/recetas`.
+**Toqué `frontend/` (área de Fran) por pedido explícito.** Build + lint verdes; **falta mirarlo en el browser**
+y **redesplegar** para que se vea en prod.
 
 **🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
 con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`

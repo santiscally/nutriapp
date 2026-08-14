@@ -156,7 +156,7 @@ export function Recetas() {
               ← Anterior
             </button>
             <span className="muted">
-              Página {data.page + 1} de {data.totalPages} · {data.totalElements} recetas
+              Página {data.page + 1} de {data.totalPages} · {data.totalElements} bonos
             </span>
             <button
               className="btn btn--sm btn--ghost"
