@@ -384,9 +384,28 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A   # control: esta
 3. **Rebuild de la SPA** con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` apuntando a
    `https://bonosapp.com.ar` (paso 2 del despliegue). Es obligatorio: esos valores se hornean en el
    bundle y la CSP tiene `connect-src 'self'` — con el origen viejo horneado, los fetch se bloquean.
-4. **Redirect URIs del realm** — agregar `https://bonosapp.com.ar/*` (y `+` en `webOrigins`) al
-   client `nutriapp-frontend` en el Keycloak de prod. Sin eso el login rompe por `invalid_redirect_uri`.
-   Se hace en la admin console del realm; el JSON del repo sólo aplica a realms nuevos.
+4. **Redirect URIs del realm** — el client `nutriapp-frontend` del Keycloak de **prod** todavía sólo
+   conoce el dominio viejo; sin esto el login rompe con `invalid_redirect_uri`. El JSON del repo no
+   sirve acá: sólo se importa en realms nuevos. Por `kcadm`, sin entrar a la consola:
+
+   ```
+   set -a; . ./.env; set +a
+   KC=/opt/keycloak/bin/kcadm.sh
+   docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
+     $KC config credentials --server http://localhost:8080/auth --realm master \
+         --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
+     ID=\$($KC get clients -r nutriapp -q clientId=nutriapp-frontend --fields id --format csv --noquotes) &&
+     $KC update clients/\$ID -r nutriapp \
+       -s 'redirectUris=[\"https://bonosapp.com.ar/*\",\"https://www.bonosapp.com.ar/*\"]' \
+       -s 'webOrigins=[\"https://bonosapp.com.ar\",\"https://www.bonosapp.com.ar\"]' &&
+     $KC get clients/\$ID -r nutriapp --fields clientId,redirectUris,webOrigins"
+   ```
+
+   > ⚠️ **`kcadm update -s <array>=[...]` REEMPLAZA el array entero, no appendea.** Lo de arriba deja
+   > **sólo** el dominio nuevo, que es lo correcto una vez que Caddy redirige el viejo con 301: el
+   > callback OIDC nunca aterriza en `nutriappok.com.ar`. Si se hace **antes** de poner el redirect,
+   > agregar también `"https://nutriappok.com.ar/*"` a las dos listas, o el login del dominio viejo
+   > queda roto en la ventana intermedia. El `get` final imprime cómo quedó: mirarlo, no asumir.
 5. **Rebuild del backend** — los textos de los mails y `MAIL_FROM_NAME` viven en el jar.
 6. **`APP_PUBLIC_URL=https://bonosapp.com.ar`** en el `.env` del VPS: de ahí salen los links de los
    mails de registro.
