@@ -88,6 +88,29 @@ lanzamiento** — y lo mismo con `nutri@nutriapp.dev`.
 El contrato REST no cambió. En local, lo más rápido sigue siendo `docker compose down -v && up -d --build`.
 **Refs:** `DEPLOY.md` (runbook corregido, fase B + B0 nuevo), `scripts/rename-db.sh`,
 `nginx/conf.d-proxied/bonosapp.conf`, `.env` y `/root/stack/Caddyfile` del VPS.
+## 2026-09-07 (4) — Fran — integraciones/email + dns (Resend: dominio bonosapp.com.ar dado de alta; faltan 3 registros en Hostinger)
+**Qué:** Decisión de remitente productivo + alta del dominio en Resend para pasar el mail a prod.
+- **Dominio remitente = `bonosapp.com.ar`** (NO nutriappok): cambiar de dominio más adelante obliga a
+  re-verificar todo en Resend (3 registros + Verify), así que se elige el dominio final ahora y se evita
+  el doble trabajo. **From = `no-reply@bonosapp.com.ar`**; **Reply-To = `info@nutriappok.com.ar`** (única
+  casilla viva hoy) hasta que Gon dé de alta `info@bonosapp.com.ar` → ahí es cambio de una línea, sin DNS.
+- El mailbox NO bloquea: Resend solo ENVÍA, se manda desde `@bonosapp.com.ar` aunque la casilla no exista.
+- Dominio agregado en Resend, región **São Paulo (sa-east-1)** → usa el setup nuevo con **CNAMEs a
+  `forge.rmta.net`** (no el MX+TXT clásico). Más seguro: no toca la raíz.
+**⚠️ Para Santi (infra) — cargar en hPanel Hostinger → ZONA DNS de `bonosapp.com.ar`, SOLO AGREGAR:**
+  | Tipo | Nombre | Contenido | TTL |
+  |------|--------|-----------|-----|
+  | CNAME | `send` | `send.forge.rmta.net` | 3600 |
+  | CNAME | `rsend` | `rsend-sae1.forge.rmta.net` | 3600 |
+  | TXT | `resend._domainkey` | `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDQO2VECzbFEtoqCvPt4l21Bmy7rm+b/pwcPByAwuR+ZeR/UXTZ3W0NMiX/Pk/UaZfP+Qz7s6/PQkNzVdabahSx+5sEScWSrS6CYj+QPcUy5FnC/xoKP7sg+DHyuJZusK5rJJi7wacVItTpv3xw8c5glR8L1NB1m8Krgq2QxokgbwIDAQAB` | Auto |
+  - **NO cargar el `_dmarc` de Resend:** la zona YA tiene `v=DMARC1; p=none` (uno solo por dominio, cumple igual).
+  - **NO tocar** MX raíz (mx1/mx2.hostinger.com), SPF raíz (`_spf.mail.hostinger.com`) ni el `_dmarc` actual.
+    El correo Hostinger vivo no se afecta (Resend va sobre subdominios `send`/`rsend`).
+  - Nombres en Hostinger: solo `send` / `rsend` / `resend._domainkey`, NO el dominio completo.
+**Secuencia (brief Resend, punto 10):** cargar registros → verificar propagación (nslookup) → Verify en Resend
+  → **recién ahí** cambiar `MAIL_FROM_ADDRESS` en el `.env` del SERVIDOR (VPS) a `no-reply@bonosapp.com.ar`.
+  Poner el remitente antes de verificar = Resend rechaza los envíos.
+**Refs:** `.env` (local, sigue en sandbox `onboarding@resend.dev`), brief de Resend.
 
 ## 2026-09-07 (2) — Santi — backend/infra/auth (el rename interno: todo pasa a bonosapp menos el repo)
 **Qué:** Segunda mitad del rebranding. La primera tanda había dejado los identificadores internos en
