@@ -3,6 +3,8 @@ package com.nutriapp.modules.receta.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -10,13 +12,16 @@ import com.nutriapp.integrations.IntegrationUnavailableException;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry;
 import com.nutriapp.integrations.health.IntegrationHealthRegistry.Proveedor;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient;
+import com.nutriapp.modules.producto.entity.Producto;
 import com.nutriapp.modules.producto.repository.ProductoRepository;
 import com.nutriapp.modules.receta.dto.ResyncCuponesResponse;
 import com.nutriapp.modules.receta.entity.CuponSyncEstado;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
+import com.nutriapp.modules.receta.entity.RecetaItem;
 import com.nutriapp.modules.receta.repository.RecetaRepository;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +49,36 @@ class CuponSyncServiceTest {
         r.setCodigo(codigo);
         r.setEstado(EstadoReceta.PENDIENTE);
         r.setCuponSyncEstado(CuponSyncEstado.PENDIENTE);
+        conItemMapeado(r);
+        return r;
+    }
+
+    /** Una receta usable en live: su producto ya tiene el id de TiendaNube escrito. */
+    private void conItemMapeado(Receta r) {
+        UUID productoId = UUID.randomUUID();
+        RecetaItem item = new RecetaItem();
+        item.setProductoId(productoId);
+        r.addItem(item);
+        Producto p = new Producto();
+        p.setNombre("ON-ROLL FEM X 60G");
+        p.setTiendanubeProductId(363154002L);
+        p.setTiendanubeVariantId(1583970721L);
+        when(productoRepository.findById(productoId)).thenReturn(Optional.of(p));
+    }
+
+    private Receta recetaConProductoSinMapear(String codigo) {
+        Receta r = new Receta();
+        r.setId(UUID.randomUUID());
+        r.setCodigo(codigo);
+        r.setEstado(EstadoReceta.PENDIENTE);
+        r.setCuponSyncEstado(CuponSyncEstado.PENDIENTE);
+        UUID productoId = UUID.randomUUID();
+        RecetaItem item = new RecetaItem();
+        item.setProductoId(productoId);
+        r.addItem(item);
+        Producto p = new Producto();
+        p.setNombre("PRODUCTO SIN MAPEAR");
+        when(productoRepository.findById(productoId)).thenReturn(Optional.of(p));
         return r;
     }
 
@@ -118,5 +153,54 @@ class CuponSyncServiceTest {
         assertThat(r.getCuponSyncError()).contains("422");
         assertThat(resp.intentados()).isEqualTo(1);
         assertThat(resp.sincronizados()).isZero();
+    }
+
+    @Test
+    void noRegistraElCuponSiUnProductoNoEstaMapeadoATiendaNube() {
+        Receta r = recetaConProductoSinMapear("RX-SIN-MAPEO");
+
+        service.registrar(r);
+
+        assertThat(r.getCuponSyncEstado()).isEqualTo(CuponSyncEstado.PENDIENTE);
+        assertThat(r.getCuponSyncError()).contains("Sin mapeo a TiendaNube", "PRODUCTO SIN MAPEAR");
+        assertThat(r.getCuponTiendanubeId()).isNull();
+        verify(tiendaNubeClient, never()).createCoupon(any());
+    }
+
+    @Test
+    void mandaElProductIdDelProductoRecetado() {
+        Receta r = receta("RX-OK");
+        when(tiendaNubeClient.createCoupon(any()))
+                .thenReturn(new TiendaNubeClient.Coupon(1L, "RX-OK", true));
+
+        service.registrar(r);
+
+        org.mockito.ArgumentCaptor<TiendaNubeClient.CouponRequest> captor =
+                org.mockito.ArgumentCaptor.forClass(TiendaNubeClient.CouponRequest.class);
+        verify(tiendaNubeClient).createCoupon(captor.capture());
+        // product id, NO variant id: con variant id la API responde 422 (verificado en vivo).
+        assertThat(captor.getValue().productIds()).containsExactly(363154002L);
+    }
+
+    @Test
+    void elMensajeAlUsuarioNoPrometeUnReintentoQueNuncaVaAFuncionar() {
+        Receta r = recetaConProductoSinMapear("RX-MSG");
+
+        service.registrar(r);
+
+        String mensaje = r.getCuponSyncEstado().mensajeDegradacion(r.getCuponSyncError());
+        assertThat(mensaje).contains("no está publicado en la tienda").doesNotContain("no está disponible");
+    }
+
+    @Test
+    void laCaidaDeLaIntegracionSiPrometeReintento() {
+        Receta r = receta("RX-CAIDA");
+        when(tiendaNubeClient.createCoupon(any()))
+                .thenThrow(new IntegrationUnavailableException("tiendanube"));
+
+        service.registrar(r);
+
+        assertThat(r.getCuponSyncEstado().mensajeDegradacion(r.getCuponSyncError()))
+                .contains("Se reintenta automáticamente");
     }
 }

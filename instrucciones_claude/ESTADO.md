@@ -14,352 +14,41 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-14** — 🟢 **EN VIVO: https://nutriappok.com.ar** con cert de Let's
-Encrypt, en modo pre-lanzamiento. El deploy está **cerrado**. Detalle en el DIARIO.
+**Última actualización: 2026-08-25** — 📧 **El mail funciona de verdad** (y TiendaNube quedó cerrado contra la
+tienda demo, ver más abajo). Suite **192/192**.
 
-**🎨 ISOTIPO PUESTO (2026-08-14)** — llegó el archivo de Gon (el ramo multicolor) y cerró el único
-pendiente del feedback del 13/08. Reemplaza al ícono `leaf` en navbar, footer, login, registro y landing
-(componente nuevo `ui/Logo.tsx`); favicon, apple-touch-icon y `og-image` generados del mismo PNG. **De paso
-se taparon 3 huecos del rename "receta → bono profesional"**: `index.html` (título + metadatos de preview del
-link, que es lo que ve quien recibe la URL por WhatsApp), el saludo del Dashboard y el paginador de `/recetas`.
-**Toqué `frontend/` (área de Fran) por pedido explícito.** Build + lint verdes; **ya desplegado** (abajo);
-**falta mirarlo en el browser**. Único ajuste posterior: en la landing, `.soon__brand` pasó de `inline-flex`
-a `flex` — compartía línea con la píldora "Próximamente" y el isotipo se le encimaba (bug viejo de la
-landing, no del logo).
+**Mail — era la última integración en stub y nunca se había ejecutado.** El stub tiraba excepción antes de
+tocar nada, así que `SmtpMailSender` jamás había enviado un mensaje. Ahora se ejercita en local con **Mailpit**
+(`docker compose --profile mail up -d`, webmail en **http://localhost:8026**; 8025 lo tiene otro proyecto).
+Verificado: 13 notificaciones viejas drenaron `QUEUED→SENT`, y el flujo de **registro** manda acuse + aviso al
+admin, y la **aprobación** manda el mail de cuenta activa. Acentos correctos (verificado sobre el `.eml` crudo).
+`MAIL_SMTP_AUTH` y `MAIL_SMTP_STARTTLS` ahora son env (antes hardcodeadas en `true`). **Para 2.3 sólo falta que
+Gon elija proveedor**: son env vars sobre un camino ya probado.
 
-**🔄 EN PROD CORRE `ff47af2` (2026-08-14, dos redeploys en el día).** Primero se subió `ccf69b0`
-(rename "receta → bono profesional" + feedback de Gon + emisor pulido): SPA recompilada **y backend
-reconstruido**, sin migraciones nuevas (12 validadas, schema en 012) → **sin cambios de DB**, con backup
-cifrado previo (`backups/*-20260814-182505.dump.gpg`). Después `ff47af2` (isotipo + huecos del rename):
-**solo SPA**, sin tocar backend ni DB, más el fix de alineación de la landing. Bundle vivo:
-**`index-Cp6tiKN0.js`** + CSS `index-CSJsWVJJ.css`. Sigue en **pre-lanzamiento**
-(`VITE_COMING_SOON=true`: `/` es la landing con CTA a `/registro`, el login en `/ingresar` sin link).
-Verificado por HTTPS público: `/` `/registro` `/ingresar` 200 con el bundle nuevo, assets de marca
-(`favicon.png`, `apple-touch-icon.png`, `og-image.png`, logo) 200, `<title>`/`og:*` con "Bonos profesionales",
-`/actuator/health` UP, issuer OIDC correcto, `/api/v1/recetas` 401, `/auth/admin` y `/auth/realms/master` 404,
-`POST /api/v1/registro` inválido → 400 `ApiError`. haltcatch y jeianell siguen en 200.
+**TiendaNube — cerrado contra la demo.** App 40301 en `thebcompanydemo.mitiendanube.com` (store **8145981**),
+todos los scopes. Cupón real emitido y verificado, con **dos productos** y restringido correctamente. Dos bugs
+que sólo aparecieron pegándole a la API real: **`coupons.products[]` lleva PRODUCT id, no VARIANT id** (con
+variant → 422, ningún cupón se habría creado nunca) y **colección vacía = 404**, no array vacío (el polling
+habría logueado ERROR cada 5 min). Guard nuevo: si un producto de la receta no está mapeado, **no se llama a la
+API** y el cupón queda PENDIENTE con el motivo — sin eso salía un cupón **sin restricción = descuento a toda la
+tienda**. Endpoints admin nuevos: `mapear-productos` y `registrar-webhooks` (ambos idempotentes).
 
-**⛔ Lo que falta para difundir el link (no lo desbloquea el deploy):** el registro **sigue sin mandar
-mail** — `MAIL_MODE=stub` en el `.env` de prod, y `RegistroService` ni siquiera encola notificación.
-Fran ya eligió proveedor (**Resend**, andando en local, ver DIARIO 2026-08-13), pero prod necesita:
-verificar `nutriappok.com.ar` en Resend + cargar sus 3 registros DNS en Hostinger, una **API key de
-prod** aparte, `MAIL_FROM_ADDRESS=info@nutriappok.com.ar`, y crear esa casilla (Resend sólo envía).
-Hasta entonces, quien se registre no recibe nada y **al admin no le llega aviso**: hay que mirar la
-tabla `nutricionistas` a mano y aprobar por API/SQL (la bandeja del admin sigue diferida a Fase 3).
+**Bonos sin cantidades** (decisión del usuario): el cupón de TiendaNube no sabe de unidades, así que
+`cantidad` quedó topeada en 1 (`@Max(1)`) y el emisor perdió el input. Se recetan N productos, uno de cada uno.
 
-**🟢 DEPLOY HECHO (2026-08-11).** Los 4 contenedores (`nutriapp-{db,keycloak,backend,nginx}`) corriendo
-con `docker-compose.prod.yml`. **NutriApp no es el front del VPS**: los 80/443 los tiene `edge-caddy-1`
-(`/root/stack`, sirve haltcatch y jeianell) y nutriapp se sumó a su red docker `web` — nginx **sin
-publicar puertos**, Caddy lo alcanza por nombre (`reverse_proxy nutriapp-nginx:80`) y le maneja el TLS.
-Verificado: 12 migraciones Flyway, `/actuator/health` UP, discovery OIDC con issuer correcto,
-`client_credentials` OK, `/auth/admin` y `/auth/realms/master` → 404, `/api/v1/*` → 401, catch-all `444`
-para Hosts ajenos, y `real_ip` tomando el cliente real sin dejarse spoofear el `X-Forwarded-For`.
-Archivos: `nginx/conf.d-proxied/` (variante HTTP-only), `docker-compose.edge.yml` (modo front único,
-sin uso acá), sección nueva de DEPLOY.md.
+**Otros:** `HttpMediaTypeNotSupportedException` → **415** (antes `/registro`, endpoint público, devolvía 500).
+Emoji fuera del mensaje de WhatsApp + **link a la tienda** en el WhatsApp y en el mail (`TIENDANUBE_STORE_URL`).
+Frontend (con permiso explícito del usuario, ver DIARIO): acciones con íconos en Pacientes y Bonos, columna
+"Acciones" alineada, notas del paciente en modal.
 
-**⚠️ Operativo — dos cosas que muerden:**
-- **`.env` de prod vive sólo en el VPS** (`/root/nutriapp/.env`, git-ignored). Secretos fuertes generados
-  el 2026-08-11; el secret del client `nutriapp-backend` se le **impuso** al realm con `kcadm` (no se
-  regeneró por consola) para cerrar el huevo-y-gallina del arranque.
-- **El Caddyfile está bind-mounteado como archivo suelto** → editarlo no le llega al contenedor y
-  `caddy reload` responde `"config is unchanged"` sin aplicar nada. Hay que `docker restart edge-caddy-1`
-  y verificar contra el admin API, no con `curl -I` (el `308` sale igual sin ruta). Ver DEPLOY.md.
+**Falta para la tienda del cliente (2.5):** instalar la app en TBC → nuevo store_id/token, correr el mapeo
+(mirar `skusSinMatch` / `pendientes`) y registrar el webhook. En local quedan **691 publicados sin mapear**:
+no están en la demo.
 
-**🚀 PRE-LANZAMIENTO (2026-08-10).** Flag de build `VITE_COMING_SOON=true` → `/` es la landing de
-"Próximamente" con CTA a `/registro`, el login pasa a `/ingresar` (sin link), y el resto queda intacto.
-Apagarlo es `false` + rebuild, sin tocar código. Infra: webroot ACME en `nginx/acme/` (el `:80` ya no
-redirige el challenge de Let's Encrypt) y DEPLOY.md con el DNS de `nutriappok.com.ar`, la emisión con certbot
-y el modo pre-lanzamiento. **Toqué `frontend/` (área de Fran) por pedido explícito** — 5 archivos, avisado en
-el DIARIO. **Bug preexistente corregido:** el snippet de build de DEPLOY.md tenía
-`VITE_API_BASE_URL=.../api` y el código le concatena `/api/v1` → todos los fetch habrían dado 404 en prod.
+**Decisión abierta (2 veces planteada, sin respuesta):** un producto sin mapear hoy sigue siendo recetable y la
+receta sale con un cupón que nunca se crea. ¿Se sacan del buscador hasta mapearse? Son ~691 de un saque.
 
-**✅ DNS RESUELTO (2026-08-11).** `nutriappok.com.ar` y `www` resuelven al VPS (`187.127.36.153` /
-`2a02:4780:6e:84b8::1`), Caddy emitió los certs por **tls-alpn-01** y renueva solo. Verificado por
-HTTPS público: `/` `/registro` `/ingresar` 200, `/actuator/health` UP, discovery OIDC con issuer
-`https://nutriappok.com.ar/auth/realms/nutriapp`, `/auth/realms/master` 404, `/api/v1/recetas` 401,
-security headers presentes, bundle con el origen correcto y `VITE_COMING_SOON=true`. haltcatch y
-jeianell siguen en 200.
-
-**⚠️ Pendiente de higiene DNS:** Hostinger autopobló `MX` (mx1/mx2.hostinger.com) y un `TXT`
-`v=spf1 include:_spf.mail.hostinger.com ~all`. Hay que **borrarlos**: el mail de la app no sale por
-Hostinger, y ese SPF va a autenticar al remitente equivocado cuando en Fase 2 se conecte el proveedor
-real (las recetas se irían a spam). No rompe nada hoy.
-
-**⛔ Bloqueantes del deploy — actualizado 2026-08-11 después de desplegar:**
-1. ~~Los 80/443 del VPS los tiene Caddy~~ **✅ RESUELTO (2026-08-11)**: nutriapp corre detrás de Caddy en la
-   red `web`, sin publicar puertos. Los security headers y el rate-limit se mudaron al `server{}` de :80 de
-   `nginx/conf.d-proxied/nutriapp.conf`, con `real_ip` para que el limitador siga viendo la IP del cliente.
-   El cert lo emite y renueva Caddy → el certbot/webroot queda de reserva para el modo front único.
-2. **Registro público sin mail** — **sigue abierto**: no se encola notificación y el proveedor es stub → nadie
-   recibe el "solicitud recibida"/"aprobada", y la bandeja de aprobación del admin está diferida a Fase 3
-   (aprobar es por API/SQL). Si Gon va a difundir el link, hay que resolver al menos el aviso al admin.
-   **Ahora es EL bloqueante funcional**: la infra ya no frena nada.
-3. ~~DNS~~ **✅ RESUELTO (2026-08-11)** — ver el bloque de arriba. ⚠️ **El dominio es `nutriappok.com.ar`**,
-   no `nutriapp.com.ar` (ese es de otro; se configuró el equivocado y se renombró todo — ver la entrada de
-   corrección del DIARIO). El par de NS quedó en `nova/cosmos.dns-parking.com`; se asigna **por dominio**:
-   haltcatch → lunar/solar, jeianell → ns1/ns2, nutriappok → nova/cosmos.
-4. ~~`BACKUP_GPG_RECIPIENT` vacío~~ **✅ RESUELTO (2026-08-11)**: clave `ed25519/CEE22F19C64220E5` generada
-   en el VPS, `BACKUP_GPG_RECIPIENT` en el `.env`, round-trip verificado (cifra → descifra →
-   `pg_restore -l` con 79 objetos). **De paso se arregló un bug real: los scripts no leían el `.env`**, así
-   que setear esa variable ahí no hacía nada y los dumps salían en texto plano con sólo un aviso por stderr.
-   ⚠️ **Queda un paso manual de Santi:** la privada está exportada en `/root/nutriapp-backup-gpg-PRIVATE.asc`
-   → guardarla fuera del host y borrarla del VPS (comandos en DEPLOY.md §Backup). Sin la privada no hay
-   restore; mientras viva en el host, un compromiso del VPS descifra también las copias de afuera.
-
-**Estado previo (2026-08-04)** — cerrada la tarea **2.4 (WhatsApp por link `wa.me`)**, **commiteadas
-las Olas 1–3** (estaban enteras en el working tree) y hecha una **tanda de 11 cambios pedidos por el usuario**
-(bloque 🆕 abajo). `mvn verify` **149 unit + 1 IT**.
-
-**🆕 TANDA DE CAMBIOS (2026-08-04) — back y front, verificada e2e.** Dos migraciones nuevas (`V011`, `V012`).
-
-- **Se eliminó la configuración global de %** (`V011`). Convivían un global y un override por nutricionista
-  donde `NULL` = "usá el global": el mismo dato en dos lugares. Ahora cada una tiene los suyos, **obligatorios**.
-  La migración hereda el global vigente (verificado: `ana.test` conservó su 30/8, el resto quedó en 15/10) y las
-  recetas ya emitidas no se tocan. Se borró el módulo `configuracion` y la pantalla `/configuracion`;
-  **el descuento del emisor ahora sale de `GET /me`**. Las altas nuevas arrancan con
-  `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT`/`..._COMISION_...` (15/10) y el admin los ajusta al aprobar.
-- **Gestión de cuentas del admin** (`V012`, columna `activo`): **desactivar/reactivar** (reversible, conserva
-  todo), **borrar** (Keycloak + fila + pacientes + archivos) y **reset de contraseña**. Borrar da **409 si
-  emitió recetas** — están en los cierres — y el mensaje manda a desactivar.
-- **Cambio de contraseña propio** (`PUT /perfil/password`): pide la actual y la valida contra Keycloak. Es lo
-  único que cada quien puede cambiar de sí mismo además de la foto.
-- **La nutricionista dejó de ver facturación**: fuera `ordenTotal`, `ventasGeneradas*` y ticket promedio del
-  detalle, dashboard, cierre mensual y estadísticas. Sólo ve su comisión. **El admin lo conserva** en el
-  consolidado, que es con lo que liquida.
-- **Pantalla `/catalogo` para el admin**: catálogo completo con los despublicados y **el motivo en castellano**,
-  más filtro "sin match del maestro". Contra el catálogo real: **2267 productos, 699 recetables, 104 sin match,
-  484 bloqueados**.
-- **UI**: filtros del buscador plegados detrás de un botón + chips de lo aplicado + **slider de precio de doble
-  pulgar** (escala logarítmica: el catálogo va de $4.011 a $1.421.999); filtros de recetas alineados; `/perfil`
-  en dos columnas y con aire; **notas de pacientes editables** y visibles en el listado; footer reducido con la
-  barra de copyright + Simple Apps **fija**; modal acotado al viewport con scroll interno.
-- **Bug preexistente arreglado**: cualquier ruta inexistente devolvía **500** en vez de 404.
-
-**🔎 Sobre el "no me tomaba la contraseña":** no era un bug. El flujo registro → aprobar → login funciona, y el
-usuario en cuestión tiene su credencial en Keycloak y está habilitado; lo que hay son 3 intentos fallidos (no
-alcanzan a bloquear, el umbral es 30). O fue un typo, o se probó antes de aprobar (ahí el error es
-`Account disabled`). **Lo que sí faltaba era una vía de recuperación** — no hay "olvidé mi contraseña" — y eso
-es lo que se construyó (reset por admin + cambio propio).
-
-**⚠️ Contrato — Fran tiene que espejar (hay cambios que ROMPEN):** `RecetaResponse.Conversion` pierde
-`ordenTotal`; `DashboardResumen` pierde `ventasGeneradasMesActual`; `CierreMensual` pierde `ventasGeneradas` y
-`Detalle.ordenTotal`; `EstadisticasMes` pierde `ventasGeneradas`; `NutricionistaAdmin` pierde
-`descuentoPctEfectivo`/`comisionPctEfectiva` (ahora `descuentoPct`/`comisionPct` son obligatorios) y suma
-`activo`; `Paciente` suma `notas`/`fechaNacimiento`; `ProductoFiltros` suma `precioMin`/`precioMax`;
-**`GET /configuracion` ya no existe**. Todo el front del repo ya está actualizado.
-
-**🆕 2.4 — WhatsApp por link `wa.me` CERRADA (2026-08-04), back y front.** El envío por WhatsApp pasa a ser
-**manual**: `RecetaResponse` trae `waMeUrl` y la nutricionista toca un botón que le abre el chat con la
-paciente con el mensaje ya escrito. Se **sacó** WhatsApp como integración: `integrations/whatsapp/**`, el
-canal `WHATSAPP` de la cola (migración **`V010`**, borra las filas y deja el CHECK en `EMAIL`), la config
-`WHATSAPP_*` y el proveedor del panel (`/admin/integraciones/estado` devuelve **3**). **El único canal
-automático es el email.** `mvn verify` **147 unit + 1 IT**; front `tsc`/`oxlint`/`build` verdes. Verificado e2e contra
-el stack: migración aplicada, link correcto en PENDIENTE y ausente en las demás, emisión nueva con una sola
-notificación EMAIL. Motivo: el envío automático exigía WABA + template aprobado por Meta (trámites del
-cliente) y costo por conversación. Detalle y decisiones en DIARIO; `03-integraciones-apis.md §4` reescrito.
-
-**⚠️ Contrato — Fran tiene que espejar:** `RecetaResponse` suma **`waMeUrl?: string | null`** (aditivo),
-`RecetaNotificacion.canal` ya sólo puede ser `"EMAIL"`, y el panel de integraciones tiene 3 proveedores.
-Las pantallas y los types del front ya quedaron actualizados de mi lado.
-
-**📦 Git:** las Olas 1, 2 y 3 estaban **sin commitear** (127 archivos). Quedaron en 5 commits temáticos
-(backend olas 1-2 / backend ola 3 / frontend / infra / docs) + el de 2.4. **Sin push todavía.** Lo único
-que sigue fuera de git es la transcripción de la call (`transcripcion-2026-07-31-call-gon-leo.pdf|.txt`):
-material del cliente, misma política que el presupuesto y el Excel maestro — decidir si se commitea.
-
-**Fase actual:** Fase 1 — Backend completo con stubs. **✅ COMPLETA (1.1–1.8), 2026-07-27.** Núcleo + webhook (1.4) + clientes HTTP reales (1.6) + estadísticas + config de negocio por admin + **integración Testcontainers (1.7)** + **CI (1.8)**. Arrancada Fase 2: **resiliencia 2.7–2.9 en stub (2026-07-27)**. `mvn verify` = **72 unit + 1 IT, BUILD SUCCESS**.
-
-**🔔 DEMO CON EL CLIENTE HECHA (2026-07-31, Gon + Leo) — hay backlog nuevo.** La plataforma les gustó
-("espectacular", tipografía Comic Neue incluida). Salieron **17 cambios** (16 de la call + la foto de perfil de la nutricionista, C-17), ordenados en 4 olas en
-**`06-cambios-post-demo-2026-07-31.md`** (cada ítem con timestamp de la call). Los tres que más pegan:
-(1) la comisión se calcula **solo** sobre el total real de TiendaNube, con descuentos **acumulables** (15%+30%=45%);
-(2) **los precios salen de casi toda la app** — solo se ven en el buscador de la emisión, con leyenda de "aproximado";
-(3) aparece la **liquidación**: estado terminal `LIQUIDADA` + cierre consolidado del admin con exportable.
-Además el **admin deja de poder emitir recetas**. Transcripción completa en `transcripcion-2026-07-31-call-gon-leo.pdf|.txt`.
-**Segundo tema de la call — proyecto nuevo, alcance confirmado:** un **data warehouse de toda la data de Contabilium**
-(productos, ventas, comprobantes, clientes, stock, compras) con **sync diario automático**, para **dejar de pegarle a
-las APIs** — las apps leen del warehouse, nutriapp incluido. Insumos + relevamiento completo de la API oficial
-(entidades, rate limits, matemática de requests, arquitectura, fases, riesgos) en `../../datawarehouse-contabilium/docs/nuevo-proyecto-tbc-insumos.pdf` (proyecto aparte, fuera de este repo).
-Sin cotizar todavía; falta el detalle (cuánta historia, qué reportes, quién lo usa) porque los 9 min donde se habló
-no quedaron transcriptos.
-
-**Resiliencia 2.7–2.9 (scaffold en stub, 2026-07-27):** 3 endpoints admin nuevos + jobs que degradan con mensaje explícito
-y se encienden al pasar a `live` en Fase 2. **2.7:** `GET /admin/integraciones/estado` (por proveedor: modo/disponible/
-pendientes/últimoError/últimaSync) + `RecetaResponse.cuponSyncMensaje` (nullable, aditivo) + 503 con texto por proveedor.
-**2.8:** `CuponSyncService.registrar()` (extraído de `emitir`, compartido) + `CuponSyncJob` (@Scheduled) + `POST /admin/tiendanube/resync-cupones`.
-**2.9:** `ProductoSyncService` (conciliación por SKU + `last_synced_at`) + `POST /admin/contabilium/sync-productos` (stub → 503).
-`IntegrationHealthRegistry` in-memory para disponible/últimoError. +11 tests. Sin migración. **Front: panel `/integraciones`
-(solo admin) HECHO** — card por proveedor con badges modo/disponible/pendientes + botones reintentar-cupones / sincronizar-catálogo
-(build+lint OK). Detalle en DIARIO.
-
-**1.7/1.8 (2026-07-27):** `RecetaFlowIT` (Testcontainers Postgres, flujo emisión→webhook→APLICADA→cierre) vía failsafe (`mvn verify`; `mvn test` sigue sin Docker). CI `.github/workflows/ci.yml` (backend `sh mvnw verify` + frontend tsc/lint/build, push/PR a main). `.gitattributes` nuevo (EOL LF para scripts, cierra el pendiente de Fran).
-
-**Parámetros de negocio configurables por admin (2026-07-27):** `modules/configuracion/` — descuento (fijo global) y comisión editables en runtime (`GET /configuracion`, `PUT /admin/configuracion`, tabla `configuracion_sistema` seed 15/10). `RecetaService`/webhook leen de ahí; `RecetaCreateRequest` ya no lleva `descuentoPct`. Front: pantalla `/configuracion` (solo admin) + `EmitirReceta` lo muestra read-only. Cierra preguntas abiertas #1/#2 (valor exacto TBD con Gon).
-
-**⚠️ Prioridad #1 — rediseño de UI COMPLETO (2026-07-27, R.1–R.7):** todas las pantallas alineadas al mockup
-(`instrucciones_claude/Diseño gestor recetas nutricionista/`). Usuario autorizó implementarlo **sobre main** (Comic Neue).
-**Pendiente único:** verificación visual e2e con el stack corriendo. Se commitea todo a main. **Hecho y verificado (build+lint OK):** tokens del
-sistema (`index.css`), **shell sidebar→top navbar + footer** (`AppLayout`+`Footer`), tiles reestilados, **página nueva
-`/cierre-mensual`** (endpoint real), Dashboard con header/acciones/4º tile + **gráficos reales** (barras recetas/mes +
-tendencia comisión) contra el **nuevo `GET /dashboard/estadisticas`** (backend, suite 58/58), y **Login / Registro /
-RecetaEmitida** alineadas al mockup (split-screen). **Falta:** verificación visual e2e + fine-tuning opcional de
-Emitir/Recetas/Pacientes (ya heredan tokens+navbar; consistentes). Detalle R.1–R.7 en `04-plan-de-fases.md`.
-**Ojo Fran:** el layout y los tokens cambiaron; NO toqué tu sección de este ESTADO (regla de propiedad).
-
-**En qué estoy ahora:**
-- **Fase 1 núcleo hecha y verificada** contra el stack real. Todo lo que Fran flaggeó en 500 anda:
-  módulo `notificacion` (cola + `NotificacionDispatcher` scheduled + templates), `emitir` encola EMAIL+WHATSAPP,
-  `RecetaResponse.notificaciones`, `POST /recetas/{id}/anular` + `/reenviar` (guards de estado → 409),
-  `DELETE /pacientes/{id}` → 409 si hay PENDIENTES, `RecetaVencimientoJob` (cron diario + catch-up al startup),
-  `GET /dashboard/cierre-mensual`, y **registro + admin vía Keycloak Admin API** (`POST /registro` público crea
-  usuario deshabilitado + PENDIENTE; `GET/POST /admin/nutricionistas` aprobar/rechazar habilita/deshabilita en KC).
-- **Webhook TiendaNube (1.4) hecho** (`modules/webhook/`): `POST /webhooks/tiendanube` (HMAC hex tiempo-constante +
-  `webhook_events` idempotente + 200 inmediato), procesamiento async (`getOrder` fuera de tx → matcheo cupón → **APLICADA**
-  + comisión), polling de respaldo (24h), y **simulador de dev** (`POST /api/v1/dev/tiendanube/orden-pagada`, `@Profile("dev")`)
-  para llegar a APLICADA en stub → habilita la demo con Gon. En stub degrada sin romper (evento queda para reintento).
-- **Clientes HTTP reales (1.6) hechos** (`integrations/*/Http*|Smtp*|CloudApi*`): Contabilium (token 24h + throttle 15/10s),
-  TiendaNube (UA + backoff 429, 4 métodos), SMTP mail, WhatsApp Cloud API. Se registran solo con `mode=live`; testeados con
-  WireMock (`wiremock-standalone` test dep). **Conectar de verdad es Fase 2** (credenciales de Gon).
-- Integraciones externas siguen en `mode=stub` (degradan sin romper). Keycloak Admin es always-live (nuestro IdP).
-- Backend local en **:8088**, Keycloak :8081, Postgres :5432. Login dev `nutri@nutriapp.dev` / `test1234` (y `admin@nutriapp.dev`).
-- **Review pasado** (code + security): fixes aplicados + **suite de tests unitarios (38, `mvn test`)** + smokes e2e
-  (`smoke-fase1.sh` 17/17, `smoke-webhook.sh` 13/13). Hardening de Fase 3 (service-account KC, rate limiting `/registro`
-  **y `/webhooks`**) documentado en DIARIO — no bloquea.
-
-**OLA 1 + C-01 EN CURSO (2026-08-01). Hecho y verificado e2e — `mvn test` 97 unit, BUILD SUCCESS:**
-- ✅ **C-01 % de descuento y comisión por nutricionista**: migración `V007` (nullable = usa el global),
-  `ParametrosNegocioService` como único resolutor override→global, `PUT /admin/nutricionistas/{id}/parametros`.
-  El % se snapshotea en la receta al emitir/convertir. `0%` es override válido; sólo `null` cae al global.
-- ✅ **C-05 estado `LIQUIDADA`**: migración `V006` + `LiquidacionService` idempotente +
-  `POST /api/v1/admin/liquidaciones` (`admin:manage`, 403 para nutricionista). Los cierres cuentan
-  `APLICADA` **e** `LIQUIDADA` (liquidar no deshace la conversión); `findLiquidables` filtra sólo las impagas.
-- ✅ **C-04 cierre por fecha de pago real** (`ordenPaidAt`, no `aplicadaAt` ni emisión).
-- ✅ **C-03 verificado**: la comisión ya salía del total real de TiendaNube. Sin cambios.
-- ✅ **C-14 inactivos de Contabilium** no se publican (estado desconocido → se asume activo, defensivo).
-- 🐛 **2 bugs preexistentes del working tree, arreglados de paso**: NPE que tumbaba la sync entera de catálogo
-  (`Map.of().get(null)` con conceptos sin rubro) y un test con fixture desactualizado. Detalle en DIARIO.
-
-**⚠️ Contrato cambiado — Fran tiene que espejar:** `RecetaResponse.Conversion.liquidadaAt` (nullable),
-`CierreMensualResponse.Detalle.liquidadaAt` (nullable), `EstadoReceta` suma `"LIQUIDADA"` (el front tiene 4 valores),
-y la fila de la bandeja de admin suma `descuentoPct`/`comisionPct` (override, **campo ausente si es null**) +
-`descuentoPctEfectivo`/`comisionPctEfectiva` (ya resueltos contra el global).
-
-- ✅ **C-07 admin sin recetas (2026-08-02)**: el rol realm ADMIN dejó de arrastrar `recetas:*`/`pacientes:*`/
-  `productos:read`/`dashboard:read` → **403 real**, no sólo menú oculto (aplicado en el realm JSON **y** por
-  `kcadm` sobre el Keycloak vivo). Front: nav por rol, CTA oculto, `RequireRol` por ruta, landing por rol.
-- ✅ **C-02 precios sólo en emisión (2026-08-02)**: `RecetaResponse.Item` sin `precioLista`; sin importes en
-  detalle, éxito y dashboard (ahí ahora se muestra la **venta real** de TiendaNube, "—" si no convirtió);
-  leyenda de "valores aproximados" + "Total estimado" en el carrito.
-
-**⚠️ Falta verificación visual** de C-07 y C-02: está todo verificado por contrato (API, typecheck, build) pero
-nadie miró las pantallas todavía. Stack arriba: back `:8088`, front `:5173`, usuarios `nutri@`/`admin@nutriapp.dev`.
-
-- ✅ **C-09 bandeja de nutricionistas (2026-08-02)**: `/nutricionistas` sólo admin, tabs pendientes/aceptadas/
-  rechazadas, ficha con aprobar/rechazar + set de los % de C-01 (vacío = global). **La casa del admin ahora es
-  esta pantalla.** Verificado e2e: registro → pendiente → login bloqueado → aprobar con 30%/8% → login OK.
-- ✅ **Mensajes de login traducidos**: `Account disabled` (el caso más común: cuenta pendiente de aprobación),
-  brute-force y error de red ya no se muestran en inglés ni como `Failed to fetch`.
-
-- ✅ **C-06 cierre consolidado del admin (2026-08-02)**: `GET /admin/liquidaciones/consolidado?desde&hasta`
-  (rango configurable, fechas inclusive, sin paginar) + pantalla `/cierres` con tiles, botón "Liquidar N" por
-  nutricionista y **exportable CSV** listo para Excel es-AR (`;` + BOM + decimales con coma, `lib/csv.ts`).
-  Verificado e2e: $2.050 pendientes en 2 recetas → liquidar → histórico intacto, pendiente 0, reintento idempotente.
-  **Falta la columna CUIT del exportable** (la pidió Gon): el campo no existe hasta C-08.
-
-- ✅ **C-08 + C-17 (2026-08-02)**: subsistema de archivos (`nutricionista_archivos`, bytes en la DB para que
-  entren en el backup existente, whitelist de content-type, uno vigente por tipo). Registro **multipart** con
-  DNI/CUIT/condición fiscal + adjunto de matrícula (el admin lo abre desde la ficha); **el CUIT ya sale en el
-  exportable de C-06**. Foto de perfil en `/perfil`, redimensionada en el server a 256px y servida como data
-  URI dentro de `/me` (220 KB → 14 KB en la prueba). `mvn test` **113 unit**.
-  - **Dos bugs reales encontrados y arreglados**: `@Lob byte[]` no mapea a `BYTEA` en Hibernate 6 (va
-    `@JdbcTypeCode(SqlTypes.VARBINARY)`), y la compensación de Keycloak del registro no cubría fallas en el
-    **commit** → usuario huérfano. Patrón: forzar `saveAndFlush` dentro del bloque protegido.
-
-**OLA 1 y OLA 2 CERRADAS** (C-01…C-09, C-14, C-17). **Ola 4** (TiendaNube real) necesita las credenciales
-del Partner Portal. Pendiente menor: confirmar con Leo si el campo `matricula` va como "matrícula nacional"
-(call 42:34).
-
-**🆕 OLA 3 CERRADA (2026-08-03), back y front.** Llegó el Excel maestro de Gon → C-10, C-11, C-12 y C-13
-hechos, más los 3 ajustes nuevos que vinieron en el mismo mail (código de barras, `Tipo`, rubro).
-`mvn verify` **141 unit + 1 IT BUILD SUCCESS**, migración `V009`, front en verde.
-(De paso: `RecetaFlowIT` estaba roto desde el 2026-07-28 — dependía del seed de `V003` que se vació ese
-día. Ahora crea su propio producto.)
-**Análisis, decisiones y plan completos en `07-maestro-articulos-y-catalogo.md`.**
-
-- **Importador C-12**: `POST /admin/productos/importar-maestro` (multipart) + `GET /admin/productos/maestro/estado`.
-  Parser por **nombre de columna** (nunca por posición), `fastexcel-reader`. Verificado con el archivo real:
-  **2163 de 2225 filas aplicadas, 62 sin match, 0 rechazadas**, 26 despublicados, 8447 tags.
-- **Dos escritores sin campos compartidos** (Contabilium vs maestro) → importar y sincronizar son
-  conmutativos; `publicado` es derivado (`PublicacionPolicy`). Verificado: el sync corrido después del
-  import no pisó nada del maestro.
-- **`categoria` cambió de significado**: antes era el Rubro de Contabilium ("Producto terminado" para el
-  99,8 %), ahora es la del maestro (23 valores). El rubro se mudó a `rubro`/`rubro_id`.
-- **Buscador C-10 rankeado**: nombre → SKU → código de barras → descripción → tags (los tags al final, 2026-08-04).
-  **C-11**: filtros de departamento/categoría/subcategoría/laboratorio + `taxonomia` en cascada.
-
-- **Frontend hecho** (`tsc`/`oxlint`/`build` verdes): card de import en `/integraciones` (examinar +
-  reporte; **avisa como advertencia, no como éxito, si hubo filas sin match**), filtros en cascada en el
-  buscador, miniatura por fila y modal "Más info" con imagen, datos, texto largo y tags clickeables
-  (click en tag = filtrar por tag). La imagen es un link al CDN de TiendaNube: no cuesta storage, pero
-  solo la tiene el 24 % de lo recetable.
-
-**⚠️ A consultar con Gon (ya decidido de nuestro lado):** el `Tipo` de Contabilium tiene **tres** valores
-(Producto 2004 / **Combo 209** / Servicio 54). "Solo quedarnos con Producto", tal como lo pidió, sacaba
-también los 209 combos (packs y exhibidores ON-ROLL) → el catálogo caía de 702 a 496. **Se dejaron los dos**
-(`CATALOGO_TIPOS_ERP=Producto,Combo`, default en compose y `.env.example`) → **699 recetables, 203 combos**.
-Volver a su versión literal es cambiar el env var y re-sincronizar.
-
-- **CORS para `:5174` + registro en una pantalla (2026-08-03):** levantar el front en 5174 rompía login y
-  registro. Hay que tocar **tres** lugares: `app.cors.allowed-origins`, el **`.env` local** (pisa el default
-  del compose) y los **`redirectUris` del client `nutriapp-frontend` en Keycloak** (tiene `webOrigins:["+"]`,
-  los orígenes salen de ahí). Los dos puertos quedaron permitidos en todos lados **y aplicados al Keycloak
-  vivo** por Admin REST API. El registro (11 campos desde C-08) pasó a card de 720px con grilla de 3
-  columnas + compactación por alto de viewport, y se emparejó la altura de inputs/selects/file inputs.
-
-**⚠️ Falta verificación visual** de las pantallas nuevas y del registro: todo verde por contrato, nadie las
-miró. Stack arriba: back `:8088`, **front `:5174`** (el 5173 lo ocupa imedba en esta máquina).
-
-**⚠️ Contrato — Fran tiene que espejar (todo aditivo, nada se rompe):** `ProductoResponse` suma
-`codigoBarras`, `descripcionWeb`, `departamento`, `subcategoria`, `tags[]`; `ProductoFiltrosResponse` suma
-`departamentos`, `subcategorias`, `laboratorios`, `taxonomia`. **`categoria` cambió de datos, no de forma.**
-`principioActivo` y `presentacion` siguen existiendo pero son siempre `null` (no existen en ninguna fuente —
-esa búsqueda la cubren los tags).
-
-**Usuarios de prueba:** `nutri@nutriapp.dev` (nutricionista, % global), `admin@nutriapp.dev` (admin),
-`ana.test@nutriapp.dev` (nutricionista aprobada con 30%/8%, creada verificando C-09). Todos con `test1234`.
-Olas 3 y 4 bloqueadas (Excel maestro + credenciales de TiendaNube).
-
-**Estado previo (Fase 1 CERRADA — Fase 2 / pendientes menores):**
-- **Verificación visual e2e del rediseño** (único pendiente del rediseño; no bloquea): levantar stack y revisar en vivo.
-- **Fase 2 — integraciones reales** (necesita a Gon: credenciales + tienda demo TiendaNube + proveedor mail/WhatsApp).
-  Resiliencia 2.7–2.9 **ya hecha en stub** (backend + panel front `/integraciones`) — al conectar los clientes reales
-  drena lo acumulado sin tocar código.
-- **✅ Contabilium CONECTADO LIVE contra prod (2026-07-28):** credenciales del `.env` validadas (J&L NEO PHARMA SAS,
-  2266 productos / 50 páginas). **Fix de charset UTF-8** en `HttpContabiliumClient` (venían mojibake los nombres con Ñ).
-  Probe read-only dev nuevo (`GET /dev/contabilium/probe`). **`CONTABILIUM_MODE=live` persistido en `.env`** (machine-local).
-  **Catálogo SIN seed:** `V003` vaciado → arranca en 0 productos; se puebla con el botón "Sincronizar catálogo" (`/integraciones`,
-  admin) → sync real. **Stack reconstruido** (`down -v`+`up --build`): 0 productos verificado, backend live, front `:5173` arriba.
-  **TiendaNube sigue en stub.** Detalle en DIARIO.
-- **✅ Mejoras de catálogo (2026-07-28):** filtros **reales** (marca←Subrubro, categoría←Rubro de Contabilium + "solo con stock";
-  fuera laboratorio/presentación que no existen), **paginador** en el emisor, **sync asíncrono** (202 + polling + toasts), **recetas
-  hasta 10 productos** (`RECETA_MAX_ITEMS`), y **footer "powered by `<s/a>`"** (Simple Apps). Migración `V005` (columna `categoria`).
-  **Falta re-sincronizar** para poblar categoria/marca en los 2266 (el sync por SKU los actualiza). Contrato de `/productos` cambió
-  (params + `/filtros`); type espejo del front actualizado. Verificado: back compila (main+tests), front build verde, endpoints OK.
-- **Hardening Fase 3 EN CURSO:** ✅ rate-limiting `/registro` y `/webhooks` (token bucket por IP, 429+Retry-After, `mvn verify` 84 unit+1 IT). ✅ **Keycloak Admin por service-account** (`client_credentials` de `nutriapp-backend`, roles `realm-management` `manage-users`+`view-users`+`view-realm` — sale el superuser del master; verificado registro→aprobar en vivo). ✅ **`docker-compose.prod.yml` + nginx TLS + backup/restore (2026-07-28):** nginx único servicio público (80/443), reverse proxy single-domain (`/`→SPA, `/api/`→backend, `/auth/`→Keycloak) + security headers + rate-limit de red + CSP; **bring-your-own-cert** (`nginx/certs/`, git-ignored) + `scripts/gen-selfsigned-cert.sh`; Keycloak modo prod bajo `/auth`; secretos fail-closed; `scripts/{backup,restore}-db.sh`; runbook `DEPLOY.md`. YAML validado; boot real = paso de deploy (Docker + dominio). **Sigue (ops + al confirmar hosting con Gon):** regenerar el secret del client en el realm de prod + Let's Encrypt/renovación. Todo committeado local (branch main, 15+ commits adelante de origin, **sin push**).
-
-**Bloqueado por el otro:** nada.
-
-**Notas para Fran:**
-- El stack levanta con `docker compose up -d db keycloak backend`. **En la máquina de Santi el backend queda en
-  `:8088`** (el 8080 lo ocupa plataforma GIA) — en una máquina limpia el default del compose es `:8080`. Ajustá
-  `VITE_API_BASE_URL` según tu `.env`.
-- Login: ROPC contra client `nutriapp-frontend`, realm `nutriapp`, `http://localhost:8081`. Usuario de prueba:
-  `nutri@nutriapp.dev` / `test1234` (rol NUTRICIONISTA, ya aprobado, con 4 pacientes + 6 recetas seedeadas).
-- Contrato REST en `05-api-endpoints.md` (congelado durante tus vacaciones). NO hay mocks: todo va al backend real.
-- Tu plan de sprint está en `04-plan-de-fases.md` §Fase 0, ordenado por prioridad (F.1 auth+layout → F.2 Emitir Receta
-  → F.3 Dashboard → F.4 Pacientes → F.5 Recetas → F.6 Registro).
-
----
+**Sin commitear**: todo en el working tree.
 
 ## Fran / frontend
 

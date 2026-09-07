@@ -27,6 +27,16 @@ public interface TiendaNubeClient {
      */
     List<Order> getPaidOrdersSince(Instant since);
 
+    /** GET /{store_id}/products?page=&per_page= — catálogo de la tienda, para mapear ids por SKU. */
+    ProductPage listProducts(int page, int perPage);
+
+    /** GET /{store_id}/webhooks — qué está registrado hoy, para no duplicar suscripciones. */
+    List<Webhook> listWebhooks();
+
+    /** POST /{store_id}/webhooks — la URL debe ser HTTPS pública o TiendaNube la rechaza. */
+    Webhook createWebhook(String event, String url);
+
+    /** {@code productIds} son <b>product ids</b>, NO variant ids: con variant id la API responde 422. */
     record CouponRequest(
             String code,
             BigDecimal valuePct,
@@ -36,6 +46,16 @@ public interface TiendaNubeClient {
     ) {}
 
     record Coupon(long id, String code, boolean valid) {}
+
+    /** {@code hasNext} sale del header {@code Link rel="next"}: pedir una página de más da 404, no vacío. */
+    record ProductPage(List<Product> items, boolean hasNext) {}
+
+    record Product(long id, String name, List<Variant> variants) {}
+
+    /** {@code sku} es la clave de conciliación con el catálogo local; puede venir null. */
+    record Variant(long id, String sku) {}
+
+    record Webhook(long id, String event, String url) {}
 
     /**
      * Subset del objeto order que usamos para detectar la conversión.

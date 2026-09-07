@@ -98,12 +98,14 @@ public class ProductoSyncService {
         try {
             // Rubros/subrubros una sola vez por sync (rubro=categoría, subrubro=marca).
             RubrosLookup lk = contabiliumClient.rubrosLookup();
+            // Una vez por sync, no por producto: son ~2266 y el valor no cambia durante la corrida.
+            boolean catalogoMapeado = productoRepository.existsByTiendanubeProductIdIsNotNullAndDeletedAtIsNull();
             int page = 1;
             while (true) {
                 ConceptoPage cp = contabiliumClient.buscarConceptos("", page);
                 for (Concepto c : cp.items()) {
                     revisados++;
-                    switch (conciliar(c, lk, syncedAt)) {
+                    switch (conciliar(c, lk, syncedAt, catalogoMapeado)) {
                         case CREADO -> creados++;
                         case ACTUALIZADO -> actualizados++;
                         case SIN_CAMBIOS -> sinCambios++;
@@ -126,7 +128,7 @@ public class ProductoSyncService {
     }
 
     /** Upsert de un concepto por SKU. Cada save/find corre en su propia tx (repo por defecto). */
-    private Resultado conciliar(Concepto c, RubrosLookup lk, Instant syncedAt) {
+    private Resultado conciliar(Concepto c, RubrosLookup lk, Instant syncedAt, boolean catalogoMapeado) {
         String sku = c.codigo();
         if (sku == null || sku.isBlank()) {
             log.warn("[contabilium-sync] concepto sin código/SKU (id={}), se saltea", c.id());
@@ -136,7 +138,7 @@ public class ProductoSyncService {
         Producto existente = productoRepository.findBySkuAndDeletedAtIsNull(sku).orElse(null);
         Producto p = existente != null ? existente : nuevo(sku);
 
-        boolean cambio = aplicar(p, c, lk);
+        boolean cambio = aplicar(p, c, lk, catalogoMapeado);
         p.setContabiliumId(c.id());
         p.setLastSyncedAt(syncedAt);
         productoRepository.save(p);
@@ -161,7 +163,7 @@ public class ProductoSyncService {
      * (categoría, subcategoría, departamento, laboratorio, descripción web, imagen, tags) no se tocan
      * acá aunque estén vacíos — si no, cada sync borraría lo importado. Ver 07-...md §3.2.
      */
-    private boolean aplicar(Producto p, Concepto c, RubrosLookup lk) {
+    private boolean aplicar(Producto p, Concepto c, RubrosLookup lk, boolean catalogoMapeado) {
         // precioFinal (con impuestos) es el que ve el paciente; si falta, caemos al precio base.
         BigDecimal precio = c.precioFinal() != null ? c.precioFinal() : c.precio();
         // Subrubro→marca (en esta cuenta el subrubro ES la marca comercial — Gon lo reconfirmó en el
@@ -196,7 +198,7 @@ public class ProductoSyncService {
         p.setActivoErp(activoErp);
         // Derivado de todo lo anterior + de lo que haya dejado el maestro. Una sola definición
         // compartida con el importador (PublicacionPolicy).
-        cambio |= publicacionPolicy.aplicar(p);
+        cambio |= publicacionPolicy.aplicar(p, catalogoMapeado);
         return cambio;
     }
 

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
+import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.nutricionista.repository.NutricionistaRepository;
@@ -39,6 +40,7 @@ class AdminNutricionistaServiceTest {
     @Mock ArchivoService archivoService;
     @Mock RecetaRepository recetaRepository;
     @Mock PacienteRepository pacienteRepository;
+    @Mock NotificacionService notificaciones;
 
     private AdminNutricionistaService service;
 
@@ -49,7 +51,7 @@ class AdminNutricionistaServiceTest {
     void setup() {
         service = new AdminNutricionistaService(
                 repository, keycloak, new ParametrosNegocioService(repository), archivoService,
-                recetaRepository, pacienteRepository);
+                recetaRepository, pacienteRepository, notificaciones);
 
         nutri = new Nutricionista();
         nutri.setId(id);
@@ -121,7 +123,7 @@ class AdminNutricionistaServiceTest {
 
         assertThatThrownBy(() -> service.eliminar(id))
                 .isInstanceOf(ConflictException.class)
-                .hasMessageContaining("3 recetas emitidas")
+                .hasMessageContaining("3 bonos profesionales emitidos")
                 .hasMessageContaining("Desactivala");
 
         verify(keycloak, never()).deleteUserOrFail(anyString());
@@ -193,5 +195,26 @@ class AdminNutricionistaServiceTest {
         verify(keycloak).setEnabled("kc-123", true);
         assertThat(resp.estadoValidacion()).isEqualTo("APROBADA");
         assertThat(resp.activo()).isTrue();
+        verify(notificaciones).encolarAprobacion(nutri);
+    }
+
+    @Test
+    void rechazar_avisaElMotivoAQuienSeRegistro() {
+        nutri.setEstadoValidacion(EstadoValidacion.PENDIENTE);
+
+        var resp = service.rechazar(id, "La matrícula no es legible");
+
+        assertThat(resp.estadoValidacion()).isEqualTo("RECHAZADA");
+        verify(keycloak).setEnabled("kc-123", false);
+        verify(notificaciones).encolarRechazo(nutri, "La matrícula no es legible");
+    }
+
+    /** Desactivar no es rechazar: no se le manda ningún mail. */
+    @Test
+    void desactivar_noEncolaNotificacion() {
+        service.desactivar(id);
+
+        verify(notificaciones, never()).encolarRechazo(any(), anyString());
+        verify(notificaciones, never()).encolarAprobacion(any());
     }
 }

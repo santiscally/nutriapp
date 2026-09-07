@@ -29,6 +29,9 @@ export function Pacientes() {
   const [page, setPage] = useState(0);
   const dq = useDebounce(q);
   const [form, setForm] = useState<FormState>(null);
+  // Nota abierta en modal: en la celda no entra (una nota larga estiraba la fila y encima
+  // quedaba cortada), así que el listado sólo dice si hay y el texto completo se abre acá.
+  const [nota, setNota] = useState<Paciente | null>(null);
   const toast = useToast();
   const { confirmar } = useDialog();
 
@@ -123,7 +126,7 @@ export function Pacientes() {
                 <th>WhatsApp</th>
                 <th>Notas</th>
                 <th>Alta</th>
-                <th aria-label="acciones" />
+                <th className="table__actions">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -138,21 +141,33 @@ export function Pacientes() {
                     </span>
                   </td>
                   <td>{p.email}</td>
-                  {/* Truncadas por CSS: el listado tiene que dejar ver que hay notas y de qué
-                      van, sin deformar la fila. El texto completo está en el form de edición. */}
-                  <td className="muted cell-notas" title={p.notas ?? ""}>
-                    {p.notas || "—"}
+                  <td className="muted">{p.whatsapp || "—"}</td>
+                  <td className="cell-nota">
+                    {p.notas ? (
+                      <button className="btn btn--sm btn--ghost" onClick={() => setNota(p)}>
+                        Ver nota
+                      </button>
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
                   </td>
                   <td className="muted">{fecha(p.createdAt)}</td>
                   <td className="table__actions">
                     <button
-                      className="btn btn--sm btn--ghost"
+                      className="btn-icon"
+                      title="Editar paciente"
+                      aria-label={`Editar a ${p.nombre} ${p.apellido}`}
                       onClick={() => setForm({ paciente: p })}
                     >
-                      Editar
+                      <Icon name="pencil" size={16} />
                     </button>
-                    <button className="btn btn--sm btn--danger" onClick={() => onDelete(p)}>
-                      Eliminar
+                    <button
+                      className="btn-icon btn-icon--danger"
+                      title="Eliminar paciente"
+                      aria-label={`Eliminar a ${p.nombre} ${p.apellido}`}
+                      onClick={() => onDelete(p)}
+                    >
+                      <Icon name="trash" size={16} />
                     </button>
                   </td>
                 </tr>
@@ -180,6 +195,15 @@ export function Pacientes() {
             </button>
           </div>
         </>
+      )}
+
+      {nota && (
+        <Modal
+          title={`Nota de ${nota.nombre} ${nota.apellido}`}
+          onClose={() => setNota(null)}
+        >
+          <p className="nota-texto">{nota.notas}</p>
+        </Modal>
       )}
 
       {form && (

@@ -7,10 +7,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nutriapp.modules.notificacion.NotificacionProperties;
 import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.entity.EstadoNotificacion;
 import com.nutriapp.modules.notificacion.entity.Notificacion;
+import com.nutriapp.modules.notificacion.entity.TipoNotificacion;
 import com.nutriapp.modules.notificacion.repository.NotificacionRepository;
+import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.receta.entity.Receta;
 import java.util.List;
@@ -20,7 +23,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -33,21 +35,34 @@ class NotificacionServiceTest {
     @Mock NotificacionRepository repo;
     @Mock NotificacionTemplates templates;
 
-    @InjectMocks NotificacionService service;
+    private NotificacionService service;
 
     private Receta receta;
     private Paciente paciente;
+    private Nutricionista nutricionista;
     private final UUID recetaId = UUID.randomUUID();
+    private final UUID nutricionistaId = UUID.randomUUID();
 
     @BeforeEach
     void setup() {
+        service = new NotificacionService(repo, templates, props("admin@nutriapp.dev"));
+
         receta = new Receta();
         receta.setId(recetaId);
         paciente = new Paciente();
         paciente.setEmail("juan@example.com");
         paciente.setWhatsapp("+5491144443333");
+        nutricionista = new Nutricionista();
+        nutricionista.setId(nutricionistaId);
+        nutricionista.setNombre("Ana");
+        nutricionista.setApellido("Gómez");
+        nutricionista.setEmail("ana@example.com");
         when(templates.asuntoEmail(any())).thenReturn("asunto");
         when(templates.cuerpoEmail(any(), any())).thenReturn("cuerpo mail");
+    }
+
+    private NotificacionProperties props(String adminEmail) {
+        return new NotificacionProperties(30000L, 5, 25, adminEmail, "https://bonosapp.com.ar");
     }
 
     /** 2.4: el único canal automático es el email — WhatsApp lo manda la nutricionista por wa.me. */
@@ -63,7 +78,51 @@ class NotificacionServiceTest {
         assertThat(email.getCanal()).isEqualTo(CanalNotificacion.EMAIL);
         assertThat(email.getEstado()).isEqualTo(EstadoNotificacion.QUEUED);
         assertThat(email.getRecetaId()).isEqualTo(recetaId);
+        assertThat(email.getTipo()).isEqualTo(TipoNotificacion.EMISION_RECETA);
         assertThat(email.getDestinatario()).isEqualTo("juan@example.com");
+    }
+
+    @Test
+    void encolarRegistro_avisaALaNutricionistaYAlAdmin() {
+        service.encolarRegistro(nutricionista);
+
+        ArgumentCaptor<Notificacion> cap = ArgumentCaptor.forClass(Notificacion.class);
+        verify(repo, times(2)).save(cap.capture());
+        List<Notificacion> encoladas = cap.getAllValues();
+        assertThat(encoladas).allSatisfy(n -> {
+            assertThat(n.getEstado()).isEqualTo(EstadoNotificacion.QUEUED);
+            assertThat(n.getCanal()).isEqualTo(CanalNotificacion.EMAIL);
+            assertThat(n.getNutricionistaId()).isEqualTo(nutricionistaId);
+            assertThat(n.getRecetaId()).isNull();
+        });
+        assertThat(encoladas).extracting(Notificacion::getTipo)
+                .containsExactly(TipoNotificacion.REGISTRO_RECIBIDO, TipoNotificacion.ADMIN_NUEVA_SOLICITUD);
+        assertThat(encoladas).extracting(Notificacion::getDestinatario)
+                .containsExactly("ana@example.com", "admin@nutriapp.dev");
+    }
+
+    /** Sin casilla de admin configurada, el acuse a la nutricionista igual sale. */
+    @Test
+    void encolarRegistro_sinAdminEmail_soloEncolaElAcuse() {
+        service = new NotificacionService(repo, templates, props(" "));
+
+        service.encolarRegistro(nutricionista);
+
+        ArgumentCaptor<Notificacion> cap = ArgumentCaptor.forClass(Notificacion.class);
+        verify(repo, times(1)).save(cap.capture());
+        assertThat(cap.getValue().getTipo()).isEqualTo(TipoNotificacion.REGISTRO_RECIBIDO);
+    }
+
+    @Test
+    void encolarAprobacion_yRechazo_vanALaNutricionista() {
+        service.encolarAprobacion(nutricionista);
+        service.encolarRechazo(nutricionista, "La matrícula no es legible");
+
+        ArgumentCaptor<Notificacion> cap = ArgumentCaptor.forClass(Notificacion.class);
+        verify(repo, times(2)).save(cap.capture());
+        assertThat(cap.getAllValues()).extracting(Notificacion::getTipo)
+                .containsExactly(TipoNotificacion.REGISTRO_APROBADO, TipoNotificacion.REGISTRO_RECHAZADO);
+        assertThat(cap.getAllValues()).allMatch(n -> n.getDestinatario().equals("ana@example.com"));
     }
 
     @Test

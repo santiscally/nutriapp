@@ -24,6 +24,7 @@ import com.nutriapp.integrations.support.Sleeper;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient.Coupon;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient.CouponRequest;
 import com.nutriapp.integrations.tiendanube.TiendaNubeClient.Order;
+import com.nutriapp.integrations.tiendanube.TiendaNubeClient.ProductPage;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -34,7 +35,7 @@ import org.junit.jupiter.api.Test;
 
 class HttpTiendaNubeClientTest {
 
-    private static final String UA = "NutriApp (contacto@x.com)";
+    private static final String UA = "BonosApp (contacto@x.com)";
     private WireMockServer wm;
 
     @BeforeEach
@@ -53,7 +54,7 @@ class HttpTiendaNubeClientTest {
         Sleeper noop = millis -> { };
         return new HttpTiendaNubeClient(new IntegrationsProperties.TiendaNube(
                 "live", "http://localhost:" + wm.port(), "STORE1", "TOKEN1",
-                "cid", "csecret", UA, "whsecret"), noop);
+                "cid", "csecret", UA, "whsecret", "https://tienda.test"), noop);
     }
 
     @Test
@@ -166,5 +167,129 @@ class HttpTiendaNubeClientTest {
 
         assertThatThrownBy(() -> client().getOrder(2L))
                 .isInstanceOf(IntegrationUnavailableException.class);
+    }
+
+    @Test
+    void listProducts_parseaSkusYDetectaSiguientePagina() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/products")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withHeader("Link", "<http://x/products?page=2>; rel=\"next\", <http://x/products?page=3>; rel=\"last\"")
+                .withBody("""
+                        [{"id": 363154002, "name": {"es": "ON-ROLL FEM X 60G"},
+                          "variants": [{"id": 1583970721, "sku": "119"}]}]
+                        """)));
+
+        ProductPage page = client().listProducts(1, 200);
+
+        assertThat(page.hasNext()).isTrue();
+        assertThat(page.items()).hasSize(1);
+        assertThat(page.items().get(0).id()).isEqualTo(363154002L);
+        assertThat(page.items().get(0).name()).isEqualTo("ON-ROLL FEM X 60G");
+        assertThat(page.items().get(0).variants().get(0).id()).isEqualTo(1583970721L);
+        assertThat(page.items().get(0).variants().get(0).sku()).isEqualTo("119");
+        wm.verify(getRequestedFor(urlPathEqualTo("/STORE1/products"))
+                .withQueryParam("page", equalTo("1"))
+                .withQueryParam("per_page", equalTo("200"))
+                .withHeader("User-Agent", equalTo(UA)));
+    }
+
+    @Test
+    void listProducts_sinLinkNextEsUltimaPagina() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/products")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withHeader("Link", "<http://x/products?page=1>; rel=\"prev\"")
+                .withBody("[]")));
+
+        assertThat(client().listProducts(3, 200).hasNext()).isFalse();
+    }
+
+    @Test
+    void listProducts_paginaMasAllaDeLaUltimaDa404YSeTrataComoFin() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/products")).willReturn(aResponse()
+                .withStatus(404)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"description\": \"Last page is 3\"}")));
+
+        ProductPage page = client().listProducts(9, 200);
+
+        assertThat(page.items()).isEmpty();
+        assertThat(page.hasNext()).isFalse();
+    }
+
+    @Test
+    void listProducts_variantSinSkuLlegaComoNull() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/products")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withBody("""
+                        [{"id": 1, "name": {"es": "Sin sku"}, "variants": [{"id": 2, "sku": null}]}]
+                        """)));
+
+        assertThat(client().listProducts(1, 200).items().get(0).variants().get(0).sku()).isNull();
+    }
+
+    @Test
+    void un403PorScopeFaltanteDegradaComoNoDisponible() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/coupons")).willReturn(aResponse().withStatus(403)));
+        wm.stubFor(post(urlPathEqualTo("/STORE1/coupons")).willReturn(aResponse().withStatus(403)));
+
+        assertThatThrownBy(() -> client().createCoupon(new CouponRequest(
+                "RX-1", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of(1L))))
+                .isInstanceOf(IntegrationUnavailableException.class);
+    }
+
+    @Test
+    void un401PorTokenInvalidoDegradaComoNoDisponible() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/orders/7")).willReturn(aResponse().withStatus(401)));
+
+        assertThatThrownBy(() -> client().getOrder(7L))
+                .isInstanceOf(IntegrationUnavailableException.class);
+    }
+
+    @Test
+    void createCoupon_sinProductosSeNiegaAEmitirUnCuponParaTodaLaTienda() {
+        assertThatThrownBy(() -> client().createCoupon(new CouponRequest(
+                "RX-VACIO", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toda la tienda");
+    }
+
+    @Test
+    void listWebhooks_devuelveLoRegistrado() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/webhooks")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withBody("""
+                        [{"id": 55, "event": "order/paid", "url": "https://bonosapp.com.ar/api/v1/webhooks/tiendanube"}]
+                        """)));
+
+        assertThat(client().listWebhooks()).singleElement().satisfies(w -> {
+            assertThat(w.id()).isEqualTo(55L);
+            assertThat(w.event()).isEqualTo("order/paid");
+        });
+    }
+
+    @Test
+    void createWebhook_mandaEventoYUrl() {
+        wm.stubFor(post(urlPathEqualTo("/STORE1/webhooks")).willReturn(aResponse()
+                .withHeader("Content-Type", "application/json")
+                .withBody("""
+                        {"id": 77, "event": "order/paid", "url": "https://bonosapp.com.ar/api/v1/webhooks/tiendanube"}
+                        """)));
+
+        assertThat(client().createWebhook("order/paid", "https://bonosapp.com.ar/api/v1/webhooks/tiendanube").id())
+                .isEqualTo(77L);
+        wm.verify(postRequestedFor(urlPathEqualTo("/STORE1/webhooks"))
+                .withRequestBody(matchingJsonPath("$.event", equalTo("order/paid")))
+                .withRequestBody(matchingJsonPath("$.url",
+                        equalTo("https://bonosapp.com.ar/api/v1/webhooks/tiendanube"))));
+    }
+
+    @Test
+    void getPaidOrdersSince_sinOrdenesDa404YDevuelveListaVacia() {
+        wm.stubFor(get(urlPathEqualTo("/STORE1/orders")).willReturn(aResponse()
+                .withStatus(404)
+                .withHeader("Content-Type", "application/json")
+                .withBody("{\"description\": \"Last page is 0\"}")));
+
+        assertThat(client().getPaidOrdersSince(Instant.now())).isEmpty();
     }
 }

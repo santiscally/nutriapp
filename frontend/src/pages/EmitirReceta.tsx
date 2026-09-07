@@ -1,6 +1,8 @@
 // F.2 — Emitir Receta. Layout de dos columnas: izquierda = selección (paciente + productos),
 // derecha = resumen sticky tipo carrito (items + descuento + total + emitir).
-// El modelo soporta N items; la UI arranca en 1 pero permite agregar/quitar varios.
+// El bono aplica a productos, no a cantidades: el cupón de TiendaNube restringe por producto y
+// no sabe de unidades, así que una cantidad > 1 no se respetaría en la compra. Se recetan N
+// productos distintos, uno de cada uno.
 
 import { useMemo, useState } from "react";
 import { ApiRequestError } from "../api/client";
@@ -17,7 +19,6 @@ import type { RecetaResponse } from "../types/receta";
 
 interface ItemDraft {
   producto: Producto;
-  cantidad: number;
   indicaciones: string;
 }
 
@@ -36,7 +37,7 @@ export function EmitirReceta() {
   const selectedIds = useMemo(() => new Set(items.map((i) => i.producto.id)), [items]);
 
   const subtotal = useMemo(
-    () => items.reduce((acc, i) => acc + i.producto.precio * i.cantidad, 0),
+    () => items.reduce((acc, i) => acc + i.producto.precio, 0),
     [items],
   );
   const totalConDescuento = subtotal * (1 - descuentoPct / 100);
@@ -45,7 +46,7 @@ export function EmitirReceta() {
     setItems((prev) =>
       prev.some((i) => i.producto.id === p.id)
         ? prev
-        : [...prev, { producto: p, cantidad: 1, indicaciones: "" }],
+        : [...prev, { producto: p, indicaciones: "" }],
     );
   }
   function updateItem(id: string, patch: Partial<ItemDraft>) {
@@ -66,7 +67,7 @@ export function EmitirReceta() {
         pacienteId: paciente.id,
         items: items.map((i) => ({
           productoId: i.producto.id,
-          cantidad: i.cantidad,
+          cantidad: 1,
           indicaciones: i.indicaciones.trim() || undefined,
         })),
       });
@@ -155,22 +156,7 @@ export function EmitirReceta() {
                     </button>
                   </div>
                   <div className="cart-item__row">
-                    <label className="cart-item__qty">
-                      <input
-                        type="number"
-                        min={1}
-                        value={it.cantidad}
-                        onChange={(e) =>
-                          updateItem(it.producto.id, {
-                            cantidad: Math.max(1, Number(e.target.value) || 1),
-                          })
-                        }
-                      />
-                      <span className="muted">× {money(it.producto.precio)}</span>
-                    </label>
-                    <span className="cart-item__sub">
-                      {money(it.producto.precio * it.cantidad)}
-                    </span>
+                    <span className="cart-item__sub">{money(it.producto.precio)}</span>
                   </div>
                   <input
                     className="cart-item__ind"

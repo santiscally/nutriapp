@@ -234,7 +234,7 @@ public class RecetaService {
                 receta.getEmitidaAt(),
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),
-                receta.getCuponSyncEstado().mensajeDegradacion(),
+                receta.getCuponSyncEstado().mensajeDegradacion(receta.getCuponSyncError()),
                 waMeLinkBuilder.forReceta(receta, paciente),
                 conNotificaciones ? notificacionService.forReceta(receta.getId()) : null,
                 conversion);

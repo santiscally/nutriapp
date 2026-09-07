@@ -1,5 +1,6 @@
 package com.nutriapp.modules.receta.service;
 
+import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
@@ -7,6 +8,7 @@ import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
@@ -20,10 +22,13 @@ import org.springframework.stereotype.Component;
  * El canal automático sigue siendo el email.
  */
 @Component
+@RequiredArgsConstructor
 public class WaMeLinkBuilder {
 
     private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final String BASE = "https://wa.me/";
+
+    private final IntegrationsProperties props;
 
     /**
      * Link listo para abrir, o {@code null} si no corresponde ofrecerlo.
@@ -44,12 +49,19 @@ public class WaMeLinkBuilder {
         return BASE + telefono + "?text=" + encode(mensaje(receta, paciente));
     }
 
-    /** Mismo texto que usaba el template de la cola, ahora que el envío es manual. */
+    /**
+     * Mismo texto que usaba el template de la cola, ahora que el envío es manual. Sin emojis:
+     * el mensaje se lee en el cliente de WhatsApp de la paciente, y uno que no esté en su fuente
+     * aparece como caja vacía justo en el saludo.
+     */
     private String mensaje(Receta receta, Paciente paciente) {
-        return "Hola " + paciente.getNombre() + "! 🌱 Tu bono profesional con " + pct(receta.getDescuentoPct())
+        String tienda = props.tiendanube().storeUrlNormalizada();
+        return "Hola " + paciente.getNombre() + "! Tu bono profesional con " + pct(receta.getDescuentoPct())
                 + " de descuento ya está listo. Código: *" + receta.getCodigo() + "* "
                 + "(válido hasta el " + FECHA.format(receta.getVenceAt()) + "). "
-                + "Usalo al comprar en la tienda online.";
+                + (tienda == null
+                        ? "Usalo al comprar en la tienda online."
+                        : "Usalo al comprar acá: " + tienda);
     }
 
     /**

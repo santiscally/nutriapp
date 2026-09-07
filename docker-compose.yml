@@ -89,18 +89,24 @@ services:
       TIENDANUBE_MODE: ${TIENDANUBE_MODE:-stub}
       TIENDANUBE_BASE_URL: ${TIENDANUBE_BASE_URL:-https://api.tiendanube.com/2025-03}
       TIENDANUBE_STORE_ID: ${TIENDANUBE_STORE_ID:-}
+      TIENDANUBE_STORE_URL: ${TIENDANUBE_STORE_URL:-}
       TIENDANUBE_ACCESS_TOKEN: ${TIENDANUBE_ACCESS_TOKEN:-}
       TIENDANUBE_CLIENT_ID: ${TIENDANUBE_CLIENT_ID:-}
       TIENDANUBE_CLIENT_SECRET: ${TIENDANUBE_CLIENT_SECRET:-}
       TIENDANUBE_WEBHOOK_SECRET: ${TIENDANUBE_WEBHOOK_SECRET:-dev-webhook-secret}
-      TIENDANUBE_USER_AGENT: ${TIENDANUBE_USER_AGENT:-NutriApp (contacto.simpleapps@gmail.com)}
+      TIENDANUBE_USER_AGENT: ${TIENDANUBE_USER_AGENT:-BonosApp (contacto.simpleapps@gmail.com)}
       MAIL_MODE: ${MAIL_MODE:-stub}
       MAIL_SMTP_HOST: ${MAIL_SMTP_HOST:-}
       MAIL_SMTP_PORT: ${MAIL_SMTP_PORT:-587}
       MAIL_SMTP_USERNAME: ${MAIL_SMTP_USERNAME:-}
       MAIL_SMTP_PASSWORD: ${MAIL_SMTP_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS: ${MAIL_SMTP_STARTTLS:-true}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-no-reply@nutriapp.local}
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-NutriApp}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-BonosApp}
+      # Casilla que recibe el aviso de cada registro nuevo + URL para los links de los mails.
+      ADMIN_NOTIFICATION_EMAIL: ${ADMIN_NOTIFICATION_EMAIL:-}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:5173}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
     networks: [nutriapp-net]
@@ -123,6 +129,27 @@ services:
   #   ports:
   #     - "127.0.0.1:${FRONTEND_PORT:-5173}:80"
   #   networks: [nutriapp-net]
+
+  # Catcher SMTP para desarrollo: se queda con TODO lo que se manda y lo muestra en una webmail
+  # (http://localhost:8025). Permite ejercitar el envío de verdad —no el stub— sin depender del
+  # proveedor del cliente ni mandarle un mail a nadie.
+  #
+  # Va detrás de un profile a propósito: `docker compose up -d` NO lo levanta, y prod (que se arma
+  # como override de este archivo) tampoco. Un catcher suelto en prod se tragaría los mails reales.
+  #   docker compose --profile mail up -d
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: nutriapp-mailpit
+    profiles: [mail]
+    restart: unless-stopped
+    # Acepta cualquier credencial y permite AUTH sin TLS. Así el backend usa la MISMA config que
+    # con un proveedor real (auth encendida) y no un camino especial que en prod no se ejercita.
+    command: ["--smtp-auth-accept-any", "--smtp-auth-allow-insecure"]
+    # Sólo se publica la webmail. El 1025 (SMTP) no se bindea: el backend le habla por el nombre
+    # de servicio dentro de nutriapp-net, y así no pelea con el Mailpit de otro proyecto.
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
+    networks: [nutriapp-net]
 
 volumes:
   nutriapp_db_data:

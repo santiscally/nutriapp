@@ -136,6 +136,25 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
     /** Conciliación del catálogo por SKU (clave natural TiendaNube ↔ Contabilium) — sync 2.9. */
     Optional<Producto> findBySkuAndDeletedAtIsNull(String sku);
 
+    /** Ídem por lote: el mapeo contra TiendaNube resuelve una página entera en un solo query. */
+    List<Producto> findBySkuInAndDeletedAtIsNull(Collection<String> skus);
+
+    /**
+     * ¿El mapeo contra TiendaNube corrió alguna vez? Apaga la regla de publicación por tienda mientras
+     * el catálogo esté sin mapear, para que no quede entero despublicado (ver PublicacionPolicy).
+     */
+    boolean existsByTiendanubeProductIdIsNotNullAndDeletedAtIsNull();
+
+    /** Todo el catálogo vivo: el mapeo recalcula la publicación sobre él tras escribir los ids. */
+    List<Producto> findByDeletedAtIsNull();
+
+    /** Publicados sin id de TiendaNube: no se les puede emitir cupón (ver CuponSyncService). */
+    @Query("""
+            SELECT COUNT(p) FROM Producto p
+            WHERE p.deletedAt IS NULL AND p.publicado = true AND p.tiendanubeProductId IS NULL
+            """)
+    long countPublicadosSinMapear();
+
     /**
      * Carga en un solo query los productos que el import del maestro va a tocar, con los tags ya
      * traídos: comparar tag por tag con lazy loading serían 2225 queries extra por importación.

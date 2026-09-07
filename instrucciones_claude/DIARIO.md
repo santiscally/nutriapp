@@ -32,6 +32,274 @@
 
 ## Entradas
 
+## 2026-08-25 — Santi — backend/infra (el pipeline de mail se ejecutó de verdad por primera vez + 415 en vez de 500)
+**Qué:** El mail era la única integración en stub, y el stub tira excepción **antes** de tocar nada: o sea
+`SmtpMailSender` **nunca había enviado un mensaje** y el camino de éxito del dispatcher (QUEUED→SENT) nunca
+había corrido. Se cerró eso sin depender del proveedor del cliente:
+1. **Mailpit en `docker-compose.yml`** detrás de `profiles: [mail]` — `docker compose --profile mail up -d`.
+   El profile es deliberado: prod se arma como **override de este archivo**, así que un servicio suelto
+   correría también en prod, y un catcher SMTP allá **se tragaría los mails reales**.
+2. **`auth` y `starttls` pasaron a ser configurables** (`MAIL_SMTP_AUTH` / `MAIL_SMTP_STARTTLS`); estaban
+   hardcodeadas en `true`, lo que hacía imposible apuntar a cualquier SMTP local. Default `true` = el de prod.
+3. **`HttpMediaTypeNotSupportedException` → 415.** No tenía handler: caía en el catch-all y `/registro`
+   —endpoint **público**— devolvía **500 "Error interno"** ante un Content-Type equivocado. Un error del
+   cliente reportado como falla del servidor (y encima dispara alertas de 5xx).
+**Por qué:** el mail es el **único canal automático** (WhatsApp es manual desde 2.4). Estaba 100% sin
+ejercitar, y era el bloqueante funcional que Fran dejó anotado en ESTADO. Ahora, cuando Gon elija proveedor,
+2.3 es cambiar env vars sobre un camino ya probado — no estrenar código en producción.
+**Problemas (los tres cuestan tiempo si se repiten):**
+- **`docker compose up -d` NO alcanza para un cambio en `application.yml`**: el yml viaja **dentro del JAR**,
+  así que hace falta `--build`. Sin eso el contenedor toma el env nuevo pero corre el yml viejo — y el síntoma
+  engaña, porque `printenv` muestra los valores correctos.
+- **Spring intenta AUTH aunque `mail.smtp.auth=false`** si `spring.mail.username` es string vacío:
+  `JavaMailSenderImpl` llama a `transport.connect(host, port, user, pass)` y `""` no es `null`. Se resolvió
+  del lado del catcher (`--smtp-auth-accept-any --smtp-auth-allow-insecure`), que además deja el backend con
+  la **misma config que producción** (auth encendida) en vez de un camino especial que en prod no se ejercita.
+- El Mailpit de otro proyecto ya ocupa 1025/8025 → **el 1025 no se publica** (el backend le habla por nombre
+  de servicio dentro de `nutriapp-net`) y la UI va a `MAILPIT_UI_PORT=8026`. Mismo caso que `BACKEND_PORT`.
+**Verificado de punta a punta:** cola de **13 notificaciones** viejas → `enviadas=13`, todas `SENT` y visibles
+en Mailpit. **Registro nuevo** (multipart) → acuse a quien se registra **+ aviso al admin**; **aprobación** →
+mail de cuenta activa. Acentos **correctos** en el mail (`charset=UTF-8`, quoted-printable, cero doble-encoding;
+verificado sobre los bytes crudos del `.eml`, no de ojo: el mojibake que se ve al imprimir en la terminal es de
+la consola de Windows). JSON a `/registro` → **415** con el tipo esperado en el mensaje. Suite **192/192**.
+**Ojo:** `/api/v1/registro` es **multipart** (`datos` como JSON + `matricula` como archivo), no JSON plano.
+**Impacto para el otro (Fran):** el bloqueante funcional del mail del registro **está destrabado en local** —
+levantá Mailpit con `docker compose --profile mail up -d` y mirá http://localhost:8025 (8026 en la máquina de
+Santi). Nada del contrato cambió.
+**Refs:** `docker-compose.yml`, `backend/src/main/resources/application.yml`, `.env.example`,
+`common/error/GlobalExceptionHandler.java`, `backend/src/test/**/GlobalExceptionHandlerTest.java`.
+
+## 2026-08-25 — Santi — backend (link a la tienda en los mensajes del bono; fuera el emoji)
+**Qué:** Los dos mensajes que le llegan a la paciente —el de WhatsApp (`WaMeLinkBuilder`) y el mail
+(`NotificacionTemplates`)— ahora cierran con el **link a la tienda**. La URL sale de una property nueva
+`nutriapp.integrations.tiendanube.store-url` (env **`TIENDANUBE_STORE_URL`**), al lado de `store-id`.
+Vacía = el mensaje sale como antes, sin link cortado. Antes de eso se **sacó el emoji** 🌱 del saludo.
+**Por qué:** el mensaje decía "comprá en la tienda online" sin decir dónde. El emoji lo pidió el usuario
+tras verlo como `�`.
+**Problemas:**
+- **El emoji NO era un bug nuestro**: los bytes en el fuente eran `F0 9F 8C B1` (UTF-8 correcto), el pom
+  compila en UTF-8 y la URL lo mandaba como `%F0%9F%8C%B1`. El `�` era del visor. Se sacó igual porque un
+  emoji que no esté en la fuente del cliente de la paciente se ve como caja vacía justo en el saludo.
+- `GET /{store}/store` devuelve `url: null` y la vitrina sólo aparece en `original_domain` → **no** se
+  toma de la API, va por config (además evita depender de un request para un dato estático).
+- Sumar un campo a `IntegrationsProperties.TiendaNube` rompe **4** constructores de test, no 2: uno usa
+  `new TiendaNube(...)` con import estático y no aparece si se grepea `new IntegrationsProperties.TiendaNube(`.
+- ⚠️ **Trampa de tooling (para el próximo que edite con scripts):** en los heredocs de este entorno un
+  `\n` dentro de un string de Python llega colapsado a `
+` y matchea un salto de línea real en vez del
+  literal. Para patrones con backslashes hay que usar **raw strings** (`r'''...'''`).
+**Verificado en vivo:** WhatsApp → `"...(válido hasta el 24/09/2026). Usalo al comprar acá:
+https://thebcompanydemo.mitiendanube.com"`. Mail (bono RX-NZGCS5) → el link en su propia línea antes de
+la firma. Tests nuevos: link presente, sin tienda configurada no queda link vacío, barra final normalizada,
+y el mensaje no lleva emojis. Suite **189/189**.
+**Impacto para el otro:** ninguno en el front.
+**Refs:** `integrations/IntegrationsProperties.java`, `modules/receta/service/WaMeLinkBuilder.java`,
+`modules/notificacion/service/NotificacionTemplates.java`, `application.yml`, `docker-compose.yml`,
+`.env.example`.
+
+## 2026-08-25 — Santi — frontend (columna "Acciones" alineada; la clase perdía por especificidad)
+**Qué:** ⚠️ Toca `frontend/` (área de Fran), a pedido explícito del usuario. Ajuste de las dos tablas
+(Pacientes y Bonos): el último `<th>` pasó de vacío (`aria-label`) a decir **"Acciones"**, y ahora
+encabezado y botones comparten alineación y la columna se encoge a su contenido.
+**Por qué:** el encabezado vacío dejaba un bloque blanco a la derecha que hacía ver la tabla corrida
+hacia la izquierda, y la columna se llevaba parte del ancho sobrante, separando los botones del borde.
+**Problemas:** `.table__actions { text-align: right }` **no se aplicaba al `<th>`**: pierde por
+especificidad contra `.table th, .table td { text-align: left }` (0,1,0 vs 0,1,1). Hizo falta
+`.table th.table__actions, .table td.table__actions`. Se suma `width: 1%` en el `th` para que el
+auto-layout le dé el ancho mínimo y reparta el sobrante entre las columnas de datos.
+**Verificado:** con Chrome headless sobre una página que carga el `index.css` real y el markup real de
+ambas tablas — cada encabezado cae sobre su contenido y los botones llegan al borde derecho.
+`tsc` + `oxlint` + `build` OK.
+**Impacto para el otro (Fran):** si agregás una columna de acciones, poné `className="table__actions"`
+**también en el `<th>`**, no sólo en el `<td>`.
+**Refs:** `frontend/src/pages/{Pacientes,Recetas}.tsx`, `frontend/src/index.css`.
+
+## 2026-08-25 — Santi — backend + frontend (el bono ya no lleva cantidades + acciones con íconos)
+**Qué:** ⚠️ **Esta entrada toca `frontend/` (área de Fran), a pedido explícito del usuario.**
+1. **El bono aplica a productos, no a cantidades.** `RecetaCreateRequest.Item.cantidad` ahora es
+   `@Min(1) @Max(1)` con mensaje propio; el emisor ya no tiene input de cantidad y manda siempre 1.
+   El campo se conserva en la entidad y en la DB por los bonos viejos, y el detalle sigue mostrando
+   el `N×` **sólo si es > 1** (para los nuevos sería ruido).
+2. **Bug real en la tabla de pacientes:** el `<thead>` declaraba 6 columnas (incluía WhatsApp) y cada
+   fila renderizaba 5 `<td>` — faltaba la celda de WhatsApp, así que todo quedaba corrido y la última
+   columna no llegaba al borde. Agregada la celda.
+3. **Acciones con íconos.** Nuevo `.btn-icon` (cuadradito 32px, sólo ícono, con `title` + `aria-label`).
+   Pacientes: lápiz / tacho. Listado de bonos: columna de acciones con WhatsApp, reenviar mail y anular,
+   visibles sólo en `PENDIENTE`. Íconos nuevos en `Icon.tsx`: `pencil`, `trash`, `mail`, `whatsapp`, `ban`.
+4. **El botón de WhatsApp deja el verde de WhatsApp** (`#25d366`) y pasa a outline de marca.
+5. **`scripts/simular-compra.sh`**: envoltorio del endpoint dev `POST /dev/tiendanube/orden-pagada`
+   (saca el token de Keycloak solo). Sirve para ver `PENDIENTE → APLICADA` sin comprar de verdad.
+**Por qué:** (1) lo pidió el usuario tras probar la compra en la demo: el cupón de TiendaNube **no
+tiene forma de limitar unidades** — con 2 recetadas y 3 en el carrito, las 3 salían con descuento.
+Existe `max_discount_amount` (topea el descuento en plata) y **la API lo acepta**, pero está
+**indocumentado** y, como decidió el usuario, el tope se calcularía con el precio del día de emisión:
+si TBC cambia el precio dentro de los 30 días de vigencia, el descuento queda mal. Se descartó.
+**Problemas:** ninguno. Ojo al probar: buscar "ON-ROLL" matchea primero un COMBO que no está mapeado,
+y el guard frena el cupón — es el comportamiento correcto, no un bug.
+**Verificado:** `cantidad: 2` → **400** con el mensaje nuevo. Bono con **dos productos** →
+`SINCRONIZADO`, y el cupón en la tienda trae los **dos** product ids. `simular-compra.sh RX-EGBBCG` →
+**APLICADA**, orden #67645, comisión 8% = $2.367,34. Back **185/185**; front `tsc` + `oxlint` + `build` OK.
+**Impacto para el otro (Fran):** revisá los 5 archivos de `frontend/` que toqué. El input de cantidad
+ya no existe y `ItemDraft` perdió el campo; `RecetaItemInput.cantidad` **sigue en el contrato** (se manda
+1 fijo), así que `types/receta.ts` no cambió. `.btn--whatsapp` cambió de color y hay una clase nueva
+`.btn-icon` para acciones de tabla.
+**Refs:** `modules/receta/dto/RecetaCreateRequest.java`, `frontend/src/pages/{Pacientes,Recetas,EmitirReceta}.tsx`,
+`frontend/src/components/receta/{RecetaDetalle,RecetaExito}.tsx`, `frontend/src/components/ui/Icon.tsx`,
+`frontend/src/index.css`, `scripts/simular-compra.sh`.
+
+## 2026-08-25 — Santi — integraciones (🎯 cupón real emitido en la demo; el `products[]` iba con el ID EQUIVOCADO)
+**Qué:** Reinstalada la app con todos los permisos y token nuevo en `.env` (scopes: `write_products`,
+`read_coupons`, `write_coupons`, `read_orders`, + los de draft orders que TiendaNube agrega solos). Con
+`coupons` accesible por fin se pudo validar contra la API lo que estaba asumido, y **estaba mal**:
+1. **`coupons.products[]` espera PRODUCT ids, no VARIANT ids.** Con variant id la API responde
+   **422** `"The following IDs do not match valid products in the store"`. `CuponSyncService` mandaba
+   `tiendanubeVariantId` → **ningún cupón se habría creado nunca en producción**. Ahora manda
+   `tiendanubeProductId`; el contador `countPublicadosSinMapear` también pasó a mirar product id.
+2. **Una colección vacía responde 404, no un array vacío** (`GET /orders` con 0 resultados →
+   `404 "Last page is 0"` con `x-total-count: 0`). `getPaidOrdersSince` no lo contemplaba: el
+   `TiendaNubePollingJob` habría logueado **ERROR cada 5 minutos** en cualquier tienda sin ventas en la
+   ventana de 24h — o sea casi todas las noches, tapando errores de verdad. Ahora 404 = lista vacía.
+**Por qué:** eran las dos incógnitas que `03-integraciones-apis.md` §2 dejaba anotadas como "a validar
+contra la tienda demo". Las dos estaban mal asumidas, y ninguna se ve en stub ni con mocks — sólo pegándole
+a la API real.
+**Verificado de punta a punta contra la demo:** mapeo (4 productos) → resync → **cupón real creado**
+(`RX-FJT6J9`, id 68525667) **restringido al producto correcto** (363154002 ON-ROLL FEM), `max_uses=1`,
+15% (el % de esa nutricionista) y `end_date` = vencimiento. En la misma corrida **5 recetas quedaron
+PENDIENTE con el motivo explícito** por tener productos sin mapear — el guard de la entrada anterior
+haciendo su trabajo sobre datos reales. Suite **185/185**.
+**Problemas:** ninguno pendiente. Nota: desinstalar la app revoca el token al instante (queda
+`401 Invalid access token`), y **no hace falta desinstalar para re-autorizar**: entrar a
+`https://www.tiendanube.com/apps/40301/authorize` emite un `code` nuevo con los scopes vigentes.
+**Pendiente para la tienda del cliente:** registrar el webhook (`POST /admin/tiendanube/registrar-webhooks`,
+exige `APP_PUBLIC_URL` en HTTPS — no se probó en vivo para no mandar eventos de la demo a prod) y decidir si
+un producto sin mapear debe seguir siendo recetable (hoy sí: la receta sale con un cupón que no se crea).
+**Refs:** `integrations/tiendanube/{TiendaNubeClient,HttpTiendaNubeClient}.java`,
+`modules/receta/service/CuponSyncService.java`, `modules/producto/repository/ProductoRepository.java`,
+`backend/src/test/**/{HttpTiendaNubeClientTest,CuponSyncServiceTest}.java`.
+
+## 2026-08-25 — Santi — integraciones (guard del cupón sin mapeo + registro de webhooks + mensaje honesto)
+**Qué:** Segunda tanda del día, preparando el salto a la tienda **del cliente**. Tres cambios:
+1. **`CuponSyncService.registrar` ya no emite un cupón sin restringir.** Si **algún** producto de la receta
+   no tiene `tiendanube_variant_id`, **no llama a la API**: deja el cupón `PENDIENTE` con
+   `cupon_sync_error = "Sin mapeo a TiendaNube: <productos>"`. Además `HttpTiendaNubeClient.createCoupon`
+   rechaza de plano un `products[]` vacío (`IllegalArgumentException`), como segunda barrera.
+2. **`listWebhooks` / `createWebhook`** en el port + `TiendaNubeWebhookRegistrar` +
+   `POST /api/v1/admin/tiendanube/registrar-webhooks`. Idempotente (lista y sólo crea lo que falta) y
+   exige `APP_PUBLIC_URL` en **HTTPS**.
+3. **`CuponSyncEstado.mensajeDegradacion(error)`** ahora recibe el error y distingue los dos casos.
+**Por qué:** (1) El mapeo por SKU de la entrada anterior **reduce** el problema pero no lo elimina: el filtro
+de `registrar` descartaba en silencio los productos sin id, y si quedaban **cero** el body salía sin
+`products[]` → TiendaNube aplica el cupón a **toda la tienda**. Con el catálogo real esto pasa seguro: hay
+2267 productos locales y la tienda tiene un subconjunto. Peor variante: si mapeaban *algunos*, el cupón
+quedaba restringido a un subconjunto silencioso y el descuento no aplicaba sobre lo recetado.
+(2) Sin webhook registrado no llega ningún evento — no hay UI en TiendaNube, es por API o nada.
+(3) El mensaje decía *"TiendaNube no está disponible. Se reintenta automáticamente"*, y para un producto sin
+mapear **es falso**: la tienda anda y el `CuponSyncJob` va a fallar en loop hasta que un admin corra el mapeo.
+Ahora ese caso dice que el producto no está publicado en la tienda y que avise al administrador.
+**Problemas:** el guard rompía el fixture de `CuponSyncServiceTest` (las recetas del test no tenían items, y
+sin items el guard ahora frena) — se les agregó un item con producto mapeado, que además es más fiel a la
+realidad. Ojo con esto al escribir tests nuevos de cupones.
+**Verificado en vivo** contra la demo: receta con producto **no** mapeado → `PENDIENTE` +
+`"Sin mapeo a TiendaNube: 102 FOCUS X 30 COMP REC"` en la DB y warn en el log, **sin** pegarle a la API.
+Suite **184/184**.
+**Impacto para el otro:** `cuponSyncMensaje` puede traer ahora un texto nuevo — el que dice que el producto
+no está publicado en la tienda. Se sigue mostrando igual, no cambia el contrato (mismo campo, mismo tipo).
+**Refs:** `modules/receta/service/CuponSyncService.java`, `modules/receta/entity/CuponSyncEstado.java`,
+`modules/receta/service/RecetaService.java`, `modules/webhook/service/TiendaNubeWebhookRegistrar.java`,
+`modules/webhook/dto/RegistrarWebhooksResponse.java`, `integrations/tiendanube/*`,
+`modules/admin/controller/AdminIntegracionesController.java`.
+
+## 2026-08-25 — Santi — integraciones (TiendaNube: app + tienda demo conectada, mapeo por SKU, 401/403 degradan)
+**Qué:** Arrancó Fase 2 sobre TiendaNube. App **40301** creada en el Partner Portal e instalada en la tienda
+demo `thebcompanydemo.mitiendanube.com` (**store_id = 8145981**, que es el `user_id` que devuelve el token).
+Token OAuth intercambiado y persistido en `.env` junto con `client_id`/`client_secret`; `TIENDANUBE_WEBHOOK_SECRET`
+= `client_secret` (es con lo que TiendaNube firma el HMAC). Local quedó en `TIENDANUBE_MODE=live`.
+Tres cambios de código:
+1. **`listProducts(page, perPage)`** en el port `TiendaNubeClient` + impl HTTP + stub. Devuelve
+   `ProductPage(items, hasNext)` con `hasNext` sacado del header `Link rel="next"`.
+2. **`TiendaNubeMapeoService`** + `POST /api/v1/admin/tiendanube/mapear-productos` (admin): concilia el
+   catálogo local con la tienda **por SKU** y escribe `tiendanube_product_id` / `tiendanube_variant_id`.
+   Reporta `revisados/mapeados/yaMapeados/sinSku/sinMatch/pendientes` + muestra de SKUs que no matchearon.
+3. **401/403 ahora degradan** a `IntegrationUnavailableException` en `HttpTiendaNubeClient.call()`.
+**Por qué:** (1) y (2) cierran el agujero de la entrada del **2026-08-14**: `CuponSyncService` restringe el
+cupón con esos ids y **nadie los escribía nunca** → el cupón salía sin `products[]`, o sea **30% sobre toda
+la tienda**. (3) apareció al probar en vivo: un scope faltante o un token vencido son un problema de
+**configuración**, no un request mal armado; propagarlos crudos le tira un **500** a la nutricionista en vez
+de dejar el cupón `PENDIENTE` para que el `CuponSyncJob` lo drene.
+**Problemas:**
+- **La app quedó con un solo scope, `write_products`** — `GET /orders` y `GET /coupons` dan **403
+  `Missing required scope`**. El scope viaja **dentro del token**: no alcanza con editar la app, hay que
+  corregirla en el portal y **reinstalarla** en la demo para que salga un `code` nuevo. **Bloqueante** para
+  cupones reales y detección de conversión. Falta: `read_orders`, `read_coupons`, `write_coupons`.
+- **Trampa de paginación:** pedir una página más allá de la última devuelve **404** (`"Last page is 3"`),
+  **no** un array vacío. Un `while` hasta página vacía revienta. Se corta por `Link rel="next"`, y el 404
+  igual se trata como fin de catálogo por las dudas.
+- La demo estaba vacía (1 producto sin SKU): se cargaron **4 productos con SKU real de TBC** (1024, 119,
+  123, 127) vía API para poder conciliar de verdad.
+- El host tiene Java 17 y el proyecto pide 21 → los tests corren en contenedor:
+  `docker run --rm -v <backend>:/work -v ~/.m2:/root/.m2 -w /work maven:3.9-eclipse-temurin-21 mvn test`.
+**Verificado contra la API real (no mocks):** mapeo 4/4 (`revisados=5, mapeados=4, sinSku=1`), segunda corrida
+idempotente (`mapeados=0, yaMapeados=4`), ids persistidos en la DB, y emisión de receta con la app sin
+`write_coupons` → cupón `PENDIENTE` + log `Missing required scope: write_coupons`, **sin 500**. Suite **173/173**
+(12 tests nuevos). Quedan **695 publicados sin mapear**: no existen en la demo, se resuelve contra la tienda real.
+**Impacto para el otro:** ninguno en el front. El endpoint nuevo es de admin; si en algún momento se le pone
+pantalla, va al lado del sync de Contabilium y del import del maestro.
+**Refs:** `integrations/tiendanube/{TiendaNubeClient,HttpTiendaNubeClient,StubTiendaNubeClient}.java`,
+`modules/producto/service/TiendaNubeMapeoService.java`, `modules/producto/dto/MapeoTiendaNubeResponse.java`,
+`modules/producto/repository/ProductoRepository.java`, `modules/admin/controller/AdminIntegracionesController.java`,
+`backend/src/test/**/{HttpTiendaNubeClientTest,TiendaNubeMapeoServiceTest}.java`, `.env` (no versionado).
+
+## 2026-08-14 — Santi — integraciones (⚠️ hallazgo Ola 4: hoy el cupón saldría SIN restricción de productos)
+**Qué:** Revisando qué falta para encender TiendaNube apareció un agujero que **no se ve en stub y muerde el
+primer día de live**: `CuponSyncService.registrar()` arma la lista de productos del cupón con
+`Producto.tiendanubeVariantId`, y **ningún código escribe jamás esa columna** (`tiendanube_variant_id` sólo
+aparece en la migración `V002` y en ese filtro). El catálogo se puebla desde Contabilium por SKU, y el cliente
+de TiendaNube tiene 4 métodos —`createCoupon`, `deleteCoupon`, `getOrder`, `getPaidOrdersSince`— ninguno lista
+productos. Resultado en live: `products` va vacío → **el cupón aplica a TODA la tienda**, no a los artículos
+del bono. Es plata: el descuento se lo lleva cualquier cosa del carrito.
+**Además, el campo no es el que creemos:** la API de cupones espera **product ids**, no variant ids
+(`03-integraciones-apis.md §2`). Aunque se poblara la columna tal cual está, mandaríamos el id equivocado.
+**Qué hace falta (Ola 4, cuando estén las credenciales):** listar productos/variantes de TiendaNube, conciliar
+contra el catálogo local **por SKU** (mismo patrón que `ProductoSyncService` con Contabilium), persistir el id
+correcto, y recién ahí el cupón sale restringido. Otros dos huecos del mismo módulo, más chicos:
+`getPaidOrdersSince` **no pagina** (TiendaNube corta en 30 por página → el polling de respaldo se pierde
+órdenes) y **no hay alta de webhook por API** (`POST /{store}/webhooks` hay que hacerlo a mano).
+**Por qué no se rompió antes:** en stub `createCoupon` no valida nada y el simulador de dev matchea por código,
+así que el flujo emisión→APLICADA da verde igual. Sólo se cae contra la tienda real.
+**Refs:** `CuponSyncService:49-53`, `integrations/tiendanube/*`, `V002__core.sql:49`,
+`instrucciones_claude/03-integraciones-apis.md §2`.
+
+## 2026-08-14 — Santi — backend (el registro ya notifica: acuse, aviso al admin, aprobación y rechazo)
+**Qué:** Cerrado **el bloqueante funcional para difundir el link**: `RegistroService` no encolaba nada, así
+que quien se registraba no recibía nada y **al admin no le llegaba aviso** (había que mirar la tabla a mano).
+Ahora la cola de notificaciones deja de ser exclusiva de recetas:
+- **Migración `V013`**: `notificaciones` suma `tipo` (`EMISION_RECETA`, `REGISTRO_RECIBIDO`, `REGISTRO_APROBADO`,
+  `REGISTRO_RECHAZADO`, `ADMIN_NUEVA_SOLICITUD`, con CHECK; las 7 filas viejas quedaron en `EMISION_RECETA`) y
+  `nutricionista_id` **con `ON DELETE CASCADE`** — borrar una nutricionista es para altas equivocadas o de
+  prueba y su acuse es cola operativa, no historial; sin el cascade el `DELETE` moría por FK.
+- **4 avisos nuevos** (`NotificacionTemplates`): acuse a quien se registra, aviso al admin con los datos y el
+  link a `/nutricionistas`, aprobación con el link a `/ingresar`, y rechazo con el motivo si lo hay.
+- **Dos properties**: `ADMIN_NOTIFICATION_EMAIL` (casilla que recibe las solicitudes; **vacía = nadie se
+  entera**, queda un warn) y `APP_PUBLIC_URL` (base de los links de los mails).
+- Los avisos se encolan **en la misma tx** que el alta/aprobación: el envío es asíncrono, así que el proveedor
+  caído no frena el registro (en stub quedan QUEUED con `intentos=0` y drenan solos al pasar a live).
+**Por qué:** era el ítem que quedaba abierto en ESTADO y en el DIARIO del 14/08 para poder difundir el link.
+**Problemas:** `mvn test` venía **rojo desde `ccf69b0`** — `AdminNutricionistaServiceTest` seguía esperando
+"3 recetas emitidas" contra el mensaje ya renombrado a "3 bonos profesionales emitidos". Arreglado de paso.
+**Verificado e2e** (stack local, back `:8088`): `V013` aplicada (13 migraciones), `POST /registro` 201 → 2 filas
+QUEUED (`REGISTRO_RECIBIDO` + `ADMIN_NUEVA_SOLICITUD`) con `last_error` "integración mail no conectada" y
+`intentos=0` (degradación transitoria correcta), aprobar → `REGISTRO_APROBADO` con el link bien armado,
+rechazar → `REGISTRO_RECHAZADO` con el motivo, y `DELETE` de las dos de prueba → cascade limpio, 0 huérfanas.
+`mvn test` **159 unit, BUILD SUCCESS**.
+**⚠️ Lo que falta para que el mail SALGA en prod (ops, no código):** verificar `nutriappok.com.ar` en Resend +
+sus 3 DNS en Hostinger, API key de prod, `MAIL_MODE=live`, `MAIL_FROM_ADDRESS=info@nutriappok.com.ar` (crear la
+casilla) y **setear `ADMIN_NOTIFICATION_EMAIL` y `APP_PUBLIC_URL=https://nutriappok.com.ar` en el `.env` del
+VPS**. Sin `APP_PUBLIC_URL` los links salen relativos (no rotos, pero inútiles en un mail).
+**Impacto para el otro (Fran):** ningún cambio de contrato REST — no hay que espejar nada. Lo único visible es
+que la cola ahora tiene filas sin receta, así que `pendientes` del panel `/integraciones` cuenta también estas.
+**Refs:** `V013__notificaciones_de_registro.sql`, `modules/notificacion/**`, `RegistroService`,
+`AdminNutricionistaService`, `application.yml`, `docker-compose.yml`, `.env.example`.
+
 ## 2026-08-14 — Santi — frontend (la píldora "Próximamente" se chocaba con el isotipo en la landing)
 **Qué:** En `/` (landing pre-lanzamiento) el bloque de marca (isotipo + "NutriApp") y la píldora
 "Próximamente" caían **en la misma línea**: `.soon__brand` y `.soon__eyebrow` eran los dos `inline-flex`

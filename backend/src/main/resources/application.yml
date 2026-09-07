@@ -22,10 +22,12 @@ spring:
     properties:
       mail:
         smtp:
-          auth: true
+          # Ambas en true para cualquier proveedor real. Se apagan sólo contra un catcher SMTP
+          # local (Mailpit), que no tiene ni auth ni TLS. El default seguro es el de producción.
+          auth: ${MAIL_SMTP_AUTH:true}
           starttls:
-            enable: true
-            required: true
+            enable: ${MAIL_SMTP_STARTTLS:true}
+            required: ${MAIL_SMTP_STARTTLS:true}
         transport:
           protocol: smtp
   datasource:
@@ -124,6 +126,11 @@ nutriapp:
     dispatch-interval-ms: ${NOTIF_DISPATCH_INTERVAL_MS:30000}
     max-intentos: ${NOTIF_MAX_INTENTOS:5}
     batch-size: ${NOTIF_BATCH_SIZE:25}
+    # Casilla que recibe el aviso de cada solicitud de registro nueva. Vacía = nadie se entera
+    # (queda un warn en el log) y hay que mirar la tabla nutricionistas a mano.
+    admin-email: ${ADMIN_NOTIFICATION_EMAIL:}
+    # URL pública desde la que se arman los links de los mails (login, bandeja del admin).
+    app-url: ${APP_PUBLIC_URL:http://localhost:5173}
   webhooks:
     # Processor que drena webhook_events sin procesar (lee la orden y aplica la conversión).
     process-interval-ms: ${WEBHOOK_PROCESS_INTERVAL_MS:20000}
@@ -167,10 +174,12 @@ nutriapp:
       mode: ${TIENDANUBE_MODE:stub}
       base-url: ${TIENDANUBE_BASE_URL:https://api.tiendanube.com/2025-03}
       store-id: ${TIENDANUBE_STORE_ID:}
+      # Vitrina pública de la tienda; va en el mail y en el WhatsApp del bono. Vacía = sin link.
+      store-url: ${TIENDANUBE_STORE_URL:}
       access-token: ${TIENDANUBE_ACCESS_TOKEN:}
       client-id: ${TIENDANUBE_CLIENT_ID:}
       client-secret: ${TIENDANUBE_CLIENT_SECRET:}
-      user-agent: ${TIENDANUBE_USER_AGENT:NutriApp (contacto.simpleapps@gmail.com)}
+      user-agent: ${TIENDANUBE_USER_AGENT:BonosApp (contacto.simpleapps@gmail.com)}
       # Secreto para verificar el HMAC de los webhooks. En live = client_secret de la app TiendaNube.
       # Default de dev conocido para poder firmar el webhook en los smoke tests. En prod: env obligatorio
       # (application-prod.yml lo deja vacío → fail-closed si no se setea).
@@ -179,7 +188,7 @@ nutriapp:
       mode: ${MAIL_MODE:stub}
       # Remitente del SmtpMailSender (Fase 2). El SMTP en sí va en spring.mail.* (arriba).
       from-address: ${MAIL_FROM_ADDRESS:no-reply@nutriapp.local}
-      from-name: ${MAIL_FROM_NAME:NutriApp}
+      from-name: ${MAIL_FROM_NAME:BonosApp}
 
 springdoc:
   swagger-ui:

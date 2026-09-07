@@ -10,6 +10,8 @@
 *.yaml          text eol=lf
 mvnw            text eol=lf
 gradlew         text eol=lf
+# El \r final de maven-wrapper.properties se cuela en wrapperUrl → HTTP 400 al bajar el wrapper.
+*.properties    text eol=lf
 Dockerfile      text eol=lf
 *.sql           text eol=lf
 

@@ -55,7 +55,7 @@ class TiendaNubeWebhookServiceTest {
     void setup() {
         IntegrationsProperties props = new IntegrationsProperties(
                 new IntegrationsProperties.Contabilium("stub", null, null, null),
-                new IntegrationsProperties.TiendaNube("stub", null, null, null, null, null, null, SECRET),
+                new IntegrationsProperties.TiendaNube("stub", null, null, null, null, null, null, SECRET, null),
                 new IntegrationsProperties.Mail("stub", null, null));
         service = new TiendaNubeWebhookService(
                 eventRepo, recetaRepository, tiendaNubeClient, hmacVerifier, props, parametrosNegocioService, objectMapper);

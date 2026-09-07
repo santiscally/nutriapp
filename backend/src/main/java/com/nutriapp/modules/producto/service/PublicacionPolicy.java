@@ -21,12 +21,20 @@ import org.springframework.stereotype.Component;
  *       la pidió deja afuera los packs — pendiente de confirmar, se cambia por env var.</li>
  *   <li><b>Rubro permitido</b> — C-13: solo producto terminado (144331), configurable.</li>
  *   <li><b>No bloqueado en el maestro</b> — "los bloqueados no deberían mostrarse en Nutriapp".</li>
+ *   <li><b>Existe en la tienda</b> — decisión del cliente (2026-08-25): recetable = está en Contabilium
+ *       <b>y</b> en TiendaNube. Sin id de la tienda no se le puede crear el cupón, así que el bono
+ *       saldría muerto (ver {@code CuponSyncService}).</li>
  * </ol>
  *
  * <p>Criterio ante datos faltantes: <b>ante la duda, publicar</b>. Un producto sin tipo, sin rubro o
  * sin fila en el maestro sigue siendo recetable. Es deliberado: las reglas se evalúan sobre datos de
  * dos sistemas externos que el cliente edita a mano, y un Excel recortado o un rubro renombrado no
  * pueden vaciar el catálogo de un día para el otro. Lo que bloquea es un dato presente y explícito.
+ *
+ * <p>La regla de la tienda es la excepción —bloquea por un dato <b>ausente</b>— porque ahí la ausencia
+ * no es incertidumbre sino un hecho: el producto no está publicado en la tienda y no se puede comprar.
+ * Para que siga sin poder vaciar el catálogo, sólo se evalúa cuando el mapeo ya corrió alguna vez
+ * ({@code catalogoMapeado}): si ningún producto tiene id de tienda, la regla se apaga sola.
  */
 @Component
 @RequiredArgsConstructor
@@ -34,13 +42,24 @@ public class PublicacionPolicy {
 
     private final CatalogoProperties props;
 
-    /** Recalcula {@code publicado} sobre el estado actual del producto. Idempotente. */
-    public boolean esPublicable(Producto p) {
+    /**
+     * Recalcula {@code publicado} sobre el estado actual del producto. Idempotente.
+     *
+     * @param catalogoMapeado si el mapeo contra TiendaNube ya corrió (hay al menos un producto con
+     *                        id de tienda). En false la regla de la tienda no se evalúa, para que un
+     *                        catálogo todavía sin mapear no quede entero despublicado.
+     */
+    public boolean esPublicable(Producto p, boolean catalogoMapeado) {
         return precioValido(p.getPrecio())
                 && p.isActivoErp()
                 && permitido(props.tiposErpPermitidos(), p.getTipoErp())
                 && permitido(props.rubrosPermitidos(), p.getRubroId())
-                && !p.isBloqueadoMaestro();
+                && !p.isBloqueadoMaestro()
+                && estaEnLaTienda(p, catalogoMapeado);
+    }
+
+    private static boolean estaEnLaTienda(Producto p, boolean catalogoMapeado) {
+        return !catalogoMapeado || p.getTiendanubeProductId() != null;
     }
 
     /**
@@ -51,7 +70,7 @@ public class PublicacionPolicy {
      * arreglar ni dónde — si el motivo es el precio se corrige en Contabilium, si es el bloqueo se
      * corrige en el Excel.
      */
-    public String motivoNoPublicable(Producto p) {
+    public String motivoNoPublicable(Producto p, boolean catalogoMapeado) {
         if (!precioValido(p.getPrecio())) {
             return p.getPrecio() == null
                     ? "Sin precio en Contabilium"
@@ -69,12 +88,15 @@ public class PublicacionPolicy {
         if (p.isBloqueadoMaestro()) {
             return "Bloqueado en el maestro de artículos";
         }
+        if (!estaEnLaTienda(p, catalogoMapeado)) {
+            return "No está publicado en la tienda online";
+        }
         return null;
     }
 
     /** Aplica la política; devuelve true si el valor cambió. */
-    public boolean aplicar(Producto p) {
-        boolean nuevo = esPublicable(p);
+    public boolean aplicar(Producto p, boolean catalogoMapeado) {
+        boolean nuevo = esPublicable(p, catalogoMapeado);
         if (p.isPublicado() == nuevo) {
             return false;
         }

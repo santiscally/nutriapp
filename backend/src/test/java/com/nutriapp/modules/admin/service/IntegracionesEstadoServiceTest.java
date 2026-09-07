@@ -40,7 +40,7 @@ class IntegracionesEstadoServiceTest {
                                                String mailMode) {
         IntegrationsProperties props = new IntegrationsProperties(
                 new Contabilium(contabiliumMode, "", "", ""),
-                new TiendaNube(tiendanubeMode, "", "", "", "", "", "", ""),
+                new TiendaNube(tiendanubeMode, "", "", "", "", "", "", "", ""),
                 new Mail(mailMode, "", ""));
         return new IntegracionesEstadoService(
                 props, health, recetaRepository, notificacionRepository, productoRepository, productoSyncService);

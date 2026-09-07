@@ -6,6 +6,7 @@ import { anularReceta, getReceta, reenviarReceta } from "../../api/recetas";
 import { useFetch } from "../../hooks/useFetch";
 import { fecha, fechaHora, money } from "../../lib/format";
 import { useDialog } from "../ui/Dialog";
+import { Icon } from "../ui/Icon";
 import { EstadoBadge } from "../ui/EstadoBadge";
 import { Modal } from "../ui/Modal";
 import { useToast } from "../ui/Toast";
@@ -86,7 +87,8 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
             {data.items.map((it, i) => (
               <li key={i}>
                 <span>
-                  {it.cantidad}× {it.producto.nombre}
+                  {it.cantidad > 1 ? `${it.cantidad}× ` : ""}
+                  {it.producto.nombre}
                   {it.indicaciones ? <em className="muted"> — {it.indicaciones}</em> : null}
                 </span>
               </li>
@@ -134,6 +136,7 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
+                  <Icon name="whatsapp" size={16} />
                   Enviar por WhatsApp
                 </a>
               )}
@@ -152,6 +155,7 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                   )
                 }
               >
+                <Icon name="mail" size={16} />
                 Reenviar mail
               </button>
               <button
@@ -172,6 +176,7 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
                   )
                 }
               >
+                <Icon name="ban" size={16} />
                 Anular
               </button>
             </div>

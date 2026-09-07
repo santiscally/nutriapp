@@ -15,6 +15,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -126,6 +127,22 @@ public class GlobalExceptionHandler {
             HttpRequestMethodNotSupportedException ex, HttpServletRequest req) {
         return build(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
                 "Método " + ex.getMethod() + " no soportado en esta ruta", req);
+    }
+
+    /**
+     * Content-Type equivocado (típico: mandar JSON a un endpoint multipart, como {@code /registro}).
+     * Sin este handler caía en el catch-all y salía 500 "Error interno": un error del cliente
+     * reportado como falla del servidor, encima en un endpoint público.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiError> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException ex, HttpServletRequest req) {
+        String soportados = ex.getSupportedMediaTypes().stream()
+                .map(Object::toString)
+                .collect(java.util.stream.Collectors.joining(", "));
+        String detalle = soportados.isBlank() ? "" : " Se esperaba: " + soportados + ".";
+        return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+                "Content-Type no soportado en esta ruta." + detalle, req);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -13,6 +13,7 @@ import com.nutriapp.modules.receta.repository.RecetaRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -47,18 +48,32 @@ public class CuponSyncService {
      * hacer (la emisión lo deja subir; el resync lo captura y marca ERROR).
      */
     public void registrar(Receta receta) {
-        List<Long> variantIds = receta.getItems().stream()
+        List<Producto> productos = receta.getItems().stream()
                 .map(i -> productoRepository.findById(i.getProductoId()).orElse(null))
-                .filter(p -> p != null && p.getTiendanubeVariantId() != null)
-                .map(Producto::getTiendanubeVariantId)
                 .toList();
+        List<Long> productIds = productos.stream()
+                .filter(p -> p != null && p.getTiendanubeProductId() != null)
+                .map(Producto::getTiendanubeProductId)
+                .toList();
+        if (productIds.isEmpty() || productIds.size() != productos.size()) {
+            // Sin el id de TODOS los productos el cupón saldría sin restringir: descuento a toda la tienda.
+            String detalle = productos.stream()
+                    .filter(p -> p == null || p.getTiendanubeProductId() == null)
+                    .map(p -> p == null ? "(producto inexistente)" : p.getNombre())
+                    .collect(Collectors.joining(", "));
+            receta.setCuponSyncEstado(CuponSyncEstado.PENDIENTE);
+            receta.setCuponSyncError(CuponSyncEstado.SIN_MAPEO + ": " + detalle);
+            log.warn("Cupón de receta {} NO se registra: productos sin mapear ({}). "
+                    + "Correr POST /admin/tiendanube/mapear-productos.", receta.getCodigo(), detalle);
+            return;
+        }
         try {
             TiendaNubeClient.Coupon coupon = tiendaNubeClient.createCoupon(new TiendaNubeClient.CouponRequest(
                     receta.getCodigo(),
                     receta.getDescuentoPct(),
                     LocalDate.now(AR),
                     receta.getVenceAt(),
-                    variantIds));
+                    productIds));
             receta.setCuponTiendanubeId(coupon.id());
             receta.setCuponSyncEstado(CuponSyncEstado.SINCRONIZADO);
             receta.setCuponSyncError(null);

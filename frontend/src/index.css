@@ -1,4 +1,4 @@
-/* Estilos base de NutriApp. Minimal y sin librería de UI — se refinará en los pasos siguientes. */
+/* Estilos base de BonosApp. Minimal y sin librería de UI — se refinará en los pasos siguientes. */
 
 :root {
   /* Neutrales cálidos (sistema del rediseño 2026-07-26) */
@@ -1024,6 +1024,12 @@ select {
    la tabla y desalinea la última columna). Botones inline, alineados a la derecha. */
 .table__actions { text-align: right; white-space: nowrap; }
 .table__actions .btn { vertical-align: middle; }
+/* La clase sola pierde contra `.table th, .table td { text-align: left }` por especificidad
+   (0,1,1 vs 0,1,0): sin esto el encabezado "Acciones" queda a la izquierda y no sobre los botones. */
+.table th.table__actions, .table td.table__actions { text-align: right; }
+/* Encoge la columna a su contenido. Con el auto-layout de la tabla se llevaba parte del ancho
+   sobrante y dejaba un hueco entre los botones y el borde derecho. */
+.table th.table__actions { width: 1%; }
 .table__actions .btn + .btn { margin-left: 0.4rem; }
 
 .pager {
@@ -1142,18 +1148,46 @@ select {
 .btn--danger { background: transparent; border-color: #feb2b2; color: var(--danger); }
 .btn--danger:hover:not(:disabled) { background: #fff5f5; }
 
-/* 2.4: enviar la receta por WhatsApp es un paso manual de la nutricionista, no algo que hace el
-   sistema. Va con el verde de la marca para que se reconozca de un vistazo y no se saltee. El
-   texto va oscuro: blanco sobre este verde no llega al contraste mínimo. */
+/* 2.4: enviar el bono por WhatsApp es un paso manual de la nutricionista, no algo que hace el
+   sistema. Va en outline de marca y no con el verde de WhatsApp (#25d366), que peleaba con el
+   verde propio y metía una marca ajena en la paleta. El ícono lo hace igual de reconocible. */
 .btn--whatsapp {
-  background: #25d366;
-  color: #07351d;
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.28);
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary-dark);
 }
 .btn--whatsapp:hover:not(:disabled) {
-  background: #1eb958;
-  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.34);
+  background: var(--primary-soft);
+  border-color: var(--primary-dark);
 }
+
+/* Acciones de tabla: cuadraditos sólo-ícono. El texto ("Editar"/"Eliminar") hacía que la última
+   columna variara de ancho por fila; el ícono la deja pareja. El qué hace cada uno va en el
+   title + aria-label, que es lo que leen el tooltip y el lector de pantalla. */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.btn-icon:hover:not(:disabled) {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+.btn-icon:disabled { opacity: 0.45; }
+.btn-icon--danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: #feb2b2;
+  color: var(--danger);
+}
+.table__actions .btn-icon + .btn-icon { margin-left: 0.35rem; }
 
 /* Detalle receta */
 .detalle__head {
@@ -1249,6 +1283,14 @@ select {
 .auth__steps li { display: flex; gap: 11px; align-items: flex-start; font-size: 0.9rem; color: #cfe0db; }
 .auth__steps b { color: var(--primary-mint); font-weight: 700; }
 .auth__note { margin: 0; font-size: 0.78rem; color: #7d968f; }
+.auth__contacto { margin-top: 8px; }
+.auth__contacto a {
+  color: var(--primary-mint);
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.auth__contacto a:hover { text-decoration: underline; }
 .auth__panel {
   display: grid;
   place-items: center;
@@ -1741,13 +1783,18 @@ html, body { overflow-x: hidden; }
   .prod-detalle__datos { grid-template-columns: 1fr 1fr; }
 }
 
-/* Notas de paciente en el listado: se ven, pero no deforman la fila. El texto completo está en el
-   form de edición y en el tooltip. */
-.cell-notas {
-  max-width: 260px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* Nota del paciente en su modal. `pre-wrap` respeta los saltos de línea que se escribieron en el
+   form, y `break-word` evita que una URL pegada desborde la card. En el listado no va texto: una
+   nota larga estiraba la fila y salía cortada — ahí sólo está el botón "Ver nota". */
+/* El botón no parte "Ver nota" en dos líneas cuando la tabla se angosta: partido, desalinea el
+   alto de la fila respecto de las que no tienen nota. */
+.cell-nota { white-space: nowrap; }
+
+.nota-texto {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: 1.6;
+  margin: 0;
 }
 
 /* Barra de filtros del catálogo del admin: buscador ancho + tabs a la derecha, alineados por alto. */
@@ -2064,6 +2111,19 @@ html, body { overflow-x: hidden; }
   line-height: 1.6;
   color: #7d968f;
 }
+.soon__contacto {
+  margin: 10px auto 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #7d968f;
+}
+.soon__contacto a {
+  color: var(--primary-mint);
+  font-weight: 700;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.soon__contacto a:hover { text-decoration: underline; }
 .soon__footer {
   position: relative;
   display: flex;

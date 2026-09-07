@@ -18,7 +18,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 class SmtpMailSenderTest {
 
     private final IntegrationsProperties.Mail props =
-            new IntegrationsProperties.Mail("live", "no-reply@nutriapp.local", "NutriApp");
+            new IntegrationsProperties.Mail("live", "no-reply@bonosapp.local", "BonosApp");
 
     @Test
     void arma_from_to_subject_yEnvia() throws Exception {
@@ -31,8 +31,8 @@ class SmtpMailSenderTest {
         verify(java).send(mime);
         assertThat(mime.getAllRecipients()[0].toString()).isEqualTo("paciente@x.com");
         assertThat(mime.getSubject()).isEqualTo("Tu receta RX-1");
-        assertThat(mime.getFrom()[0].toString()).contains("no-reply@nutriapp.local");
-        assertThat(mime.getFrom()[0].toString()).contains("NutriApp");
+        assertThat(mime.getFrom()[0].toString()).contains("no-reply@bonosapp.local");
+        assertThat(mime.getFrom()[0].toString()).contains("BonosApp");
     }
 
     @Test

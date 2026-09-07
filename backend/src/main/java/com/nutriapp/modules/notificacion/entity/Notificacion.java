@@ -12,10 +12,11 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Notificación encolada de una receta hacia el paciente (hoy sólo mail).
- * Se crea en QUEUED al emitir; el {@code NotificacionDispatcher} la drena contra el
- * port correspondiente. En modo stub el envío degrada y la notificación sigue QUEUED
- * (se reintenta al pasar la integración a live) — nunca aborta la emisión de la receta.
+ * Notificación encolada (hoy sólo mail): la emisión de una receta hacia el paciente y los
+ * avisos del alta pública de una nutricionista (acuse, aprobación, rechazo y el aviso al admin).
+ * Se crea en QUEUED; el {@code NotificacionDispatcher} la drena contra el port correspondiente.
+ * En modo stub el envío degrada y la notificación sigue QUEUED (se reintenta al pasar la
+ * integración a live) — nunca aborta la operación que la originó.
  */
 @Getter
 @Setter
@@ -23,7 +24,12 @@ import lombok.Setter;
 @Table(name = "notificaciones")
 public class Notificacion extends BaseEntity {
 
+    @Enumerated(EnumType.STRING)
+    private TipoNotificacion tipo = TipoNotificacion.EMISION_RECETA;
+
     private UUID recetaId;
+
+    private UUID nutricionistaId;
 
     @Enumerated(EnumType.STRING)
     private CanalNotificacion canal;

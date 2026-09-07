@@ -37,4 +37,22 @@ public class StubTiendaNubeClient implements TiendaNubeClient {
         log.debug("[stub-tiendanube] getPaidOrdersSince {} — sin conexión", since);
         throw new IntegrationUnavailableException("tiendanube");
     }
+
+    @Override
+    public ProductPage listProducts(int page, int perPage) {
+        log.debug("[stub-tiendanube] listProducts page={} — sin conexión", page);
+        throw new IntegrationUnavailableException("tiendanube");
+    }
+
+    @Override
+    public List<Webhook> listWebhooks() {
+        log.debug("[stub-tiendanube] listWebhooks — sin conexión");
+        throw new IntegrationUnavailableException("tiendanube");
+    }
+
+    @Override
+    public Webhook createWebhook(String event, String url) {
+        log.info("[stub-tiendanube] createWebhook {} {} — sin conexión", event, url);
+        throw new IntegrationUnavailableException("tiendanube");
+    }
 }

@@ -19,7 +19,17 @@ public record IntegrationsProperties(
 
     public record TiendaNube(String mode, String baseUrl, String storeId, String accessToken,
                              String clientId, String clientSecret, String userAgent,
-                             String webhookSecret) {}
+                             String webhookSecret, String storeUrl) {
+
+        /** Vitrina pública a la que se manda a la paciente. Vacía = los mensajes van sin link. */
+        public String storeUrlNormalizada() {
+            if (storeUrl == null || storeUrl.isBlank()) {
+                return null;
+            }
+            String u = storeUrl.trim();
+            return u.endsWith("/") ? u.substring(0, u.length() - 1) : u;
+        }
+    }
 
     public record Mail(String mode, String fromAddress, String fromName) {}
 

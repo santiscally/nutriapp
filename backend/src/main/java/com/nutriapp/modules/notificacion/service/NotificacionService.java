@@ -1,10 +1,13 @@
 package com.nutriapp.modules.notificacion.service;
 
+import com.nutriapp.modules.notificacion.NotificacionProperties;
 import com.nutriapp.modules.notificacion.dto.NotificacionResponse;
 import com.nutriapp.modules.notificacion.entity.CanalNotificacion;
 import com.nutriapp.modules.notificacion.entity.EstadoNotificacion;
 import com.nutriapp.modules.notificacion.entity.Notificacion;
+import com.nutriapp.modules.notificacion.entity.TipoNotificacion;
 import com.nutriapp.modules.notificacion.repository.NotificacionRepository;
+import com.nutriapp.modules.nutricionista.entity.Nutricionista;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.receta.entity.Receta;
 import java.util.List;
@@ -16,7 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Alta, consulta y control de estado de las notificaciones de receta. El envío real (I/O de mail)
+ * Alta, consulta y control de estado de las notificaciones (recetas y alta de nutricionistas).
+ * El envío real (I/O de mail)
  * lo hace el {@link NotificacionDispatcher} FUERA de transacción; acá viven
  * las operaciones de DB, cada una en su transacción corta. La emisión de receta sólo se acopla
  * al insert de estas filas (misma tx, respeta la FK), nunca a las integraciones externas.
@@ -28,6 +32,7 @@ public class NotificacionService {
 
     private final NotificacionRepository repo;
     private final NotificacionTemplates templates;
+    private final NotificacionProperties props;
 
     /**
      * Encola el email de una receta recién emitida. Idempotente por (receta, canal).
@@ -64,12 +69,58 @@ public class NotificacionService {
         }
     }
 
+    /**
+     * Avisos del alta pública: acuse a quien se registra + aviso al admin de que hay una solicitud
+     * esperando. Sin {@code admin-email} configurado, el segundo no se encola (nadie se entera).
+     */
+    @Transactional
+    public void encolarRegistro(Nutricionista nutricionista) {
+        encolar(TipoNotificacion.REGISTRO_RECIBIDO, nutricionista, nutricionista.getEmail(),
+                templates.asuntoRegistroRecibido(), templates.cuerpoRegistroRecibido(nutricionista));
+
+        if (!props.tieneAdminEmail()) {
+            log.warn("Sin nutriapp.notificaciones.admin-email: la solicitud de {} no se avisa a nadie",
+                    nutricionista.getEmail());
+            return;
+        }
+        encolar(TipoNotificacion.ADMIN_NUEVA_SOLICITUD, nutricionista, props.adminEmail(),
+                templates.asuntoAdminNuevaSolicitud(nutricionista),
+                templates.cuerpoAdminNuevaSolicitud(nutricionista));
+    }
+
+    /** Aviso de aprobación: es el mail que le dice que ya puede entrar. */
+    @Transactional
+    public void encolarAprobacion(Nutricionista nutricionista) {
+        encolar(TipoNotificacion.REGISTRO_APROBADO, nutricionista, nutricionista.getEmail(),
+                templates.asuntoRegistroAprobado(), templates.cuerpoRegistroAprobado(nutricionista));
+    }
+
+    @Transactional
+    public void encolarRechazo(Nutricionista nutricionista, String motivo) {
+        encolar(TipoNotificacion.REGISTRO_RECHAZADO, nutricionista, nutricionista.getEmail(),
+                templates.asuntoRegistroRechazado(), templates.cuerpoRegistroRechazado(nutricionista, motivo));
+    }
+
+    private void encolar(TipoNotificacion tipo, Nutricionista nutricionista, String destinatario,
+                         String asunto, String cuerpo) {
+        Notificacion n = new Notificacion();
+        n.setTipo(tipo);
+        n.setNutricionistaId(nutricionista.getId());
+        n.setCanal(CanalNotificacion.EMAIL);
+        n.setDestinatario(destinatario);
+        n.setAsunto(asunto);
+        n.setCuerpo(cuerpo);
+        n.setEstado(EstadoNotificacion.QUEUED);
+        repo.save(n);
+    }
+
     private void upsertQueued(List<Notificacion> existentes, Receta receta, Paciente paciente, CanalNotificacion canal) {
         Notificacion n = existentes.stream()
                 .filter(x -> x.getCanal() == canal)
                 .findFirst()
                 .orElseGet(Notificacion::new);
 
+        n.setTipo(TipoNotificacion.EMISION_RECETA);
         n.setRecetaId(receta.getId());
         n.setCanal(canal);
         n.setDestinatario(paciente.getEmail());

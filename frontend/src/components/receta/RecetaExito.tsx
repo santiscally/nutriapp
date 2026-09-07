@@ -38,7 +38,8 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
           {receta.items.map((it, i) => (
             <li key={i}>
               <span>
-                {it.cantidad}× {it.producto.nombre}
+                {it.cantidad > 1 ? `${it.cantidad}× ` : ""}
+                {it.producto.nombre}
               </span>
             </li>
           ))}

@@ -90,6 +90,8 @@ public class MaestroImportService {
             porSku.put(p.getSku(), p);
         }
 
+        // Una vez por importación, no por fila (son ~2225).
+        boolean catalogoMapeado = productoRepository.existsByTiendanubeProductIdIsNotNullAndDeletedAtIsNull();
         Set<String> skusVistos = new HashSet<>();
         List<String> sinMatch = new ArrayList<>();
         List<String> rechazos = new ArrayList<>();
@@ -116,7 +118,7 @@ public class MaestroImportService {
             }
             matcheadas++;
             boolean publicadoAntes = p.isPublicado();
-            if (escribir(p, f, ahora)) {
+            if (escribir(p, f, ahora, catalogoMapeado)) {
                 actualizadas++;
             }
             if (p.isPublicado() != publicadoAntes) {
@@ -140,7 +142,7 @@ public class MaestroImportService {
     }
 
     /** Copia los campos del maestro; devuelve true si algo cambió. */
-    private boolean escribir(Producto p, MaestroFila f, Instant ahora) {
+    private boolean escribir(Producto p, MaestroFila f, Instant ahora, boolean catalogoMapeado) {
         String departamento = recortar(f.departamento(), LEN_DEPARTAMENTO);
         String categoria = recortar(f.categoria(), LEN_CATEGORIA);
         String subcategoria = recortar(f.subcategoria(), LEN_SUBCATEGORIA);
@@ -172,7 +174,7 @@ public class MaestroImportService {
             p.getTags().addAll(tags);
         }
         p.setMaestroSyncedAt(ahora);
-        cambio |= publicacionPolicy.aplicar(p);
+        cambio |= publicacionPolicy.aplicar(p, catalogoMapeado);
         return cambio;
     }
 

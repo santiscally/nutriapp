@@ -55,8 +55,10 @@ public class ProductoService {
     public Page<AdminProductoResponse> searchAdmin(String q, String departamento, String categoria,
                                                    boolean sinMaestro, Boolean publicado,
                                                    Pageable pageable) {
+        // Una vez por página, no por fila.
+        boolean catalogoMapeado = repository.existsByTiendanubeProductIdIsNotNullAndDeletedAtIsNull();
         return repository.searchAdmin(q, departamento, categoria, sinMaestro, publicado, pageable)
-                .map(this::toAdminResponse);
+                .map(p -> toAdminResponse(p, catalogoMapeado));
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +73,7 @@ public class ProductoService {
                 repository.countByBloqueadoMaestroAndDeletedAtIsNull(true));
     }
 
-    private AdminProductoResponse toAdminResponse(Producto p) {
+    private AdminProductoResponse toAdminResponse(Producto p, boolean catalogoMapeado) {
         return new AdminProductoResponse(
                 mapper.toResponse(p),
                 p.getMaestroSyncedAt() != null,
@@ -81,7 +83,7 @@ public class ProductoService {
                 p.getTipoErp(),
                 p.isActivoErp(),
                 p.getRubro(),
-                p.isPublicado() ? null : publicacionPolicy.motivoNoPublicable(p));
+                p.isPublicado() ? null : publicacionPolicy.motivoNoPublicable(p, catalogoMapeado));
     }
 
     @Transactional(readOnly = true)

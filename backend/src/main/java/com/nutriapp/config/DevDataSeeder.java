@@ -53,7 +53,7 @@ public class DevDataSeeder implements ApplicationRunner {
         // El admin también opera como nutricionista (acceso completo a la app): perfil APROBADO,
         // sin pacientes/recetas demo (arranca su propio espacio). Idempotente e independiente del
         // guard del demo de abajo → se crea también en una DB ya seedeada al reiniciar el backend.
-        ensureNutriAprobado(ADMIN_EMAIL, "Admin", "NutriApp", "+5491100000000", "MN 00000");
+        ensureNutriAprobado(ADMIN_EMAIL, "Admin", "BonosApp", "+5491100000000", "MN 00000");
 
         if (nutricionistaRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(DEMO_EMAIL).isPresent()) {
             log.info("[seed] nutricionista demo ya existe, skip");

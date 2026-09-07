@@ -2,6 +2,7 @@ package com.nutriapp.modules.registro.service;
 
 import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
+import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.NutricionistaProperties;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
@@ -30,6 +31,7 @@ public class RegistroService {
     private final KeycloakAdminClient keycloak;
     private final ArchivoService archivoService;
     private final NutricionistaProperties props;
+    private final NotificacionService notificaciones;
 
     @Transactional
     public RegistroResponse registrar(RegistroRequest req, MultipartFile matricula) {
@@ -71,6 +73,9 @@ public class RegistroService {
             if (matricula != null && !matricula.isEmpty()) {
                 archivoService.guardar(saved.getId(), TipoArchivo.MATRICULA, matricula);
             }
+            // Misma tx que el alta: o queda la solicitud con sus avisos encolados, o no queda nada.
+            // El envío es asíncrono (dispatcher), así que un proveedor caído no frena el registro.
+            notificaciones.encolarRegistro(saved);
             log.info("Registro de nutricionista {} (keycloak {}) — PENDIENTE de aprobación",
                     saved.getEmail(), keycloakUserId);
             return new RegistroResponse(saved.getId(), saved.getEstadoValidacion().name());

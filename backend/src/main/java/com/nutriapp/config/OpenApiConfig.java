@@ -15,7 +15,7 @@ public class OpenApiConfig {
     public OpenAPI nutriappOpenApi() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("NutriApp API")
+                        .title("BonosApp API")
                         .description("Recetas digitales para nutricionistas — contrato en instrucciones_claude/05-api-endpoints.md")
                         .version("v1"))
                 .components(new Components().addSecuritySchemes("bearer-jwt",

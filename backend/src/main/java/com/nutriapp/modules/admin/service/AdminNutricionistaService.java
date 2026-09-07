@@ -5,6 +5,7 @@ import com.nutriapp.common.error.ConflictException;
 import com.nutriapp.common.error.NotFoundException;
 import com.nutriapp.integrations.keycloak.KeycloakAdminClient;
 import com.nutriapp.modules.admin.dto.NutricionistaResponse;
+import com.nutriapp.modules.notificacion.service.NotificacionService;
 import com.nutriapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.nutriapp.modules.nutricionista.entity.EstadoValidacion;
 import com.nutriapp.modules.nutricionista.entity.Nutricionista;
@@ -39,6 +40,7 @@ public class AdminNutricionistaService {
     private final ArchivoService archivoService;
     private final RecetaRepository recetaRepository;
     private final PacienteRepository pacienteRepository;
+    private final NotificacionService notificaciones;
 
     @Transactional(readOnly = true)
     public Page<NutricionistaResponse> listar(EstadoValidacion estado, String q, Pageable pageable) {
@@ -55,7 +57,9 @@ public class AdminNutricionistaService {
         n.setValidadoPor(validadorActual());
         n.setNotasValidacion(null);
         log.info("Nutricionista {} APROBADA por {}", n.getEmail(), n.getValidadoPor());
-        return toResponse(repository.save(n));
+        Nutricionista aprobada = repository.save(n);
+        notificaciones.encolarAprobacion(aprobada);
+        return toResponse(aprobada);
     }
 
     @Transactional
@@ -69,7 +73,9 @@ public class AdminNutricionistaService {
         n.setValidadoPor(validadorActual());
         n.setNotasValidacion(motivo);
         log.info("Nutricionista {} RECHAZADA por {}", n.getEmail(), n.getValidadoPor());
-        return toResponse(repository.save(n));
+        Nutricionista rechazada = repository.save(n);
+        notificaciones.encolarRechazo(rechazada, motivo);
+        return toResponse(rechazada);
     }
 
     private Nutricionista getPendiente(UUID id) {

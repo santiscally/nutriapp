@@ -2,6 +2,7 @@ package com.nutriapp.modules.receta.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.nutriapp.integrations.IntegrationsProperties;
 import com.nutriapp.modules.paciente.entity.Paciente;
 import com.nutriapp.modules.receta.entity.EstadoReceta;
 import com.nutriapp.modules.receta.entity.Receta;
@@ -15,7 +16,17 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 class WaMeLinkBuilderTest {
 
-    private final WaMeLinkBuilder builder = new WaMeLinkBuilder();
+    private static final String TIENDA = "https://tienda.test";
+
+    private final WaMeLinkBuilder builder = builder(TIENDA);
+
+    private static WaMeLinkBuilder builder(String storeUrl) {
+        return new WaMeLinkBuilder(new IntegrationsProperties(
+                null,
+                new IntegrationsProperties.TiendaNube(
+                        "stub", null, null, null, null, null, null, null, storeUrl),
+                null));
+    }
 
     private Receta receta(EstadoReceta estado) {
         Receta r = new Receta();
@@ -80,5 +91,45 @@ class WaMeLinkBuilderTest {
         assertThat(builder.forReceta(pendiente, paciente("   "))).isNull();
         assertThat(builder.forReceta(pendiente, paciente("sin-numero"))).isNull();
         assertThat(builder.forReceta(pendiente, null)).isNull();
+    }
+
+    /** Un emoji que no esté en la fuente del cliente de la paciente se ve como caja vacía. */
+    @Test
+    void elMensajeNoLlevaEmojis() {
+        String url = builder.forReceta(receta(EstadoReceta.PENDIENTE), paciente("+5491144443333"));
+        String texto = URLDecoder.decode(
+                url.substring(url.indexOf("?text=") + "?text=".length()), StandardCharsets.UTF_8);
+
+        assertThat(texto).startsWith("Hola Juan! Tu bono profesional");
+        assertThat(texto.codePoints().anyMatch(cp -> cp >= 0x2600)).isFalse();
+    }
+
+    @Test
+    void elMensajeLlevaElLinkDeLaTienda() {
+        String texto = texto(builder.forReceta(receta(EstadoReceta.PENDIENTE), paciente("+5491144443333")));
+
+        assertThat(texto).endsWith("Usalo al comprar acá: " + TIENDA);
+    }
+
+    /** Sin tienda configurada el mensaje sale igual, sin un link cortado. */
+    @Test
+    void sinTiendaConfiguradaNoQuedaUnLinkVacio() {
+        String texto = texto(builder(null).forReceta(receta(EstadoReceta.PENDIENTE), paciente("+5491144443333")));
+
+        assertThat(texto).endsWith("Usalo al comprar en la tienda online.").doesNotContain("http");
+    }
+
+    /** La barra final del env no se duplica contra la del path. */
+    @Test
+    void laBarraFinalDeLaUrlSeNormaliza() {
+        String texto = texto(builder("https://tienda.test/").forReceta(
+                receta(EstadoReceta.PENDIENTE), paciente("+5491144443333")));
+
+        assertThat(texto).endsWith("acá: https://tienda.test");
+    }
+
+    private static String texto(String url) {
+        return URLDecoder.decode(
+                url.substring(url.indexOf("?text=") + "?text=".length()), StandardCharsets.UTF_8);
     }
 }

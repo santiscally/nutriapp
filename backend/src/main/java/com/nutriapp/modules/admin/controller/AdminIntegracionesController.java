@@ -2,8 +2,12 @@ package com.nutriapp.modules.admin.controller;
 
 import com.nutriapp.modules.admin.dto.IntegracionesEstadoResponse;
 import com.nutriapp.modules.admin.service.IntegracionesEstadoService;
+import com.nutriapp.modules.producto.dto.MapeoTiendaNubeResponse;
 import com.nutriapp.modules.producto.service.ProductoSyncService;
+import com.nutriapp.modules.producto.service.TiendaNubeMapeoService;
 import com.nutriapp.modules.receta.dto.ResyncCuponesResponse;
+import com.nutriapp.modules.webhook.dto.RegistrarWebhooksResponse;
+import com.nutriapp.modules.webhook.service.TiendaNubeWebhookRegistrar;
 import com.nutriapp.modules.receta.service.CuponSyncService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -27,12 +31,36 @@ public class AdminIntegracionesController {
     private final IntegracionesEstadoService integracionesEstadoService;
     private final CuponSyncService cuponSyncService;
     private final ProductoSyncService productoSyncService;
+    private final TiendaNubeMapeoService tiendaNubeMapeoService;
+    private final TiendaNubeWebhookRegistrar tiendaNubeWebhookRegistrar;
 
     /** 2.7 — Estado por proveedor: modo, disponible, pendientes, último error, última sync. */
     @GetMapping("/integraciones/estado")
     @PreAuthorize("hasAuthority('admin:manage')")
     public IntegracionesEstadoResponse estado() {
         return integracionesEstadoService.estado();
+    }
+
+    /**
+     * Concilia el catálogo local con la tienda por SKU y guarda los ids de TiendaNube. Hay que
+     * correrlo antes de emitir recetas en live: sin esos ids el cupón sale sin restricción de
+     * productos. Síncrono — son ~12 requests y el admin necesita ver qué SKUs no matchearon.
+     */
+    @PostMapping("/tiendanube/mapear-productos")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public MapeoTiendaNubeResponse mapearProductos() {
+        return tiendaNubeMapeoService.mapear();
+    }
+
+    /**
+     * Suscribe la app a {@code order/paid} en la tienda configurada. Paso de puesta en marcha, una
+     * vez por tienda: sin esto no llega ningún webhook y la conversión sólo la detecta el polling.
+     * Idempotente. Exige {@code APP_PUBLIC_URL} en HTTPS.
+     */
+    @PostMapping("/tiendanube/registrar-webhooks")
+    @PreAuthorize("hasAuthority('admin:manage')")
+    public RegistrarWebhooksResponse registrarWebhooks() {
+        return tiendaNubeWebhookRegistrar.registrar();
     }
 
     /** 2.8 — Reintenta el registro de los cupones que quedaron pendientes de sync. */

@@ -19,6 +19,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
@@ -75,6 +76,11 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
 
     @Override
     public Coupon createCoupon(CouponRequest request) {
+        if (request.productIds() == null || request.productIds().isEmpty()) {
+            // Sin products[] TiendaNube aplica el cupón a TODA la tienda. Nunca es lo que queremos.
+            throw new IllegalArgumentException(
+                    "Cupón sin productos: se aplicaría a toda la tienda (receta " + request.code() + ")");
+        }
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", request.code());
         body.put("type", "percentage");
@@ -86,9 +92,7 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
         if (request.endDate() != null) {
             body.put("end_date", request.endDate().toString());
         }
-        if (request.productIds() != null && !request.productIds().isEmpty()) {
-            body.put("products", request.productIds());
-        }
+        body.put("products", request.productIds());
         CouponDto dto = call(() -> http.post()
                 .uri("/{store}/coupons", props.storeId())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -122,7 +126,13 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
                 .queryParam("payment_status", "paid")
                 .queryParam("updated_at_min", since.toString())
                 .build(props.storeId());
-        OrderDto[] dtos = call(() -> http.get().uri(uri).retrieve().body(OrderDto[].class));
+        OrderDto[] dtos;
+        try {
+            dtos = call(() -> http.get().uri(uri).retrieve().body(OrderDto[].class));
+        } catch (HttpClientErrorException.NotFound ex) {
+            // Colección vacía = 404 "Last page is 0", no un array vacío: una tienda sin ventas en la ventana.
+            return List.of();
+        }
         if (dtos == null) {
             return List.of();
         }
@@ -131,6 +141,58 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
             orders.add(toOrder(d));
         }
         return orders;
+    }
+
+    @Override
+    public ProductPage listProducts(int page, int perPage) {
+        Function<UriBuilder, URI> uri = b -> b.path("/{store}/products")
+                .queryParam("page", page)
+                .queryParam("per_page", perPage)
+                .queryParam("fields", "id,name,variants")
+                .build(props.storeId());
+        ResponseEntity<ProductDto[]> res;
+        try {
+            res = call(() -> http.get().uri(uri).retrieve().toEntity(ProductDto[].class));
+        } catch (HttpClientErrorException.NotFound ex) {
+            // Una página más allá de la última responde 404 (no un array vacío): es fin de catálogo.
+            return new ProductPage(List.of(), false);
+        }
+        ProductDto[] dtos = res.getBody();
+        if (dtos == null) {
+            return new ProductPage(List.of(), false);
+        }
+        List<Product> items = new ArrayList<>(dtos.length);
+        for (ProductDto d : dtos) {
+            items.add(toProduct(d));
+        }
+        return new ProductPage(items, tieneSiguiente(res.getHeaders().getFirst("Link")));
+    }
+
+    @Override
+    public List<Webhook> listWebhooks() {
+        WebhookDto[] dtos = call(() -> http.get()
+                .uri("/{store}/webhooks", props.storeId())
+                .retrieve()
+                .body(WebhookDto[].class));
+        if (dtos == null) {
+            return List.of();
+        }
+        List<Webhook> webhooks = new ArrayList<>(dtos.length);
+        for (WebhookDto d : dtos) {
+            webhooks.add(new Webhook(d.id(), d.event(), d.url()));
+        }
+        return webhooks;
+    }
+
+    @Override
+    public Webhook createWebhook(String event, String url) {
+        WebhookDto dto = call(() -> http.post()
+                .uri("/{store}/webhooks", props.storeId())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("event", event, "url", url))
+                .retrieve()
+                .body(WebhookDto.class));
+        return dto == null ? null : new Webhook(dto.id(), dto.event(), dto.url());
     }
 
     // --- ejecución con retry/backoff ---
@@ -146,6 +208,10 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
                     throw new IntegrationUnavailableException("tiendanube");
                 }
                 backoff(ex);
+            } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden ex) {
+                // Token inválido o sin el scope pedido: es config, no un request mal armado → degradar.
+                log.warn("[tiendanube] credenciales/scope insuficientes: {}", ex.getMessage());
+                throw new IntegrationUnavailableException("tiendanube");
             } catch (HttpServerErrorException | ResourceAccessException ex) {
                 // 5xx o red caída: transitorio → degradar como el stub (cupón/evento quedan pendientes).
                 log.warn("[tiendanube] no disponible: {}", ex.getMessage());
@@ -203,6 +269,29 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
         }
     }
 
+    private static boolean tieneSiguiente(String linkHeader) {
+        return linkHeader != null && linkHeader.contains("rel=\"next\"");
+    }
+
+    private static Product toProduct(ProductDto d) {
+        List<Variant> variants = new ArrayList<>();
+        if (d.variants() != null) {
+            for (VariantDto v : d.variants()) {
+                variants.add(new Variant(v.id(), v.sku()));
+            }
+        }
+        return new Product(d.id(), nombreEs(d.name()), variants);
+    }
+
+    /** El nombre viene por idioma ({@code {"es": "..."}}); la tienda del cliente es sólo es-AR. */
+    private static String nombreEs(Map<String, String> name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        String es = name.get("es");
+        return es != null ? es : name.values().iterator().next();
+    }
+
     // --- DTOs de deserialización ---
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -219,4 +308,13 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record CouponRefDto(Long id, String code) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ProductDto(long id, Map<String, String> name, List<VariantDto> variants) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record VariantDto(long id, String sku) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record WebhookDto(long id, String event, String url) {}
 }
