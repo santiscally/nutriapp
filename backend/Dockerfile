@@ -15,16 +15,16 @@ COPY src/ src/
 
 RUN --mount=type=cache,target=/root/.m2 \
     ./mvnw -B -q -DskipTests package \
- && cp target/nutriapp-backend.jar /workspace/app.jar
+ && cp target/bonosapp-backend.jar /workspace/app.jar
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
-RUN addgroup -S nutriapp && adduser -S -G nutriapp nutriapp
+RUN addgroup -S bonosapp && adduser -S -G bonosapp bonosapp
 
 WORKDIR /app
-COPY --from=build --chown=nutriapp:nutriapp /workspace/app.jar /app/app.jar
+COPY --from=build --chown=bonosapp:bonosapp /workspace/app.jar /app/app.jar
 
-USER nutriapp
+USER bonosapp
 EXPOSE 8080
 
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:InitialRAMPercentage=50 -Djava.security.egd=file:/dev/./urandom"

@@ -13,7 +13,7 @@ browser ── https ──► nginx (80/443, solo prod)                        
    │                    ├── /api/*       → backend  (Spring Boot :8080)           │
    │                    └── /auth/*      → keycloak (:8080, KC_HTTP_RELATIVE_PATH)│
    │                                                                              │
-   │                 backend ──► postgres 16 (DBs: nutriapp, keycloak)            │
+   │                 backend ──► postgres 16 (DBs: bonosapp, keycloak)            │
    │                    │                                                         │
    │                    ├── integrations/contabilium  ──►  API Contabilium (ERP)  │
    │                    ├── integrations/tiendanube   ──►  API TiendaNube         │
@@ -75,14 +75,14 @@ Contabilium **no modelan nativamente completa**. Por eso el catálogo vive en un
 
 ## Integraciones: patrón port/adapter con modo stub→live
 
-Paquete `com.nutriapp.integrations.<proveedor>/`:
+Paquete `com.bonosapp.integrations.<proveedor>/`:
 
 ```
 integrations/tiendanube/
   TiendaNubeClient.java        ← interfaz (port): createCoupon, getOrder, listOrders, listProducts, registerWebhook
   HttpTiendaNubeClient.java    ← impl real (RestClient, auth, rate-limit backoff 429)
   StubTiendaNubeClient.java    ← impl stub: lanza IntegrationUnavailableException("tiendanube no conectada")
-  TiendaNubeProperties.java    ← @ConfigurationProperties("nutriapp.integrations.tiendanube") { mode, storeId, accessToken, ... }
+  TiendaNubeProperties.java    ← @ConfigurationProperties("bonosapp.integrations.tiendanube") { mode, storeId, accessToken, ... }
 ```
 
 - Selección por properties: `mode=stub|live` (default `stub`). Un `@Configuration` registra el bean según el modo.
@@ -98,7 +98,7 @@ Detalle por proveedor (auth, endpoints, shapes) en `03-integraciones-apis.md`.
 ## Módulos backend
 
 ```
-com.nutriapp
+com.bonosapp
 ├── config/          SecurityConfig, CorsConfig, OpenApiConfig, propiedades de integraciones
 ├── common/          BaseEntity, PageResponse, ApiError + GlobalExceptionHandler, AuthUtils, JwtAuditorAware
 ├── integrations/    contabilium/ tiendanube/ mail/ whatsapp/  (ports + adapters, ver arriba)
@@ -129,7 +129,7 @@ frontend/src/
 ```
 
 Auth: mismo esquema que imedba — form propio email+password (ROPC / Direct Access Grants contra
-`nutriapp-frontend`), tokens en localStorage con refresh coalescido. Sin `keycloak-js`.
+`bonosapp-frontend`), tokens en localStorage con refresh coalescido. Sin `keycloak-js`.
 
 Lección imedba a NO repetir: entrar a ruta protegida sin sesión debe hacer `<Navigate to="/">`,
 no disparar el redirect PKCE.

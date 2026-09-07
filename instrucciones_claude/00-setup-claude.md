@@ -9,13 +9,13 @@
 ## 1. Requisitos previos
 
 - Claude Code instalado (`https://claude.ai/code` o la CLI).
-- Repo clonado y `cd nutriapp`.
+- Repo clonado y `cd bonosapp`.
 - Docker Desktop corriendo (para poder levantar el stack).
 - Node 20.19+ y Java 21 si vas a correr fuera de Docker (opcional).
 
 ## 2. Abrir Claude Code en la raíz del repo
 
-**Importante:** abrir Claude siempre desde la raíz `nutriapp/`, no desde un subdirectorio. De esa manera
+**Importante:** abrir Claude siempre desde la raíz `bonosapp/`, no desde un subdirectorio. De esa manera
 `CLAUDE.md` se carga automáticamente como contexto y Claude entiende el split de propiedad y la regla de oro
 (nada mockeado, integraciones stub→live).
 

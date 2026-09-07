@@ -14,8 +14,8 @@ set -u
 
 BACKEND_URL="${BACKEND_URL:-http://localhost:8080}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8081}"
-REALM="${KEYCLOAK_REALM:-nutriapp}"
-CLIENT="${KEYCLOAK_CLIENT_ID:-nutriapp-frontend}"
+REALM="${KEYCLOAK_REALM:-bonosapp}"
+CLIENT="${KEYCLOAK_CLIENT_ID:-bonosapp-frontend}"
 
 API="$BACKEND_URL/api/v1"
 KC="$KEYCLOAK_URL/realms/$REALM/protocol/openid-connect/token"
@@ -32,8 +32,8 @@ token() { curl -s --max-time 10 -d "grant_type=password" -d "client_id=$CLIENT" 
   -d "username=$1" --data-urlencode "password=$2" "$KC" | py "d.get('access_token','')"; }
 
 echo "== Tokens (backend=$BACKEND_URL keycloak=$KEYCLOAK_URL) =="
-NT=$(token nutri@nutriapp.dev test1234)
-AT=$(token admin@nutriapp.dev test1234)
+NT=$(token nutri@bonosapp.dev test1234)
+AT=$(token admin@bonosapp.dev test1234)
 HN="Authorization: Bearer $NT"; HA="Authorization: Bearer $AT"
 [ -n "$NT" ] && echo "  nutri token OK" || { echo "  nutri token FAIL"; exit 1; }
 [ -n "$AT" ] && echo "  admin token OK" || { echo "  admin token FAIL"; exit 1; }
@@ -71,7 +71,7 @@ CM=$(curl -s -w $'\n%{http_code}' -H "$HN" "$API/dashboard/cierre-mensual?year=2
 check "cierre-mensual 200" "200" "$(echo "$CM" | tail -1)"
 
 echo "== Registro público -> PENDIENTE + login bloqueado =="
-NEWMAIL="smoke.$RANDOM$RANDOM@nutriapp.dev"
+NEWMAIL="smoke.$RANDOM$RANDOM@bonosapp.dev"
 REG=$(curl -s -w $'\n%{http_code}' -H "Content-Type: application/json" \
   -d "{\"nombre\":\"Smoke\",\"apellido\":\"Test\",\"email\":\"$NEWMAIL\",\"telefono\":\"+5491155551234\",\"matricula\":\"MN 9999\",\"password\":\"test1234\"}" \
   "$API/registro")

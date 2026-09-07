@@ -4,4 +4,4 @@ spring:
 
 logging:
   level:
-    com.nutriapp: DEBUG
+    com.bonosapp: DEBUG

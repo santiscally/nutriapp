@@ -1,6 +1,6 @@
 spring:
   application:
-    name: nutriapp-backend
+    name: bonosapp-backend
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   jackson:
@@ -9,7 +9,7 @@ spring:
   servlet:
     multipart:
       # El default de Spring Boot es 1 MB y el maestro de artículos pesa ~1,5 MB: con el default,
-      # el import de C-12 fallaría siempre. El tope real de negocio lo pone nutriapp.catalogo.import-max-bytes
+      # el import de C-12 fallaría siempre. El tope real de negocio lo pone bonosapp.catalogo.import-max-bytes
       # (mensaje de error claro); esto es solo el límite del contenedor.
       max-file-size: ${MULTIPART_MAX_FILE_SIZE:25MB}
       max-request-size: ${MULTIPART_MAX_REQUEST_SIZE:30MB}
@@ -31,9 +31,9 @@ spring:
         transport:
           protocol: smtp
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/nutriapp}
-    username: ${SPRING_DATASOURCE_USERNAME:nutriapp}
-    password: ${SPRING_DATASOURCE_PASSWORD:nutriapp_dev}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/bonosapp}
+    username: ${SPRING_DATASOURCE_USERNAME:bonosapp}
+    password: ${SPRING_DATASOURCE_PASSWORD:bonosapp_dev}
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -55,7 +55,7 @@ spring:
           # En dev no validamos `iss`: el browser pide tokens a localhost:8081 mientras
           # el backend ve Keycloak por la red interna como http://keycloak:8080.
           # Spring valida firma via JWK; alcanza para dev. Prod setea issuer al dominio.
-          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8081/realms/nutriapp/protocol/openid-connect/certs}
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://localhost:8081/realms/bonosapp/protocol/openid-connect/certs}
 
 server:
   port: 8080
@@ -87,7 +87,7 @@ app:
     # (en la máquina de Santi lo toma imedba). En prod esto se setea por env y queda solo el dominio real.
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:5174}
 
-nutriapp:
+bonosapp:
   catalogo:
     # Qué entra al catálogo recetable (mail de Gon 2026-08-03 + C-13/C-14).
     # rubros-permitidos: IdRubro de Contabilium que cuentan como "producto terminado". Hoy tenemos
@@ -152,18 +152,18 @@ nutriapp:
   keycloak:
     # Admin REST API: crear usuarios al registrar y habilitarlos al aprobar.
     # En Docker el backend ve Keycloak por la red interna (http://keycloak:8080).
-    # Auth por service-account (client_credentials) del client confidencial nutriapp-backend,
+    # Auth por service-account (client_credentials) del client confidencial bonosapp-backend,
     # scopeado sólo a realm-management manage-users/view-users (hardening Fase 3): NO el master.
     base-url: ${KEYCLOAK_BASE_URL:http://localhost:8081}
-    realm: ${KEYCLOAK_REALM:nutriapp}
-    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:nutriapp-backend}
+    realm: ${KEYCLOAK_REALM:bonosapp}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:bonosapp-backend}
     # Dev: el secret del realm importado. Prod: regenerar el secret del client y setear el env
     # (application-prod.yml lo deja vacío → fail-closed si no se configura).
-    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:nutriapp-backend-dev-secret-change-me}
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:bonosapp-backend-dev-secret-change-me}
     nutricionista-role: ${KEYCLOAK_NUTRICIONISTA_ROLE:NUTRICIONISTA}
     # Client publico del front. Solo se usa para verificar la contrasena actual (ROPC) cuando
     # alguien la cambia desde su perfil: la Admin API no expone un "validar credencial".
-    public-client-id: ${KEYCLOAK_PUBLIC_CLIENT_ID:nutriapp-frontend}
+    public-client-id: ${KEYCLOAK_PUBLIC_CLIENT_ID:bonosapp-frontend}
   integrations:
     contabilium:
       mode: ${CONTABILIUM_MODE:stub}
@@ -187,7 +187,7 @@ nutriapp:
     mail:
       mode: ${MAIL_MODE:stub}
       # Remitente del SmtpMailSender (Fase 2). El SMTP en sí va en spring.mail.* (arriba).
-      from-address: ${MAIL_FROM_ADDRESS:no-reply@nutriapp.local}
+      from-address: ${MAIL_FROM_ADDRESS:no-reply@bonosapp.local}
       from-name: ${MAIL_FROM_NAME:BonosApp}
 
 springdoc:

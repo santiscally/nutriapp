@@ -2,13 +2,15 @@
 
 > Ex **NutriApp**. Rebranding pedido por el cliente el 2026-09-03, antes del lanzamiento: dominio
 > `bonosapp.com.ar`, isotipo sin cambios, wordmark nuevo. El kit oficial está en `brand/`.
+> El rename llega hasta los identificadores internos; **lo único que sigue diciendo `nutriapp` es el
+> nombre del repo**, para no mover el remote ni el path del proyecto.
 
 Webapp donde nutricionistas validados emiten bonos profesionales con descuento sobre productos del
 ecosistema del cliente (ERP Contabilium / tienda TiendaNube). El paciente recibe el bono por mail y
 WhatsApp con un código de descuento único y compra en la tienda online; el bono queda trazado
 (pendiente → aplicado / vencido a los 30 días) y el nutricionista ve su cierre mensual de comisiones.
 
-Cliente: Gon (jeianell / tienda TBC). Presupuesto: `presupuesto_nutriapp.pdf`. Plazo: 2 meses.
+Cliente: Gon (jeianell / tienda TBC). Presupuesto: `presupuesto_bonosapp.pdf`. Plazo: 2 meses.
 
 ## Stack
 
@@ -24,7 +26,7 @@ Cliente: Gon (jeianell / tienda TBC). Presupuesto: `presupuesto_nutriapp.pdf`. P
 ## Estructura del repo (objetivo)
 
 ```
-nutriapp/                   # el repo conserva el nombre viejo (ver nota de rebranding)
+nutriapp/                   # el repo conserva el nombre viejo a propósito (ver nota de arriba)
 ├── backend/                # Spring Boot 3 + Java 21 (Santi)
 ├── brand/                  # Kit de marca BonosApp que mandó el cliente (png + jpg)
 ├── frontend/               # React 19 + TS + Vite (Fran)
@@ -54,7 +56,7 @@ docker compose up -d --build
 | Frontend (SPA) | http://localhost:5173 |
 | Backend + Swagger | http://localhost:8080 · /swagger-ui.html |
 | Keycloak | http://localhost:8081 |
-| PostgreSQL | localhost:5432 (DBs: `nutriapp`, `keycloak`) |
+| PostgreSQL | localhost:5432 (DBs: `bonosapp`, `keycloak`) |
 
 ## Reglas de la casa
 

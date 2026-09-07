@@ -12,14 +12,14 @@
 
 ## 0. Por qué el Excel no se commitea
 
-De las 126 columnas del maestro, nutriapp usa **9**. Las otras traen **costo, margen, comisión, precio de
+De las 126 columnas del maestro, bonosapp usa **9**. Las otras traen **costo, margen, comisión, precio de
 lista por proveedor y precios de transfer de droguería** de 2225 artículos: es la estructura de costos de
-TBC. Sigue la convención que el repo ya tiene para `presupuesto_nutriapp.pdf` → entrada en `.gitignore`.
+TBC. Sigue la convención que el repo ya tiene para `presupuesto_bonosapp.pdf` → entrada en `.gitignore`.
 El archivo vive en la carpeta pero se comparte por fuera del repo. Este documento (sin un solo número de
 costo) es lo que sí queda versionado.
 
 **Consecuencia de diseño:** el importador **lee solo las 9 columnas y descarta el resto**. Los costos y
-márgenes de TBC nunca entran a la base de nutriapp.
+márgenes de TBC nunca entran a la base de bonosapp.
 
 ---
 
@@ -57,7 +57,7 @@ producto equivocado.
 
 ### 2.2 Las 9 columnas y dónde caen
 
-| Columna del Excel | Valores distintos | Destino en nutriapp | Estado |
+| Columna del Excel | Valores distintos | Destino en bonosapp | Estado |
 |---|---|---|---|
 | `SKU` | 2225 (únicos) | clave de match | ya existe |
 | `DEPARTAMENTO` | 6 | `productos.departamento` **(nuevo)** | filtro nivel 1 |
@@ -181,9 +181,9 @@ Notas:
 
 - **M-1:** 2009 de 2225 artículos tienen código de barras. Además de mostrarlo conviene hacerlo
   **buscable**: quien tiene el producto en la mano escanea o tipea el código y espera encontrarlo.
-- **M-3:** también va por configuración (`nutriapp.catalogo.tipos-erp-permitidos`) y como **lista**, no
+- **M-3:** también va por configuración (`bonosapp.catalogo.tipos-erp-permitidos`) y como **lista**, no
   como valor único, justamente por lo de §6.1.
-- **M-4:** el ID va en configuración (`nutriapp.catalogo.rubros-permitidos`), **no hardcodeado** — Gon
+- **M-4:** el ID va en configuración (`bonosapp.catalogo.rubros-permitidos`), **no hardcodeado** — Gon
   quedó en pasar la lista completa de rubros que cuentan como producto terminado (call `34:26`) y hoy
   tenemos uno solo.
 
@@ -268,7 +268,7 @@ Nada de esto depende de TiendaNube. Lo único bloqueado son las decisiones de §
 2. **M-1** — mapear `CodigoBarras` en `ConceptoDto`/`Concepto`, persistirlo, exponerlo en
    `ProductoResponse` y sumarlo al texto buscable de `q`.
 3. **M-3 + M-4 (C-13)** — persistir `tipo` y `rubro_id`; regla de publicación con `Tipo=Producto` y
-   `rubro_id ∈ nutriapp.catalogo.rubros-permitidos` (configurable, default `144331`).
+   `rubro_id ∈ bonosapp.catalogo.rubros-permitidos` (configurable, default `144331`).
 4. **Refactor de `publicado`** a la función derivada de §3.2, compartida por sync e import.
 5. Tests: sync con concepto Servicio, con rubro no permitido, con código de barras, y el recálculo de
    `publicado` combinando reglas de las dos fuentes.

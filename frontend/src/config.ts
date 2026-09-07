@@ -20,7 +20,7 @@ export const config = {
   contactoEmail: env.VITE_CONTACTO_EMAIL ?? "info@nutriappok.com.ar",
   keycloak: {
     url: env.VITE_KEYCLOAK_URL ?? "http://localhost:8081",
-    realm: env.VITE_KEYCLOAK_REALM ?? "nutriapp",
-    clientId: env.VITE_KEYCLOAK_CLIENT_ID ?? "nutriapp-frontend",
+    realm: env.VITE_KEYCLOAK_REALM ?? "bonosapp",
+    clientId: env.VITE_KEYCLOAK_CLIENT_ID ?? "bonosapp-frontend",
   },
 } as const;

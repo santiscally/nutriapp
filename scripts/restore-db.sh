@@ -5,7 +5,7 @@
 #
 # Uso:  bash scripts/restore-db.sh <archivo.dump[.gpg]> [nombre_db] --yes
 #       (nombre_db por defecto: se infiere del prefijo del archivo; si no, POSTGRES_DB)
-# Env:  POSTGRES_USER (def nutriapp), POSTGRES_DB (def nutriapp),
+# Env:  POSTGRES_USER (def bonosapp), POSTGRES_DB (def bonosapp),
 #       COMPOSE_FILES (def "-f docker-compose.yml -f docker-compose.prod.yml")
 set -euo pipefail
 
@@ -32,7 +32,7 @@ if [ -z "${DUMP_FILE}" ] || [ ! -f "${DUMP_FILE}" ]; then
   exit 1
 fi
 
-PGUSER="${POSTGRES_USER:-nutriapp}"
+PGUSER="${POSTGRES_USER:-bonosapp}"
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.yml -f docker-compose.prod.yml}"
 
 # Inferir DB objetivo del nombre del archivo (keycloak-*.dump[.gpg] -> keycloak) si no se pasó.
@@ -40,7 +40,7 @@ if [ -z "${TARGET_DB}" ] || [ "${TARGET_DB}" = "--yes" ]; then
   base="$(basename "${DUMP_FILE}")"
   case "${base}" in
     keycloak-*) TARGET_DB="keycloak" ;;
-    *)          TARGET_DB="${POSTGRES_DB:-nutriapp}" ;;
+    *)          TARGET_DB="${POSTGRES_DB:-bonosapp}" ;;
   esac
 fi
 

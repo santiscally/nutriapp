@@ -23,7 +23,7 @@ Los que más pegan son tres, y los tres tocan plata:
 3. **Aparece la liquidación**: un estado terminal nuevo (`LIQUIDADA`) y un cierre consolidado del lado admin,
    con exportable, para pagarle a cada nutricionista.
 
-**Alcance vs. presupuesto firmado** (`presupuesto_nutriapp.pdf`, $2.000.000, 2 meses):
+**Alcance vs. presupuesto firmado** (`presupuesto_bonosapp.pdf`, $2.000.000, 2 meses):
 
 - **Ya estaba comprometido**: los buscadores "por principio activo, presentación, marca, laboratorio, etc."
   están escritos en el presupuesto. Como Contabilium **no tiene esos campos**, la ingesta del Excel maestro

@@ -4,12 +4,13 @@
 > dominio productivo pasa a ser **`bonosapp.com.ar`**. Los pasos de abajo ya apuntan al dominio
 > nuevo; `nutriappok.com.ar` sigue en vivo y **queda** redirigiendo. La mudanza todavía no está
 > hecha — checklist y estado verificado en
-> [Migración a bonosapp.com.ar](#migración-a-bonosappcomar). Los identificadores internos
-> (paquete `com.nutriapp`, realm `nutriapp`, clients `nutriapp-*`, red `nutriapp-net`, DBs,
-> nombres de contenedor) **no** cambian: son infraestructura ya desplegada, no marca visible.
+> [Migración a bonosapp.com.ar](#migración-a-bonosappcomar). El rename alcanza también a los
+> identificadores internos (paquete, realm y clients de Keycloak, red, contenedores, base de datos
+> y rol): **lo único que sigue diciendo `nutriapp` es el nombre del repo.** Eso implica una ventana
+> de mantenimiento — ver el runbook.
 
 Stack prod = `docker-compose.yml` + override `docker-compose.prod.yml`. db, keycloak y backend
-quedan en loopback (127.0.0.1) + red interna `nutriapp-net`; nginx es el reverse proxy de la app.
+quedan en loopback (127.0.0.1) + red interna `bonosapp-net`; nginx es el reverse proxy de la app.
 La SPA se sirve estática desde `frontend/dist` (build de Fran).
 
 **En el VPS actual, nginx NO publica puertos: corre detrás del Caddy del host.** Los 80/443 los
@@ -32,14 +33,14 @@ Topología (single domain, path-based):
 
 > **Pre-lanzamiento:** para publicar el dominio con una pantalla "Próximamente" y sólo el registro
 > habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS en
-> [DNS](#dns--nutriappcomar): `bonosapp.com.ar.zone` es el dominio nuevo, `nutriappok.com.ar.zone`
+> [DNS](#dns--bonosappcomar): `bonosapp.com.ar.zone` es el dominio nuevo, `nutriappok.com.ar.zone`
 > el viejo (sigue activo: ahí vive la casilla de contacto).
 
 ---
 
 ## Pre-requisitos (una vez)
 
-1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriappok.com.ar](#dns--nutriappcomar).
+1. **Dominio + DNS** apuntando al host, puertos 80/443 abiertos → ver [DNS — nutriappok.com.ar](#dns--bonosappcomar).
 2. **Docker + Docker Compose v2** en el host.
 3. **Node**: no hace falta en el host — el build de la SPA va en un contenedor (paso 2).
 4. **La red docker `web` tiene que existir** (la crea el stack de Caddy). `docker network ls | grep web`;
@@ -85,8 +86,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx
 docker run --rm -v "$PWD/frontend:/app" -w /app \
   -e VITE_API_BASE_URL=https://bonosapp.com.ar \
   -e VITE_KEYCLOAK_URL=https://bonosapp.com.ar/auth \
-  -e VITE_KEYCLOAK_REALM=nutriapp \
-  -e VITE_KEYCLOAK_CLIENT_ID=nutriapp-frontend \
+  -e VITE_KEYCLOAK_REALM=bonosapp \
+  -e VITE_KEYCLOAK_CLIENT_ID=bonosapp-frontend \
   -e VITE_COMING_SOON=true \
   -e VITE_CONTACTO_EMAIL=info@nutriappok.com.ar \
   node:22-alpine sh -c 'npm ci --no-audit --no-fund && npm run build'
@@ -103,7 +104,7 @@ grep -o 'VITE_COMING_SOON:`[^`]*`' frontend/dist/assets/*.js   # → VITE_COMING
 > **origen pelado** (`https://bonosapp.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
 > `frontend/` es de Fran. Estos son sólo los env de build documentados; no se modifica su código.
 
-### 3. Fijar el secret del client `nutriapp-backend` (realm de prod)
+### 3. Fijar el secret del client `bonosapp-backend` (realm de prod)
 El realm importado trae un secret **placeholder** (`*-dev-secret-change-me`) que NO debe usarse en
 prod. El backend en prod **falla-cerrado** si queda vacío (503 en las ops de admin; el compose ni
 levanta).
@@ -123,14 +124,14 @@ KC=/opt/keycloak/bin/kcadm.sh
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
   $KC config credentials --server http://localhost:8080/auth --realm master \
       --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
-  ID=\$($KC get clients -r nutriapp -q clientId=nutriapp-backend --fields id --format csv --noquotes) &&
-  $KC update clients/\$ID -r nutriapp -s secret='$KEYCLOAK_ADMIN_CLIENT_SECRET'"
+  ID=\$($KC get clients -r bonosapp -q clientId=bonosapp-backend --fields id --format csv --noquotes) &&
+  $KC update clients/\$ID -r bonosapp -s secret='$KEYCLOAK_ADMIN_CLIENT_SECRET'"
 
 # 3) reiniciar el backend para que tome el secret bueno
 docker compose -f docker-compose.yml -f docker-compose.prod.yml restart backend
 ```
 
-Alternativa por consola (realm `nutriapp` → Clients → `nutriapp-backend` → Credentials →
+Alternativa por consola (realm `bonosapp` → Clients → `bonosapp-backend` → Credentials →
 *Regenerate*) y copiar el valor a `.env`: mismo resultado, pero necesita el túnel SSH del final de
 esta sección y un `restart backend` igual.
 
@@ -153,20 +154,20 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 Verificación:
 - `https://<dominio>/` → SPA.
 - `https://<dominio>/actuator/health` → `{"status":"UP"}` (único path de actuator expuesto).
-- `https://<dominio>/auth/realms/nutriapp/.well-known/openid-configuration` → JSON de OIDC.
+- `https://<dominio>/auth/realms/bonosapp/.well-known/openid-configuration` → JSON de OIDC.
 - Login en la SPA (ROPC contra `/auth`) → dashboard.
 
 > **Keycloak hostname — el `/auth` va en `KEYCLOAK_HOSTNAME`.** En KC 25 (hostname v2), si el valor
 > es una URL completa, el context path sale de esa URL y **`KC_HTTP_RELATIVE_PATH` no se le
 > concatena**. Con `https://bonosapp.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
-> pero publica adentro `"issuer":"https://bonosapp.com.ar/realms/nutriapp"` — sin el prefijo. Ese
+> pero publica adentro `"issuer":"https://bonosapp.com.ar/realms/bonosapp"` — sin el prefijo. Ese
 > path nginx no lo rutea: cae en el `try_files` de la SPA y devuelve `index.html` con 200, así que
 > el login falla con un error de parseo en vez de un 404 honesto. El valor correcto es
 > `https://bonosapp.com.ar/auth`. Chequeo rápido:
 >
 > ```
-> curl -s http://127.0.0.1:8081/auth/realms/nutriapp/.well-known/openid-configuration \
->   | grep -o '"issuer":"[^"]*"'      # → .../auth/realms/nutriapp
+> curl -s http://127.0.0.1:8081/auth/realms/bonosapp/.well-known/openid-configuration \
+>   | grep -o '"issuer":"[^"]*"'      # → .../auth/realms/bonosapp
 > ```
 >
 > `KC_PROXY: edge` (del compose base) queda deprecado en KC 25 y loguea un WARN; funciona igual
@@ -196,7 +197,7 @@ Apagarlo: `VITE_COMING_SOON=false` (o borrar la variable) + `npm run build` + `n
 **No hay que tocar código.** El flag se hornea en el bundle, no es runtime.
 
 **Qué NO es esto:** no es una barrera de seguridad. Esconde la puerta de entrada de la vista
-pública, nada más — `/ingresar` y `/auth/realms/nutriapp/...` siguen respondiendo. La barrera real
+pública, nada más — `/ingresar` y `/auth/realms/bonosapp/...` siguen respondiendo. La barrera real
 es la de siempre: toda cuenta nueva nace `PENDIENTE` y **deshabilitada en Keycloak** hasta que un
 admin la aprueba, así que un registro público no da acceso a nada.
 
@@ -206,7 +207,7 @@ admin la aprueba, así que un registro público no da acceso a nada.
   tiene que hacer una persona. Nadie avisa al admin de que entró una solicitud tampoco.
 - **La bandeja de aprobación del admin está diferida a Fase 3** (ESTADO/DIARIO): aprobar hoy es por
   API (`/api/v1/admin/nutricionistas`) o SQL. Si Gon espera aprobar por pantalla, no lo tiene aún.
-- **Rate limit:** `/api/v1/registro` está limitado a **10 req/min por IP** (`nutriapp.rate-limit`,
+- **Rate limit:** `/api/v1/registro` está limitado a **10 req/min por IP** (`bonosapp.rate-limit`,
   `enabled=true` por default) + el limitador grueso de nginx. Alcanza para hammering básico, no es
   anti-spam: no hay captcha ni verificación de email, así que las solicitudes basura hay que
   filtrarlas a ojo (para eso está el adjunto obligatorio de matrícula).
@@ -223,15 +224,15 @@ el puerto.
 
 **El detalle que importa: Caddy no proxea a `127.0.0.1:<puerto>`, proxea por nombre de contenedor
 sobre la red docker externa `web`.** `hac_frontend` y `jeianell_frontend` no publican un solo
-puerto al host. BonosApp hace lo mismo: `nutriapp-nginx` entra a `web`, **sin `ports:`**, y Caddy
+puerto al host. BonosApp hace lo mismo: `bonosapp-nginx` entra a `web`, **sin `ports:`**, y Caddy
 lo alcanza por DNS interno de docker. Así el host no suma superficie de red y el TLS lo maneja
 Caddy (emite y renueva solo por ACME).
 
 ```
-internet :443 → edge-caddy-1 (TLS, red `web`) → nutriapp-nginx:80 (red `web` + `nutriapp-net`)
+internet :443 → edge-caddy-1 (TLS, red `web`) → bonosapp-nginx:80 (red `web` + `bonosapp-net`)
                                                    ├── /      SPA (frontend/dist)
                                                    ├── /api/  backend:8080   ┐ sólo en
-                                                   └── /auth/ keycloak:8080  ┘ nutriapp-net
+                                                   └── /auth/ keycloak:8080  ┘ bonosapp-net
 ```
 
 `db`, `keycloak` y `backend` **no** están en `web`: los otros sitios del VPS no tienen ruta hacia
@@ -242,7 +243,7 @@ ellos. El único puente es nginx.
 ```caddyfile
 bonosapp.com.ar, www.bonosapp.com.ar {
     encode zstd gzip
-    reverse_proxy nutriapp-nginx:80
+    reverse_proxy bonosapp-nginx:80
 }
 
 # El dominio viejo queda redirigiendo: los links ya compartidos por WhatsApp/mail no se rompen.
@@ -293,7 +294,7 @@ demás sitios siguen sirviendo normal.
 > config vacía es válida. Chequeo:
 >
 > ```
-> docker exec nutriapp-nginx ls /etc/nginx/conf.d/     # vacío = mount roto
+> docker exec bonosapp-nginx ls /etc/nginx/conf.d/     # vacío = mount roto
 > ```
 >
 > Se arregla recreando el contenedor, no recargándolo:
@@ -311,7 +312,7 @@ demás sitios siguen sirviendo normal.
 | Redirect 80→443 | lo hace Caddy | `return 301` en nginx |
 | ACME | Caddy, automático | certbot `--webroot`, **renovación manual** |
 | `server_name` | fijo + catch-all `444` | `_` (catch-all permisivo) |
-| Red | `nutriapp-net` + `web` | sólo `nutriapp-net` |
+| Red | `bonosapp-net` + `web` | sólo `bonosapp-net` |
 
 Dos cosas fáciles de romper al pasar de una a la otra:
 
@@ -336,8 +337,8 @@ Hostinger y mandó el kit de marca (`brand/`).
 
 **Qué cambia y qué no.** Cambia lo que ve el usuario: nombre en la SPA, `<title>` y metadatos OG,
 imagen de compartir, textos de los mails, `MAIL_FROM_NAME`, User-Agent de TiendaNube y el dominio.
-**No** cambia nada interno: paquete `com.nutriapp`, realm `nutriapp`, clients `nutriapp-frontend` /
-`nutriapp-backend`, red `nutriapp-net`, nombres de contenedor, DBs y el nombre del repo. Son
+**No** cambia nada interno: paquete `com.bonosapp`, realm `bonosapp`, clients `bonosapp-frontend` /
+`bonosapp-backend`, red `bonosapp-net`, nombres de contenedor, DBs y el nombre del repo. Son
 identificadores de infraestructura ya desplegada: renombrarlos obliga a re-importar el realm y a
 re-emitir credenciales, sin que nadie lo vea.
 
@@ -400,7 +401,7 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control cont
      más `MX` y `SPF` propios. Esta vez no autopobló nada, pero revisar igual después de importar:
      `A`/`AAAA` tienen que apuntar al VPS y no debe quedar `MX`/`SPF` de Hostinger — ese SPF autentica
      al remitente equivocado y manda los mails de los bonos a spam.
-   - Más contexto y el resto de las trampas de agosto: [DNS](#dns--nutriappcomar).
+   - Más contexto y el resto de las trampas de agosto: [DNS](#dns--bonosappcomar).
 2. **Caddy** — agregar el site block de `bonosapp.com.ar` y dejar `nutriappok.com.ar` como `redir`
    permanente (ver [Site block](#site-block-en-rootstackcaddyfile)). `caddy validate` **antes** del
    `reload`, y confirmar contra la Admin API que el host quedó cargado: el bind-mount de archivo
@@ -408,7 +409,7 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control cont
 3. **Rebuild de la SPA** con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` apuntando a
    `https://bonosapp.com.ar` (paso 2 del despliegue). Es obligatorio: esos valores se hornean en el
    bundle y la CSP tiene `connect-src 'self'` — con el origen viejo horneado, los fetch se bloquean.
-4. **Redirect URIs del realm** — el client `nutriapp-frontend` del Keycloak de **prod** todavía sólo
+4. **Redirect URIs del realm** — el client `bonosapp-frontend` del Keycloak de **prod** todavía sólo
    conoce el dominio viejo; sin esto el login rompe con `invalid_redirect_uri`. El JSON del repo no
    sirve acá: sólo se importa en realms nuevos. Por `kcadm`, sin entrar a la consola:
 
@@ -418,11 +419,11 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control cont
    docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
      $KC config credentials --server http://localhost:8080/auth --realm master \
          --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
-     ID=\$($KC get clients -r nutriapp -q clientId=nutriapp-frontend --fields id --format csv --noquotes) &&
-     $KC update clients/\$ID -r nutriapp \
+     ID=\$($KC get clients -r bonosapp -q clientId=bonosapp-frontend --fields id --format csv --noquotes) &&
+     $KC update clients/\$ID -r bonosapp \
        -s 'redirectUris=[\"https://bonosapp.com.ar/*\",\"https://www.bonosapp.com.ar/*\"]' \
        -s 'webOrigins=[\"https://bonosapp.com.ar\",\"https://www.bonosapp.com.ar\"]' &&
-     $KC get clients/\$ID -r nutriapp --fields clientId,redirectUris,webOrigins"
+     $KC get clients/\$ID -r bonosapp --fields clientId,redirectUris,webOrigins"
    ```
 
    > ⚠️ **`kcadm update -s <array>=[...]` REEMPLAZA el array entero, no appendea.** Lo de arriba deja
@@ -447,7 +448,7 @@ del DNS y conviene dejarlo hecho mientras propaga.
 #### Fase A — ahora, sin esperar al DNS
 
 ```
-cd /root/nutriapp        # ajustar si el checkout está en otro lado
+cd /root/bonosapp        # ajustar si el checkout está en otro lado
 git pull origin main
 ```
 
@@ -508,34 +509,112 @@ separar "falta la delegación" de "falta el contenido de la zona" — ver
 
 #### Fase B — con el dominio resolviendo
 
-**B1. Rebuild de la SPA** con el origen nuevo (paso 2 del despliegue, ya con
-`VITE_API_BASE_URL=https://bonosapp.com.ar`). Verificar que quedó horneado:
+Es una **ventana de mantenimiento**: acá se mudan de una sola vez el dominio, la base, el realm y
+los nombres de contenedor. La app queda caída unos minutos. Hacerla entera de un tirón — dejarla por
+la mitad es el peor de los estados posibles.
+
+**B1. Base de datos** — `nutriapp` → `bonosapp`, con backup verificado:
+
+```
+bash scripts/rename-db.sh
+```
+
+El script hace el preflight, corre `backup-db.sh`, **valida el dump con `pg_restore -l`** (que exista
+y pese no alcanza: un dump truncado pesa), censa las filas por tabla, baja backend/keycloak/nginx,
+renombra base y rol, **recensa y aborta si no coincide**, y deja `POSTGRES_DB`/`POSTGRES_USER` al día
+en `.env` con una copia previa en `.env.bak-<stamp>`. Es idempotente: si ya se corrió, sale sin tocar
+nada. Ante cualquier falla no renombra y te dice dónde quedó el dump.
+
+**B2. Realm y clients de Keycloak** — con Keycloak arriba y la base ya renombrada:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d db keycloak
+set -a; . ./.env; set +a
+KC=/opt/keycloak/bin/kcadm.sh
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
+  $KC config credentials --server http://localhost:8080/auth --realm master \
+      --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
+  FE=\$($KC get clients -r nutriapp -q clientId=nutriapp-frontend --fields id --format csv --noquotes) &&
+  BE=\$($KC get clients -r nutriapp -q clientId=nutriapp-backend  --fields id --format csv --noquotes) &&
+  $KC update clients/\$FE -r nutriapp -s clientId=bonosapp-frontend &&
+  $KC update clients/\$BE -r nutriapp -s clientId=bonosapp-backend &&
+  $KC update realms/nutriapp -s realm=bonosapp"
+```
+
+Los clients se renombran **antes** que el realm: después del `update realms` la ruta `realms/nutriapp`
+deja de existir y el comando falla a la mitad. El rename del realm **no pierde usuarios** — es un
+cambio de nombre, no una re-importación — pero **invalida todas las sesiones**, que en pre-lanzamiento
+no molesta a nadie. El JSON del repo no interviene: sólo se importa en realms nuevos.
+
+> El mapper de audiencia (`included.client.audience`) apunta al clientId viejo. Verificar y corregir:
+> ```
+> $KC get clients/\$BE/protocol-mappers/models -r bonosapp --fields name,config
+> ```
+
+**B3. `.env`** — además de lo que ya escribió el script:
+
+```
+KEYCLOAK_HOSTNAME=https://bonosapp.com.ar/auth
+KEYCLOAK_JWK_SET_URI=http://keycloak:8080/auth/realms/bonosapp/protocol/openid-connect/certs
+APP_PUBLIC_URL=https://bonosapp.com.ar
+KEYCLOAK_ADMIN_CLIENT_ID=bonosapp-backend
+```
+
+`KEYCLOAK_HOSTNAME` va **con** `/auth` (ver la nota de hostname v2): sin el prefijo el `.well-known`
+publica URLs sin él y el login del SPA rompe.
+
+**B4. Recrear el stack** con los nombres nuevos de contenedor y de red:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml down
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+`down` es necesario, no alcanza `up -d`: la red `nutriapp-net` y los contenedores `nutriapp-*` no se
+renombran en caliente. **No borra volúmenes** (sin `-v`), así que los datos quedan — y de todos modos
+B1 ya dejó el dump.
+
+> ⚠️ **El Caddyfile del VPS apunta al contenedor por nombre.** Al recrearlo pasa a llamarse
+> `bonosapp-nginx`, así que hay que editar `/root/stack/Caddyfile` (`reverse_proxy bonosapp-nginx:80`
+> en los dos site blocks) y recargar Caddy **en la misma ventana**, o el sitio devuelve 502.
+
+**B5. Rebuild de la SPA** — el origen, el realm y el clientId se hornean los tres en el bundle
+(paso 2 del despliegue, ya con los valores nuevos). Verificar:
 
 ```
 grep -o 'bonosapp\.com\.ar' frontend/dist/assets/*.js | head -1
+grep -o 'bonosapp-frontend' frontend/dist/assets/*.js | head -1
 ```
 
-**B2. `KEYCLOAK_HOSTNAME`** → `https://bonosapp.com.ar/auth` (con `/auth`, ver la nota de hostname
-v2) y reiniciar Keycloak:
-
-```
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d keycloak
-```
-
-**B3. Verificación de punta a punta:**
+**B6. Verificación de punta a punta:**
 
 ```
 curl -I https://bonosapp.com.ar                          # 200, cert válido
 curl -I https://nutriappok.com.ar                        # 301 → bonosapp
-curl -s https://bonosapp.com.ar/auth/realms/nutriapp/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
+curl -s https://bonosapp.com.ar/auth/realms/bonosapp/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
 curl -s https://bonosapp.com.ar/actuator/health
+docker compose -f docker-compose.yml -f docker-compose.prod.yml logs backend | grep -i "flyway\|started"
 ```
 
-El `issuer` tiene que decir `https://bonosapp.com.ar/auth/realms/nutriapp` — **con** el `/auth`. Si
-sale sin el prefijo, `KEYCLOAK_HOSTNAME` quedó pelado y el login del SPA rompe.
+El `issuer` tiene que decir `https://bonosapp.com.ar/auth/realms/bonosapp` — **con** el `/auth`. Y en
+los logs del backend, Flyway tiene que validar sin `checksum mismatch`: si aparece, alguien editó una
+migración ya aplicada (ver la nota de `CLAUDE.md`).
 
-**B4. Limpieza (opcional)** — una vez confirmado el `301`, sacar `nutriappok.com.ar` de
-`redirectUris` y `webOrigins` con el mismo comando del paso 4, esta vez sólo con el dominio nuevo.
+**B7. Limpieza (opcional)** — confirmado el `301`, sacar `nutriappok.com.ar` de `redirectUris` y
+`webOrigins` con el comando del paso 4, esta vez sólo con el dominio nuevo.
+
+#### En local, mucho más simple
+
+En dev no hay datos que preservar: el realm se importa del JSON y las seeds las rehace
+`DevDataSeeder`. Un reset completo alcanza y evita todo lo de arriba:
+
+```
+docker compose down -v && docker compose up -d --build
+```
+
+Actualizar antes en `.env`: `POSTGRES_DB`, `POSTGRES_USER`, `VITE_KEYCLOAK_REALM`,
+`VITE_KEYCLOAK_CLIENT_ID`, `MAIL_FROM_ADDRESS` y `ADMIN_NOTIFICATION_EMAIL`. Si preferís conservar la
+base local, `scripts/rename-db.sh` también sirve con `COMPOSE_FILES="-f docker-compose.yml"`.
 
 **El dominio viejo no se da de baja.** Ahí vive la casilla de contacto y los links ya compartidos
 por WhatsApp apuntan a él; queda redirigiendo con `301`. Su zona sigue siendo
@@ -602,7 +681,7 @@ las otras dos se resolvieron al desplegar:
    reintentando el cert; hoy falla con `"DNS problem: SERVFAIL"`. Cuando la zona resuelva, emite
    solo y el sitio queda arriba sin tocar nada más.
 
-   > ⚠️ **El dominio es `nutriappOK.com.ar`, no `nutriapp.com.ar`.** El 2026-08-11 se configuró y se
+   > ⚠️ **El dominio es `bonosappOK.com.ar`, no `nutriapp.com.ar`.** El 2026-08-11 se configuró y se
    > dio de alta en hPanel el segundo por error. **`nutriapp.com.ar` no es nuestro**: su delegación
    > en el registro `.ar` apunta a `ns1/ns2.donweb.com`. La zona que quedó creada en hPanel para ese
    > nombre es huérfana (existe en `orbit/horizon` pero nadie le delega) y **conviene borrarla** —
@@ -610,15 +689,15 @@ las otras dos se resolvieron al desplegar:
    > están renombrados; el `.zone` pasó a llamarse `nutriappok.com.ar.zone`.
 2. **En el VPS los 80/443 los tiene Caddy, no nginx.** ✅ Resuelto (2026-08-11) — ver
    [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual).
-3. **`server_name _` era catch-all.** ✅ Resuelto en `nginx/conf.d-proxied/nutriapp.conf`:
+3. **`server_name _` era catch-all.** ✅ Resuelto en `nginx/conf.d-proxied/bonosapp.conf`:
    `server_name` fijo + un `server{}` `default_server` que descarta con `return 444`. La variante
-   `nginx/conf.d/nutriapp.conf` (modo front único) sigue con `server_name _` — si alguna vez se usa
+   `nginx/conf.d/bonosapp.conf` (modo front único) sigue con `server_name _` — si alguna vez se usa
    en un host compartido, endurecerla igual.
 
 **Email (`@nutriappok.com.ar`): sólo si se va a mandar mail desde ese dominio.** Hoy no hace falta
 (email en `stub` hasta Fase 2) y no tiene relación con servir la app. Cuando se defina el proveedor
 en Fase 2, ahí van `MX` + `SPF` + `DKIM` + `DMARC` **del proveedor que se elija** — copiar los de
-Hostinger de la landing sólo tiene sentido si el mail de nutriapp también va a Hostinger, y si no,
+Hostinger de la landing sólo tiene sentido si el mail de bonosapp también va a Hostinger, y si no,
 autentica al remitente equivocado y los mails de recetas van a spam. Nota aparte: el `_dmarc` de la
 landing es `p=none` (sólo monitorea, no protege); para un dominio que va a mandar mails
 transaccionales conviene arrancar en `p=none` y endurecer a `quarantine` cuando SPF/DKIM alineen.
@@ -655,8 +734,8 @@ hPanel pueden tardar bastante más. Mientras siga dando SERVFAIL, el problema es
 
 ## Backup / restore de la DB
 ```
-bash scripts/backup-db.sh                                       # → backups/{nutriapp,keycloak}-<ts>.dump.gpg
-bash scripts/restore-db.sh backups/nutriapp-<ts>.dump.gpg --yes # DESTRUCTIVO (--clean); autodetecta .gpg; exige --yes
+bash scripts/backup-db.sh                                       # → backups/{bonosapp,keycloak}-<ts>.dump.gpg
+bash scripts/restore-db.sh backups/bonosapp-<ts>.dump.gpg --yes # DESTRUCTIVO (--clean); autodetecta .gpg; exige --yes
 ```
 Los dumps traen **PII** (pacientes/recetas: DNI, CUIT, matrícula, archivos) + el **store de
 credenciales de Keycloak**. Los `.dump*` NO se commitean (`.gitignore`). Guardar copias fuera del
@@ -667,12 +746,12 @@ en el `.env`, contra la clave `ed25519/CEE22F19C64220E5` generada en el host. Ve
 punta: cifra → descifra → `pg_restore -l` lista 79 objetos con las tablas reales.
 
 > ⚠️ **La clave privada está en el VPS y hay que sacarla de ahí.** Exportada en
-> `/root/nutriapp-backup-gpg-PRIVATE.asc` (fuera del repo, `chmod 600`). Guardarla en un gestor de
+> `/root/bonosapp-backup-gpg-PRIVATE.asc` (fuera del repo, `chmod 600`). Guardarla en un gestor de
 > contraseñas o un disco offline y después borrarla del host:
 >
 > ```
 > gpg --batch --yes --delete-secret-keys CEE22F19C64220E5   # deja sólo la pública: sigue cifrando
-> rm -f /root/nutriapp-backup-gpg-PRIVATE.asc
+> rm -f /root/bonosapp-backup-gpg-PRIVATE.asc
 > ```
 >
 > Cifrar sólo hace falta la clave **pública**, así que los backups siguen funcionando igual. Mientras
@@ -680,7 +759,7 @@ punta: cifra → descifra → `pg_restore -l` lista 79 objetos con las tablas re
 > **Sin la privada no hay restore posible** — si se pierde el export, los dumps son papel picado.
 
 Para restaurar en una máquina nueva, importar la privada primero:
-`gpg --import nutriapp-backup-gpg-PRIVATE.asc`.
+`gpg --import bonosapp-backup-gpg-PRIVATE.asc`.
 
 > **Los scripts leen el `.env`** (agregado 2026-08-11). Antes no lo hacían: `BACKUP_GPG_RECIPIENT`
 > seteado ahí no tenía ningún efecto y los dumps salían en **texto plano** con sólo un aviso por

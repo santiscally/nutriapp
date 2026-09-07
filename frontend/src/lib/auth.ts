@@ -1,11 +1,11 @@
 // Auth por ROPC (Resource Owner Password Credentials) contra Keycloak.
 // Patrón portado de imedba: login directo usuario/contraseña contra el client público
-// `nutriapp-frontend` (Direct Access Grants habilitado), sin redirect PKCE.
+// `bonosapp-frontend` (Direct Access Grants habilitado), sin redirect PKCE.
 // Los tokens se guardan en localStorage; el client.ts los inyecta como Bearer y refresca ante 401.
 
 import { config } from "../config";
 
-const STORAGE_KEY = "nutriapp.tokens";
+const STORAGE_KEY = "bonosapp.tokens";
 
 interface StoredTokens {
   accessToken: string;

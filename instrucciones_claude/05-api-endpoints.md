@@ -5,7 +5,7 @@ totalElements, totalPages, first, last}`. Errores: `ApiError {timestamp, status,
 Fuente de verdad viva: Swagger (`http://localhost:8080/swagger-ui.html`). Este doc fija el contrato inicial
 para que Fran construya sin esperar al back; cambios → entrada en DIARIO con "Impacto para el otro".
 
-Roles: `ROLE_NUTRICIONISTA`, `ROLE_ADMIN`. Authorities (resource `nutriapp-backend`): `pacientes:read`,
+Roles: `ROLE_NUTRICIONISTA`, `ROLE_ADMIN`. Authorities (resource `bonosapp-backend`): `pacientes:read`,
 `pacientes:write`, `productos:read`, `recetas:read`, `recetas:write`, `dashboard:read`, `admin:manage`.
 
 **Scoping**: todo lo de nutricionista (pacientes, recetas, dashboard) filtra server-side por el usuario del
@@ -248,7 +248,7 @@ fiscales, porcentajes) los toca el admin: son los que se validaron al aprobar la
 
 | Página | Endpoints |
 |---|---|
-| Login | Keycloak ROPC (`nutriapp-frontend`) + `GET /me` |
+| Login | Keycloak ROPC (`bonosapp-frontend`) + `GET /me` |
 | Registro (pública) | `POST /registro` |
 | Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
 | Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |

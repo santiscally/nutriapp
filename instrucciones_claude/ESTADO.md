@@ -22,9 +22,13 @@
 así que favicon y apple-touch-icon quedaron intactos; cambia el wordmark. Kit oficial en `brand/`.
 `og-image.png` regenerada con el lockup real sobre el verde de marca. La landing y el registro muestran
 la casilla de contacto que pidió el cliente, desde **`VITE_CONTACTO_EMAIL`** (default
-`info@nutriappok.com.ar` — la casilla nueva no existe todavía). **El rename es sólo de cara al usuario:**
-paquete `com.nutriapp`, realm y clients de Keycloak, red, contenedores, DBs y el nombre del repo siguen
-igual A PROPÓSITO (ver `CLAUDE.md`).
+`info@nutriappok.com.ar` — la casilla nueva no existe todavía).
+
+**El rename es COMPLETO, también adentro** (decisión del usuario, 2026-09-07): paquete `com.bonosapp`,
+`artifactId`, properties `bonosapp.*`, realm y clients de Keycloak, red `bonosapp-net`, contenedores,
+upstreams de nginx, base y rol de Postgres. **Lo único que sigue diciendo `nutriapp` es el nombre del
+repo.** Dos excepciones deliberadas: las migraciones Flyway ya aplicadas (tocarlas cambia el checksum
+y el backend no arranca) y el dominio `nutriappok.com.ar`, que es real y sigue en vivo.
 
 **Falta para que el dominio nuevo esté en vivo (ops, no código)** — checklist completo en `DEPLOY.md`,
 sección "Migración a bonosapp.com.ar":
@@ -33,11 +37,14 @@ sección "Migración a bonosapp.com.ar":
 2. Site block en el Caddy del VPS + `redir` permanente desde `nutriappok.com.ar`.
 3. Rebuild de la SPA con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` en `https://bonosapp.com.ar` (se
    hornean en el bundle; con el origen viejo la CSP bloquea los fetch).
-4. **Agregar `https://bonosapp.com.ar/*` a los redirect URIs del client `nutriapp-frontend` en el
-   Keycloak de prod**, o el login rompe con `invalid_redirect_uri`.
+4. **Agregar `https://bonosapp.com.ar/*` a los redirect URIs del client de la SPA en el Keycloak de
+   prod**, o el login rompe con `invalid_redirect_uri`.
 5. `APP_PUBLIC_URL=https://bonosapp.com.ar` en el `.env` del VPS + rebuild del backend (los textos de
    los mails viajan en el jar).
-6. Avisarle a Leo cuando esté, para que mude la casilla de contacto.
+6. **Rename interno en prod, en la MISMA ventana**: `scripts/rename-db.sh` (backup verificado + ALTER
+   DATABASE/ROLE), rename de realm y clients por `kcadm`, `down`+`up` para recrear red y contenedores,
+   y **editar el Caddyfile del VPS a `bonosapp-nginx:80`** o queda 502.
+7. Avisarle a Leo cuando esté, para que mude la casilla de contacto.
 
 **Backend que se commiteó junto (venía del 2026-08-25):** notificaciones de registro (enum
 `TipoNotificacion`, migración **V013**, templates de recibido/aprobado/rechazado + aviso al admin,

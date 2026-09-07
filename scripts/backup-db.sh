@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Backup de las bases Postgres (nutriapp + keycloak) del contenedor `db`.
+# Backup de las bases Postgres (bonosapp + keycloak) del contenedor `db`.
 # Genera dumps en formato custom (-Fc), timestamped, en ./backups/ (git-ignored).
 #
 # Cifrado (recomendado): si BACKUP_GPG_RECIPIENT está seteado, el dump se cifra con GPG
@@ -7,7 +7,7 @@
 # Keycloak, y están pensados para salir del host (DR) → cifrarlos evita multiplicar fugas.
 #
 # Uso:  bash scripts/backup-db.sh
-# Env:  POSTGRES_USER (def nutriapp), POSTGRES_DB (def nutriapp),
+# Env:  POSTGRES_USER (def bonosapp), POSTGRES_DB (def bonosapp),
 #       BACKUP_GPG_RECIPIENT (opcional; si está, cifra),
 #       COMPOSE_FILES (def "-f docker-compose.yml -f docker-compose.prod.yml")
 set -euo pipefail
@@ -26,8 +26,8 @@ if [ -f "${REPO_ROOT}/.env" ]; then
   [ -n "${_env_gpg}" ]  && BACKUP_GPG_RECIPIENT="${_env_gpg}"
 fi
 
-PGUSER="${POSTGRES_USER:-nutriapp}"
-APPDB="${POSTGRES_DB:-nutriapp}"
+PGUSER="${POSTGRES_USER:-bonosapp}"
+APPDB="${POSTGRES_DB:-bonosapp}"
 COMPOSE_FILES="${COMPOSE_FILES:--f docker-compose.yml -f docker-compose.prod.yml}"
 GPG_RCPT="${BACKUP_GPG_RECIPIENT:-}"
 STAMP="$(date +%Y%m%d-%H%M%S)"

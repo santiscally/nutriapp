@@ -14,8 +14,8 @@ set -u
 
 BACKEND_URL="${BACKEND_URL:-http://localhost:8088}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8081}"
-REALM="${KEYCLOAK_REALM:-nutriapp}"
-CLIENT="${KEYCLOAK_CLIENT_ID:-nutriapp-frontend}"
+REALM="${KEYCLOAK_REALM:-bonosapp}"
+CLIENT="${KEYCLOAK_CLIENT_ID:-bonosapp-frontend}"
 SECRET="${TIENDANUBE_WEBHOOK_SECRET:-dev-webhook-secret}"
 
 API="$BACKEND_URL/api/v1"
@@ -35,7 +35,7 @@ hmac() { printf '%s' "$1" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 
 echo "== Token nutri (backend=$BACKEND_URL) =="
-NT=$(token nutri@nutriapp.dev test1234)
+NT=$(token nutri@bonosapp.dev test1234)
 HN="Authorization: Bearer $NT"
 [ -n "$NT" ] && echo "  nutri token OK" || { echo "  nutri token FAIL"; exit 1; }
 

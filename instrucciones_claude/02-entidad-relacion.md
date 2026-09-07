@@ -157,10 +157,10 @@ promueven a tabla `parametros` key-value:
 
 | Property | Default | Nota |
 |---|---|---|
-| `nutriapp.recetas.vigencia-dias` | 30 | confirmado en el mail ("30 días seguramente") |
-| `nutriapp.recetas.descuento-default-pct` | **TBD** | pregunta abierta para Gon |
-| `nutriapp.recetas.comision-pct` | **TBD** | pregunta abierta para Gon (base de cálculo también) |
-| `nutriapp.recetas.max-items` | 1 | subir a N cuando el cliente lo pida; el schema ya lo soporta |
+| `bonosapp.recetas.vigencia-dias` | 30 | confirmado en el mail ("30 días seguramente") |
+| `bonosapp.recetas.descuento-default-pct` | **TBD** | pregunta abierta para Gon |
+| `bonosapp.recetas.comision-pct` | **TBD** | pregunta abierta para Gon (base de cálculo también) |
+| `bonosapp.recetas.max-items` | 1 | subir a N cuando el cliente lo pida; el schema ya lo soporta |
 
 ## Seeds (Flyway)
 
@@ -171,7 +171,7 @@ promueven a tabla `parametros` key-value:
   **Idempotente** (patrón imedba V029: no duplica ni pisa lo cargado a mano). Cuando el sync TiendaNube
   entre en vivo (Fase 2), concilia por SKU y actualiza `origen`.
 - `V004__seed_dev_usuarios.sql` NO existe: los usuarios de prueba viven en el realm export de Keycloak
-  (`keycloak/realms/nutriapp-realm.json`) + un `DevDataSeeder` (`@Profile("dev")`, idempotente) que crea
+  (`keycloak/realms/bonosapp-realm.json`) + un `DevDataSeeder` (`@Profile("dev")`, idempotente) que crea
   2 nutricionistas aprobados + 4 pacientes + 6 recetas en estados variados — para que Fran tenga dashboard
   con data desde el día uno. **Nunca corre en prod.**
 

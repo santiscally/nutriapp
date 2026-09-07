@@ -12,10 +12,17 @@ Rebranding pedido por el cliente el **2026-09-03**, en pre-lanzamiento, para dif
 competencia (Avanter). El isotipo **no cambió** (es el mismo de Gon); cambia el wordmark y el
 dominio: `bonosapp.com.ar`. Kit oficial del cliente en `brand/`.
 
-**El rename es sólo de cara al usuario.** Los identificadores internos siguen diciendo `nutriapp` a
-propósito y NO hay que renombrarlos: paquete `com.nutriapp`, realm y clients de Keycloak, red
-`nutriapp-net`, nombres de contenedor, DBs y el repo. Son infraestructura ya desplegada — cambiarlos
-obliga a re-importar el realm y re-emitir credenciales sin que nadie lo vea.
+**El rename es completo: lo único que sigue diciendo `nutriapp` es el nombre del repo**
+(`santiscally/nutriapp`) y la carpeta local, porque renombrarlos mueve el remote y el path del
+proyecto sin ganar nada. Todo lo demás pasó a `bonosapp`: paquete `com.bonosapp`, `artifactId`,
+prefijo de properties `bonosapp.*`, realm y clients de Keycloak, red `bonosapp-net`, nombres de
+contenedor, upstreams de nginx, base de datos y rol de Postgres.
+
+Dos cosas que **no** se tocan y hay que dejar quietas:
+- **Las migraciones Flyway ya aplicadas** (`V001`–`V012`). Editarles aunque sea un comentario cambia
+  el checksum y el backend no arranca. `V004` y `V009` mencionan `nutriapp` en un comentario y así
+  se quedan.
+- **`nutriappok.com.ar`**, que es un dominio real y sigue en vivo. No es una referencia interna.
 
 La casilla de contacto que muestra el front sigue siendo `info@nutriappok.com.ar` hasta que el
 cliente la mude; sale de `VITE_CONTACTO_EMAIL`, no está hardcodeada. Mudanza del dominio paso a
@@ -34,7 +41,7 @@ Si una tarea implica modificar `frontend/` sin pedido explícito, **parar y avis
 
 - Backend: Java 21 + Spring Boot 3.3.x + Spring Data JPA + Flyway + MapStruct + Spring Security OAuth2 Resource Server.
 - DB: PostgreSQL 16.
-- Auth: Keycloak 25 (OIDC/JWT). Realm `nutriapp`. Clients `nutriapp-frontend` (public SPA) y `nutriapp-backend` (confidential resource server).
+- Auth: Keycloak 25 (OIDC/JWT). Realm `bonosapp`. Clients `bonosapp-frontend` (public SPA) y `bonosapp-backend` (confidential resource server).
 - Frontend: React 19 / TypeScript / Vite (propiedad de Fran). Sin librería de estado ni cliente HTTP externo: fetch nativo envuelto en `api/client.ts` + hook `useFetch` (patrón imedba).
 - Infra: Docker + Docker Compose (dev) + override prod con nginx TLS. Hosting a cargo del cliente.
 - Integraciones: Contabilium (ERP), TiendaNube (tienda + cupones + webhooks), email (proveedor TBD). **Todas detrás de adapters con modo stub** — ver regla de oro. WhatsApp **no** es una integración: es un link `wa.me` que abre la nutricionista (decisión 2026-07-28, tarea 2.4).
@@ -54,7 +61,7 @@ Si una tarea implica modificar `frontend/` sin pedido explícito, **parar y avis
 
 ## Convenciones backend
 
-- Paquete base: `com.nutriapp`.
+- Paquete base: `com.bonosapp`.
 - Cada módulo (en `modules/<nombre>/`) con subpaquetes `entity/ repository/ service/ controller/ dto/ mapper/`.
 - `BaseEntity` con `id (UUID) / createdAt / updatedAt / createdBy / deletedAt` (soft delete). Nunca `DELETE` físico.
 - DTOs: `CreateXxxRequest`, `UpdateXxxRequest`, `XxxResponse`. Mapeos con MapStruct (`componentModel=spring`).
@@ -63,7 +70,7 @@ Si una tarea implica modificar `frontend/` sin pedido explícito, **parar y avis
 - DB naming: snake_case. UUIDs en PKs. Migraciones Flyway `V0NN__descripcion.sql`.
 - Enums en código y VARCHAR en DB: estado_receta, estado_validacion, canal_notificacion, estado_notificacion, origen_producto, estado_sync.
 - Errores: `GlobalExceptionHandler` → `ApiError {timestamp, status, error, message, path, errors[]}` uniforme.
-- Integraciones: paquete `integrations/<proveedor>/` con interfaz (port) + implementación HTTP real + implementación stub, seleccionadas por properties (`nutriapp.integrations.<proveedor>.mode=stub|live`).
+- Integraciones: paquete `integrations/<proveedor>/` con interfaz (port) + implementación HTTP real + implementación stub, seleccionadas por properties (`bonosapp.integrations.<proveedor>.mode=stub|live`).
 
 ## Entidades
 
@@ -127,7 +134,7 @@ Reglas duras:
   + `instrucciones_claude/05-api-endpoints.md`.
 - **JWT — dos namespaces de authorities.**
   - `realm_access.roles` → prefijo `ROLE_` (ej. `ROLE_ADMIN`, `ROLE_NUTRICIONISTA`).
-  - `resource_access.nutriapp-backend.roles` → authority pelada (ej. `recetas:write`, `admin:manage`).
+  - `resource_access.bonosapp-backend.roles` → authority pelada (ej. `recetas:write`, `admin:manage`).
   Los endpoints usan `@PreAuthorize("hasAuthority('<permiso>')")` sobre el segundo namespace.
 - **Errores.** El front parsea el `ApiError` del backend en `api/client.ts` y surfacea `message` al usuario
   (lección imedba: nunca mostrar "HTTP 409" pelado).
@@ -146,7 +153,7 @@ Reglas duras:
 - `instrucciones_claude/05-api-endpoints.md` — contrato REST completo
 - `instrucciones_claude/06-cambios-post-demo-2026-07-31.md` — los 17 cambios de la demo con Gon + Leo, en 4 olas
 - `instrucciones_claude/07-maestro-articulos-y-catalogo.md` — maestro de artículos de TBC + ajustes de catálogo (Ola 3)
-- `presupuesto_nutriapp.pdf` — presupuesto firmado con el cliente (alcance comprometido)
+- `presupuesto_bonosapp.pdf` — presupuesto firmado con el cliente (alcance comprometido)
 
 ## Comandos comunes
 
@@ -154,7 +161,7 @@ Reglas duras:
 
 - `docker compose up -d --build` / `docker compose down` / `docker compose logs -f --tail=200` — ciclo dev.
 - `docker compose down -v` — reset total (borra volúmenes, re-corre init de Postgres y seeds).
-- `docker compose exec db psql -U nutriapp -d nutriapp` — shell psql.
+- `docker compose exec db psql -U bonosapp -d bonosapp` — shell psql.
 - `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev` — backend fuera de Docker.
 - `cd backend && ./mvnw test` — tests (requiere Java 21 en el host; si no, compilar en contenedor).
 - Prod: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`.
@@ -171,7 +178,7 @@ Reglas duras:
 | Backend (Spring)   | `http://localhost:8080`                  |
 | Swagger UI         | `http://localhost:8080/swagger-ui.html`  |
 | Keycloak           | `http://localhost:8081`                  |
-| Postgres           | `localhost:5432` (user `nutriapp`)       |
+| Postgres           | `localhost:5432` (user `bonosapp`)       |
 
 > Ojo en la máquina de Santi: el 8080 puede estar ocupado por otro proyecto Docker (plataforma GIA).
 > Si pasa, usar `BACKEND_PORT` en `.env` (patrón imedba: backend en 8088).

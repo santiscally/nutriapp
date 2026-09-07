@@ -11,10 +11,10 @@ fi
 
 BACKEND_URL="${BACKEND_URL:-http://localhost:8088}"
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8081}"
-REALM="${KEYCLOAK_REALM:-nutriapp}"
-CLIENT="${KEYCLOAK_CLIENT_ID:-nutriapp-frontend}"
-USER="${NUTRIAPP_USER:-admin@nutriapp.dev}"
-PASS="${NUTRIAPP_PASS:-test1234}"
+REALM="${KEYCLOAK_REALM:-bonosapp}"
+CLIENT="${KEYCLOAK_CLIENT_ID:-bonosapp-frontend}"
+USER="${BONOSAPP_USER:-admin@bonosapp.dev}"
+PASS="${BONOSAPP_PASS:-test1234}"
 
 py() { python -c "import sys,json
 try:

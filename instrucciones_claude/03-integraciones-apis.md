@@ -10,7 +10,7 @@
 
 ```yaml
 # application.yml
-nutriapp:
+bonosapp:
   integrations:
     contabilium: { mode: ${CONTABILIUM_MODE:stub}, client-id: ${CONTABILIUM_CLIENT_ID:}, client-secret: ${CONTABILIUM_CLIENT_SECRET:} }
     tiendanube:  { mode: ${TIENDANUBE_MODE:stub}, store-id: ${TIENDANUBE_STORE_ID:}, access-token: ${TIENDANUBE_ACCESS_TOKEN:}, client-secret: ${TIENDANUBE_CLIENT_SECRET:} }

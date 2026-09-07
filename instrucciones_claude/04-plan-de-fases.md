@@ -62,7 +62,7 @@ endpoints mínimos con data seeded real en DB, y las 4 pantallas core existen y 
 
 | # | Tarea | Detalle |
 |---|---|---|
-| 0.1 | Scaffolding repo + Docker | estructura monorepo, `docker-compose.yml` (db + keycloak + backend + frontend, puertos 127.0.0.1: 5173/8080/8081/5432), `.env.example`, Dockerfiles multi-stage (port de imedba), realm `nutriapp` (clients `nutriapp-frontend` public+DAG / `nutriapp-backend` confidential, roles ADMIN/NUTRICIONISTA, authorities, usuarios dev: `admin@nutriapp.dev` / `nutri@nutriapp.dev`, password `test1234`) |
+| 0.1 | Scaffolding repo + Docker | estructura monorepo, `docker-compose.yml` (db + keycloak + backend + frontend, puertos 127.0.0.1: 5173/8080/8081/5432), `.env.example`, Dockerfiles multi-stage (port de imedba), realm `bonosapp` (clients `bonosapp-frontend` public+DAG / `bonosapp-backend` confidential, roles ADMIN/NUTRICIONISTA, authorities, usuarios dev: `admin@bonosapp.dev` / `nutri@bonosapp.dev`, password `test1234`) |
 | 0.2 | Esqueleto Spring Boot | `pom.xml` (Boot 3.3.x, JPA, Flyway, MapStruct, Lombok, oauth2-resource-server, springdoc, Testcontainers), `BaseEntity`, `PageResponse`, `ApiError` + `GlobalExceptionHandler`, `SecurityConfig` (doble mapeo de authorities, cadena swagger), `CorsConfig`, `JwtAuditorAware` — **port directo de imedba, no reinventar** |
 | 0.3 | Migraciones + seeds + endpoints mínimos | V001–V003 (`02-entidad-relacion.md`), `DevDataSeeder` (2 nutricionistas + 4 pacientes + 6 recetas en estados variados), endpoints: `GET /me`, `GET /productos` (+filtros), `GET/POST /pacientes`, `POST /recetas` (versión mínima: crea receta+items+código, sin cupón/notifs), `GET /recetas`, `GET /dashboard/resumen` — **avisar a Fran por DIARIO apenas esté arriba** |
 | 0.4 | Puertos/adapters de integraciones (esqueleto) | interfaces + stubs + properties `mode=stub|live` + `IntegrationUnavailableException` + `GET /admin/integraciones/estado` |
@@ -139,10 +139,10 @@ enciende en 2.1/2.2 al conectar los clientes HTTP reales.
 
 ## Fase 3 — Pulido + hardening + deploy (lun 24 ago → vie 11 sep)
 
-- ✅ **Rate-limiting por IP en `/registro` y `/webhooks`** (backend, hecho 2026-07-27 — token bucket propio, 429 + `Retry-After`, config `nutriapp.rate-limit`). Single-instance; escalado a store compartido documentado.
-- ✅ **Keycloak Admin por service-account** (hecho 2026-07-27) — `client_credentials` del client `nutriapp-backend` scopeado a `realm-management` `manage-users`/`view-users`; sale el superusuario del realm master. Secret fail-closed en prod.
+- ✅ **Rate-limiting por IP en `/registro` y `/webhooks`** (backend, hecho 2026-07-27 — token bucket propio, 429 + `Retry-After`, config `bonosapp.rate-limit`). Single-instance; escalado a store compartido documentado.
+- ✅ **Keycloak Admin por service-account** (hecho 2026-07-27) — `client_credentials` del client `bonosapp-backend` scopeado a `realm-management` `manage-users`/`view-users`; sale el superusuario del realm master. Secret fail-closed en prod.
 - ✅ **`docker-compose.prod.yml` + nginx TLS + rate limit de red + security headers + backup/restore scripts** (hecho 2026-07-28) — nginx único servicio público (80/443), reverse proxy single-domain (`/`→SPA, `/api/`→backend, `/auth/`→Keycloak), **bring-your-own-cert** (Let's Encrypt diferido hasta confirmar hosting), secretos fail-closed, `scripts/{gen-selfsigned-cert,backup-db,restore-db}.sh`, runbook `DEPLOY.md`. Boot real = paso de deploy (necesita Docker + dominio).
-- Regenerar el secret del client `nutriapp-backend` para el realm de prod (hoy placeholder de dev) — **ops, al desplegar** (necesita el Keycloak de prod corriendo).
+- Regenerar el secret del client `bonosapp-backend` para el realm de prod (hoy placeholder de dev) — **ops, al desplegar** (necesita el Keycloak de prod corriendo).
 - Hosting del cliente (a definir con Gon — presupuesto: infra a cargo del cliente) + dominio + certificados.
 - E2E completo en staging, corrección de bugs, revisión de seguridad (webhook HMAC, scoping, secretos).
 - Puesta en producción + soporte post-entrega (presupuesto §5).

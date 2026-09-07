@@ -32,6 +32,53 @@
 
 ## Entradas
 
+## 2026-09-07 (2) — Santi — backend/infra/auth (el rename interno: todo pasa a bonosapp menos el repo)
+**Qué:** Segunda mitad del rebranding. La primera tanda había dejado los identificadores internos en
+`nutriapp` a propósito; por decisión del usuario ahora **también se renombran**. Lo único que sigue
+diciendo `nutriapp` es el **nombre del repo** (`santiscally/nutriapp`) y la carpeta local, para no
+mover el remote ni el path del proyecto.
+- **Backend:** paquete `com.nutriapp` → `com.bonosapp` (183 archivos), `artifactId` y `finalName`
+  → `bonosapp-backend` (con el `cp target/...jar` del Dockerfile), los 8 `@ConfigurationProperties`
+  y la clave raíz del `application.yml` → `bonosapp.*`, `NutriappApplication` → `BonosappApplication`.
+- **Keycloak:** realm y clients → `bonosapp` / `bonosapp-frontend` / `bonosapp-backend`, el mapper de
+  audiencia, los usuarios seed y el `.json` renombrado a `bonosapp-realm.json`.
+- **Infra:** red `bonosapp-net`, contenedores `bonosapp-*`, upstreams de nginx, los dos `.conf`
+  renombrados, `POSTGRES_DB`/`POSTGRES_USER`, y los scripts de smoke/backup/restore.
+- **Front:** `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID` y la clave de localStorage
+  (`nutriapp.tokens` → `bonosapp.tokens`, que desloguea las sesiones locales — irrelevante en
+  pre-lanzamiento).
+- **`scripts/rename-db.sh`** (nuevo): la migración de la base, automática y fail-closed.
+**Por qué:** el usuario lo pidió explícitamente. Mi objeción era el costo de tocar infra desplegada;
+decidió que la coherencia vale más, y en pre-lanzamiento el costo es bajo.
+**Problemas (el primero es el que hay que recordar):**
+- ⚠️ **El `sed` masivo tocó dos migraciones Flyway YA APLICADAS** (`V004` y `V009`), donde `nutriapp`
+  aparecía en un comentario. Flyway valida **checksum** de las migraciones aplicadas: eso habría
+  hecho que el backend **no arranque** en prod, con un error que no se parece en nada a un rename.
+  Se detectó comparando `git diff` archivo por archivo bajo `db/migration/` y se revirtieron byte a
+  byte. **Regla: una migración aplicada no se toca nunca, ni un comentario.** Quedan tres menciones
+  a "Nutriapp" a propósito: esas dos migraciones y dos citas literales de la planilla de Gon.
+- **Renombrar el rol de Postgres puede romper la contraseña.** Un hash `md5` incluye el nombre de
+  usuario, así que `ALTER ROLE ... RENAME` lo invalida. Con `scram-sha-256` (el default de PG16) no
+  pasa. `rename-db.sh` lo chequea antes y aborta pidiendo `--no-role` si encuentra md5.
+- **El Caddyfile del VPS acopla por nombre de contenedor** (`reverse_proxy nutriapp-nginx:80`). Al
+  recrear el stack el contenedor pasa a `bonosapp-nginx` → 502 si no se edita el Caddyfile en la
+  misma ventana. Anotado en el runbook.
+- El `down` es obligatorio para recrear red y contenedores: `up -d` no los renombra en caliente.
+**Sobre `rename-db.sh`:** hace preflight (base vieja presente, nueva libre, rol renombrable),
+backup con `backup-db.sh` y **verificación real del dump con `pg_restore -l`** —que exista y pese no
+alcanza, un dump truncado pesa—, censo de filas por tabla, baja de servicios, `ALTER DATABASE` +
+`ALTER ROLE`, **recenso contra la base nueva abortando si no coincide**, y actualización de `.env`
+con copia previa. Idempotente y fail-closed: ante cualquier problema no renombra nada y dice dónde
+quedó el dump. `pg_restore` corre **dentro** del contenedor: el VPS no tiene cliente de Postgres.
+**Verificado:** suite **199/199** con el paquete nuevo (contenedor JDK 21), `tsc -b && vite build` y
+`oxlint` limpios, y ninguna migración de `db/migration/` modificada.
+**Impacto para el otro (Fran):** cambian `VITE_KEYCLOAK_REALM` y `VITE_KEYCLOAK_CLIENT_ID` — hay que
+actualizar el `.env.local`. Lo más rápido en local es `docker compose down -v && up -d --build`: en
+dev no hay datos que preservar. El contrato REST no cambió. Si ves `nutriapp` en el nombre del repo,
+**está bien así**: es lo único que queda.
+**Refs:** `scripts/rename-db.sh`, `keycloak/realms/bonosapp-realm.json`, `backend/**`,
+`nginx/conf.d*/bonosapp.conf`, `DEPLOY.md` (runbook, fase B), `CLAUDE.md`.
+
 ## 2026-09-07 — Santi — marca/frontend/infra (rebranding NutriApp → BonosApp)
 **Qué:** El cliente (Leo, 2026-09-03) decidió el cambio de nombre **antes del lanzamiento**, después de
 analizar a la competencia (Avanter): muere NutriApp, nace **BonosApp**, dominio **bonosapp.com.ar** (ya
