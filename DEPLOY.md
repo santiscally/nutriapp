@@ -2,7 +2,8 @@
 
 > **Rebranding (2026-09-03).** NutriApp pasó a llamarse **BonosApp** antes del lanzamiento y el
 > dominio productivo pasa a ser **`bonosapp.com.ar`**. Los pasos de abajo ya apuntan al dominio
-> nuevo; `nutriappok.com.ar` sigue en vivo y redirige. Checklist de la mudanza:
+> nuevo; `nutriappok.com.ar` sigue en vivo y **queda** redirigiendo. La mudanza todavía no está
+> hecha — checklist y estado verificado en
 > [Migración a bonosapp.com.ar](#migración-a-bonosappcomar). Los identificadores internos
 > (paquete `com.nutriapp`, realm `nutriapp`, clients `nutriapp-*`, red `nutriapp-net`, DBs,
 > nombres de contenedor) **no** cambian: son infraestructura ya desplegada, no marca visible.
@@ -137,7 +138,7 @@ esta sección y un `restart backend` igual.
 Copiar `.env.example` → `.env` y completar el bloque **PRODUCCIÓN**. El compose **aborta**
 (`:?`) si falta alguno de estos, pero **NO** detecta que sigan siendo los débiles de dev — es
 tu responsabilidad regenerarlos:
-- `KEYCLOAK_HOSTNAME` = URL pública **con `/auth`** (ej. `https://nutriappok.com.ar/auth`). Ver la
+- `KEYCLOAK_HOSTNAME` = URL pública **con `/auth`** (ej. `https://bonosapp.com.ar/auth`). Ver la
   nota de hostname v2 más abajo — sin el `/auth` el login rompe.
 - `KEYCLOAK_ADMIN_CLIENT_SECRET` = el regenerado en el paso 3.
 - `POSTGRES_PASSWORD` = fuerte (el default de dev es público en este repo).
@@ -157,11 +158,11 @@ Verificación:
 
 > **Keycloak hostname — el `/auth` va en `KEYCLOAK_HOSTNAME`.** En KC 25 (hostname v2), si el valor
 > es una URL completa, el context path sale de esa URL y **`KC_HTTP_RELATIVE_PATH` no se le
-> concatena**. Con `https://nutriappok.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
-> pero publica adentro `"issuer":"https://nutriappok.com.ar/realms/nutriapp"` — sin el prefijo. Ese
+> concatena**. Con `https://bonosapp.com.ar` (pelado) el `.well-known` responde igual bajo `/auth`,
+> pero publica adentro `"issuer":"https://bonosapp.com.ar/realms/nutriapp"` — sin el prefijo. Ese
 > path nginx no lo rutea: cae en el `try_files` de la SPA y devuelve `index.html` con 200, así que
 > el login falla con un error de parseo en vez de un 404 honesto. El valor correcto es
-> `https://nutriappok.com.ar/auth`. Chequeo rápido:
+> `https://bonosapp.com.ar/auth`. Chequeo rápido:
 >
 > ```
 > curl -s http://127.0.0.1:8081/auth/realms/nutriapp/.well-known/openid-configuration \
@@ -340,11 +341,42 @@ imagen de compartir, textos de los mails, `MAIL_FROM_NAME`, User-Agent de Tienda
 identificadores de infraestructura ya desplegada: renombrarlos obliga a re-importar el realm y a
 re-emitir credenciales, sin que nadie lo vea.
 
+### Estado verificado al 2026-09-07
+
+| Qué | Estado |
+| --- | --- |
+| Delegación de `bonosapp.com.ar` en nic.ar | ✅ `nova.dns-parking.com` + `cosmos.dns-parking.com` (el **mismo par** que nutriappok) |
+| Zona de `bonosapp.com.ar` en hPanel | ❌ **no existe** — nova y cosmos contestan `REFUSED` |
+| `bonosapp.com.ar` en resolvers públicos | ❌ `SERVFAIL` (consecuencia de lo anterior) |
+| `nutriappok.com.ar` | ✅ en vivo, `A → 187.127.36.153` |
+
+`REFUSED` de un nameserver autoritativo significa **"no soy autoritativo para esa zona"**: nic.ar
+delega a nova/cosmos, pero del otro lado no hay zona creada, y de ahí el `SERVFAIL` río abajo. No es
+propagación: esperar no lo arregla. Comprobarlo **por IP**, no por nombre (el resolver local cachea
+la resolución del nombre del nameserver y devuelve estado viejo):
+
+```powershell
+Resolve-DnsName nova.dns-parking.com -Server 1.1.1.1 -Type A     # → 172.64.52.46
+Resolve-DnsName bonosapp.com.ar -Server 172.64.52.46 -Type SOA   # REFUSED = zona inexistente
+Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A   # control: esta sí responde
+```
+
 **Pasos, en orden:**
 
-1. **DNS** — importar [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone) en hPanel (`A`, `AAAA`, `www`
-   al mismo VPS). Verificar el par de NS que hPanel muestra **para este dominio** antes de importar,
-   y que no quede un `A` de parking. Detalle y trampas: [DNS](#dns--nutriappcomar).
+1. **DNS — crear una zona NUEVA para `bonosapp.com.ar` en hPanel** e importar
+   [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone) (`A`, `AAAA`, `www` al mismo VPS).
+   - **La zona de `nutriappok.com.ar` NO se toca ni se borra.** Son zonas independientes, una por
+     dominio; y ese dominio tiene que seguir vivo igual, porque ahí queda el `redir` y vive la
+     casilla de contacto `info@nutriappok.com.ar`.
+   - **Al agregar el dominio, mirar qué par de NS le asigna hPanel a ESTE dominio.** El par se asigna
+     **por dominio, no por cuenta**. La delegación en nic.ar ya está en nova/cosmos: si hPanel le
+     asigna otro par, hay que cambiar la **delegación en nic.ar a ESE par** — no al revés. Ese
+     desalineamiento es el que produce el `409 "Domain is pending verification"`, que es circular
+     (hPanel verifica la titularidad resolviendo los NS, y mientras dé SERVFAIL no puede pasar nunca).
+   - **El importador hace merge, no reemplazo**: Hostinger autopobla con un `A` de parking más `MX` y
+     `SPF` propios. Corregir `A`/`AAAA` a mano al VPS y **borrar el `MX`/`SPF`** — ese SPF autentica
+     al remitente equivocado y manda los mails de los bonos a spam.
+   - Más contexto y el resto de las trampas de agosto: [DNS](#dns--nutriappcomar).
 2. **Caddy** — agregar el site block de `bonosapp.com.ar` y dejar `nutriappok.com.ar` como `redir`
    permanente (ver [Site block](#site-block-en-rootstackcaddyfile)). `caddy validate` **antes** del
    `reload`, y confirmar contra la Admin API que el host quedó cargado: el bind-mount de archivo
@@ -460,9 +492,15 @@ curl.exe -I https://nutriappok.com.ar
 sirven para diagnosticar (van a los NS viejos, que responden `REFUSED`, y eso se ve igual esté el
 cambio pendiente o mal guardado). Hay que preguntarle al **registro `.ar`**, que es el padre:
 ```powershell
-Resolve-DnsName nutriappok.com.ar -Server 192.140.126.50 -Type NS   # d.dns.ar (TLD .ar)
-Resolve-DnsName nutriappok.com.ar -Server 130.59.31.20   -Type NS   # f.dns.ar (segunda opinión)
+Resolve-DnsName <dominio> -Server 192.140.126.50 -Type NS   # d.dns.ar (TLD .ar)
+Resolve-DnsName <dominio> -Server 130.59.31.20   -Type NS   # f.dns.ar (segunda opinión)
 ```
+> ⚠️ Desde la máquina de Santi estos dos servidores del TLD dieron `Error de servidor DNS` incluso
+> para un dominio que resuelve bien, así que **no sirven para descartar nada desde acá**. Para saber
+> si el problema es la delegación o la zona, preguntarle **por IP al nameserver autoritativo**:
+> `REFUSED` = la zona no existe ahí; una respuesta con datos = la zona existe y el problema está en
+> el padre. Ver la tabla de [Migración a bonosapp.com.ar](#migración-a-bonosappcomar).
+
 Si eso devuelve `ns1/ns2.donweb.com`, el cambio **no está en el padre**: o nic.ar todavía no publicó,
 o se cargaron los `NS` dentro del editor de zona de nic.ar en vez de cambiar la *delegación* del
 dominio (error clásico: no toca el padre). Cuando devuelva `orbit`/`horizon`, los resolvers públicos
