@@ -148,7 +148,7 @@ export function Registro() {
       <aside className="auth__brand">
         <div className="auth__brand-top">
           <Logo size={36} />
-          <span className="auth__brand-name">NutriApp</span>
+          <span className="auth__brand-name">BonosApp</span>
         </div>
 
         <div className="auth__value">
@@ -170,6 +170,10 @@ export function Registro() {
         </div>
 
         <p className="auth__note">Tus datos se usan solo para la validación profesional.</p>
+        <p className="auth__note auth__contacto">
+          Por cualquier consulta, envianos un mail a{" "}
+          <a href={`mailto:${config.contactoEmail}`}>{config.contactoEmail}</a>
+        </p>
       </aside>
 
       {/* Panel derecho: formulario.

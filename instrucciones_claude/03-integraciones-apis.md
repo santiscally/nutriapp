@@ -80,7 +80,7 @@ Base URL: `https://api.tiendanube.com/2025-03/{store_id}`.
 - Flujo: autorización del merchant → `code` (vence en 5 min) → `POST https://www.tiendanube.com/apps/authorize/token`
   → `{access_token, user_id}`. **`user_id` = store_id**. **El token NO expira** (solo si se re-emite o se
   desinstala la app): se persiste una vez.
-- Headers: `Authorization: Bearer {token}` (v. 2025-03) + **`User-Agent: NutriApp (contacto.simpleapps@gmail.com)` obligatorio**
+- Headers: `Authorization: Bearer {token}` (v. 2025-03) + **`User-Agent: BonosApp (contacto.simpleapps@gmail.com)` obligatorio**
   (sin él: 400) + `Content-Type: application/json`.
 - Scopes mínimos: `read_products, read_orders, write_coupons, read_coupons` (+ `write_products` si algún día escribimos).
 

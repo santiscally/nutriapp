@@ -14,7 +14,7 @@ export function Footer() {
       <div className="footer__bar-inner">
         <span className="footer__marca">
           <Logo size={20} />
-          NutriApp
+          BonosApp
         </span>
         <span className="footer__copy">
           © {new Date().getFullYear()} — datos confidenciales.

@@ -1,16 +1,31 @@
-# NUTRIAPP — Guía para Claude Code
+# BONOSAPP — Guía para Claude Code
 
-Webapp de **recetas digitales para nutricionistas**: el nutricionista emite una receta con descuento
-sobre productos del catálogo del cliente (ERP Contabilium / tienda TiendaNube), el paciente la recibe
+Webapp de **bonos profesionales para nutricionistas**: el nutricionista emite un bono con descuento
+sobre productos del catálogo del cliente (ERP Contabilium / tienda TiendaNube), el paciente lo recibe
 por mail —y por WhatsApp, que se lo manda la nutricionista con un link `wa.me`— con un código de
-descuento único, compra en la tienda online y la receta queda trazada (pendiente → aplicada /
-vencida). Cliente: Gon (jeianell / tienda TBC).
+descuento único, compra en la tienda online y el bono queda trazado (pendiente → aplicado /
+vencido). Cliente: Gon (jeianell / tienda TBC).
+
+## Marca: BonosApp (ex NutriApp)
+
+Rebranding pedido por el cliente el **2026-09-03**, en pre-lanzamiento, para diferenciarse de la
+competencia (Avanter). El isotipo **no cambió** (es el mismo de Gon); cambia el wordmark y el
+dominio: `bonosapp.com.ar`. Kit oficial del cliente en `brand/`.
+
+**El rename es sólo de cara al usuario.** Los identificadores internos siguen diciendo `nutriapp` a
+propósito y NO hay que renombrarlos: paquete `com.nutriapp`, realm y clients de Keycloak, red
+`nutriapp-net`, nombres de contenedor, DBs y el repo. Son infraestructura ya desplegada — cambiarlos
+obliga a re-importar el realm y re-emitir credenciales sin que nadie lo vea.
+
+La casilla de contacto que muestra el front sigue siendo `info@nutriappok.com.ar` hasta que el
+cliente la mude; sale de `VITE_CONTACTO_EMAIL`, no está hardcodeada. Mudanza del dominio paso a
+paso: `DEPLOY.md`, sección "Migración a bonosapp.com.ar".
 
 ## Propiedad del repo
 
 Este monorepo lo construyen dos personas:
 
-- **`backend/`, `docker-compose*.yml`, `keycloak/`, `nginx/`, `db/`, `scripts/`, `.env.example`, raíz (README, CLAUDE.md), `instrucciones_claude/`** → **Santi** (backend / DevOps / DB / Keycloak).
+- **`backend/`, `docker-compose*.yml`, `keycloak/`, `nginx/`, `db/`, `scripts/`, `brand/`, `.env.example`, raíz (README, CLAUDE.md), `instrucciones_claude/`** → **Santi** (backend / DevOps / DB / Keycloak).
 - **`frontend/`** → **Fran** (React/TS/Vite). No tocar salvo pedido explícito del usuario. Leerlo está permitido.
 
 Si una tarea implica modificar `frontend/` sin pedido explícito, **parar y avisar** antes de tocar nada.

@@ -1,5 +1,5 @@
 // Landing pre-lanzamiento ("próximamente"). Se muestra en `/` cuando VITE_COMING_SOON=true,
-// para poder publicar nutriapp.com.ar antes de que la app esté terminada: el visitante ve la
+// para poder publicar bonosapp.com.ar antes de que la app esté terminada: el visitante ve la
 // propuesta de valor y lo único que puede hacer es solicitar acceso (`/registro`).
 //
 // El login NO se linkea desde acá — vive en `/ingresar` (sin link, para el equipo y las demos).
@@ -10,6 +10,7 @@
 import { Link } from "react-router-dom";
 import { Icon } from "../components/ui/Icon";
 import { Logo } from "../components/ui/Logo";
+import { config } from "../config";
 
 const PASOS = [
   {
@@ -39,7 +40,7 @@ export function Proximamente() {
       <main className="soon__inner">
         <div className="soon__brand">
           <Logo size={36} />
-          <span className="auth__brand-name">NutriApp</span>
+          <span className="auth__brand-name">BonosApp</span>
         </div>
 
         <p className="soon__eyebrow">
@@ -75,10 +76,15 @@ export function Proximamente() {
           Cada cuenta se valida individualmente: verificamos tu matrícula antes de habilitarte. Te
           avisaremos por mail cuando la misma esté habilitada.
         </p>
+
+        <p className="soon__contacto">
+          Por cualquier consulta, envianos un mail a{" "}
+          <a href={`mailto:${config.contactoEmail}`}>{config.contactoEmail}</a>
+        </p>
       </main>
 
       <footer className="soon__footer">
-        <span>© {new Date().getFullYear()} NutriApp</span>
+        <span>© {new Date().getFullYear()} BonosApp</span>
         <a
           className="powered-by"
           href="https://simpleapps.com.ar"

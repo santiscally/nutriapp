@@ -1,9 +1,12 @@
-# NUTRIAPP — Recetas digitales para nutricionistas
+# BONOSAPP — Bonos profesionales para nutricionistas
 
-Webapp donde nutricionistas validados emiten recetas digitales con descuento sobre productos del
-ecosistema del cliente (ERP Contabilium / tienda TiendaNube). El paciente recibe la receta por mail y
-WhatsApp con un código de descuento único y compra en la tienda online; la receta queda trazada
-(pendiente → aplicada / vencida a los 30 días) y el nutricionista ve su cierre mensual de comisiones.
+> Ex **NutriApp**. Rebranding pedido por el cliente el 2026-09-03, antes del lanzamiento: dominio
+> `bonosapp.com.ar`, isotipo sin cambios, wordmark nuevo. El kit oficial está en `brand/`.
+
+Webapp donde nutricionistas validados emiten bonos profesionales con descuento sobre productos del
+ecosistema del cliente (ERP Contabilium / tienda TiendaNube). El paciente recibe el bono por mail y
+WhatsApp con un código de descuento único y compra en la tienda online; el bono queda trazado
+(pendiente → aplicado / vencido a los 30 días) y el nutricionista ve su cierre mensual de comisiones.
 
 Cliente: Gon (jeianell / tienda TBC). Presupuesto: `presupuesto_nutriapp.pdf`. Plazo: 2 meses.
 
@@ -21,8 +24,9 @@ Cliente: Gon (jeianell / tienda TBC). Presupuesto: `presupuesto_nutriapp.pdf`. P
 ## Estructura del repo (objetivo)
 
 ```
-nutriapp/
+nutriapp/                   # el repo conserva el nombre viejo (ver nota de rebranding)
 ├── backend/                # Spring Boot 3 + Java 21 (Santi)
+├── brand/                  # Kit de marca BonosApp que mandó el cliente (png + jpg)
 ├── frontend/               # React 19 + TS + Vite (Fran)
 ├── keycloak/               # Realm export + bootstrap
 ├── db/init/                # Init SQL/SH de Postgres (crea DB keycloak)

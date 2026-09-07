@@ -1,4 +1,4 @@
-# Setup de Claude Code — Proyecto NUTRIAPP
+# Setup de Claude Code — Proyecto BONOSAPP
 
 > Este doc es para que **cualquiera** de los dos devs arranque Claude Code con el mismo criterio que el otro.
 > Está pensado para correrse **una sola vez** por máquina/clon del repo, y después la convivencia entre ambos

@@ -313,7 +313,7 @@
   "clients": [
     {
       "clientId": "nutriapp-frontend",
-      "name": "NutriApp SPA",
+      "name": "BonosApp SPA",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -349,7 +349,7 @@
     },
     {
       "clientId": "nutriapp-backend",
-      "name": "NutriApp API",
+      "name": "BonosApp API",
       "enabled": true,
       "publicClient": false,
       "secret": "nutriapp-backend-dev-secret-change-me",
@@ -367,7 +367,7 @@
       "username": "admin@nutriapp.dev",
       "email": "admin@nutriapp.dev",
       "firstName": "Admin",
-      "lastName": "NutriApp",
+      "lastName": "BonosApp",
       "enabled": true,
       "emailVerified": true,
       "credentials": [

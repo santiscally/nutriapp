@@ -37,7 +37,7 @@ export function Login() {
       <aside className="auth__brand">
         <div className="auth__brand-top">
           <Logo size={36} />
-          <span className="auth__brand-name">NutriApp</span>
+          <span className="auth__brand-name">BonosApp</span>
         </div>
 
         <div className="auth__value">

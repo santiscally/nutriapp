@@ -1,0 +1,47 @@
+$ORIGIN bonosapp.com.ar.
+$TTL 3600
+
+; ============================================================
+; Zona DNS de bonosapp.com.ar — para importar en hPanel (Hostinger).
+; Dominio del rebranding NutriApp → BonosApp (cliente, 2026-09-03). Apunta al MISMO
+; VPS que nutriappok.com.ar y haltcatch.com.ar: srv1786758.hstgr.cloud, dual-stack.
+;
+; El cliente ya delegó el dominio "a los mismos DNS donde está nutriappok". VERIFICAR
+; igual el par que hPanel muestra PARA ESTE dominio antes de importar: el par se asigna
+; POR DOMINIO, no por cuenta (haltcatch → lunar/solar, jeianell → ns1/ns2,
+; nutriappok → nova/cosmos). Copiar el par de otro dominio deja la delegación apuntando
+; a NS que rechazan la zona, y de ahí salen el SERVFAIL y el 409 "Domain is pending
+; verification" que costaron el deploy de agosto (ver DEPLOY.md, sección DNS).
+;
+; AL IMPORTAR: verificar que no quede un A de parking autopoblado por Hostinger. El
+; importador hace merge, no reemplazo. Estado final = los 3 registros de abajo.
+; ============================================================
+
+; Nameservers: comentados a propósito, igual que en nutriappok.com.ar.zone — la
+; delegación la definen hPanel y el registro .ar, y un NS en el apex hace que el
+; importador rechace la zona o cree duplicados. Descomentar sólo como referencia.
+;@      3600  IN  NS    nova.dns-parking.com.
+;@      3600  IN  NS    cosmos.dns-parking.com.
+
+; ---- Web -> VPS ----
+@       300   IN  A     187.127.36.153
+@       300   IN  AAAA  2a02:4780:6e:84b8::1
+www     300   IN  CNAME bonosapp.com.ar.
+
+; ---- Correo ----
+; NO va acá todavía: la casilla de contacto sigue siendo info@nutriappok.com.ar y el
+; cliente la muda recién cuando el sitio esté en bonosapp.com.ar. Cuando se mude, los
+; MX/SPF/DKIM/DMARC son los DEL PROVEEDOR que se elija (Hostinger, Resend, SES...),
+; no una copia de los de otro dominio — si no, se autentica al remitente equivocado y
+; los mails de los bonos caen en spam.
+;@      14400 IN  MX    5 mx1.hostinger.com.
+;@      14400 IN  MX    10 mx2.hostinger.com.
+;@      3600  IN  TXT   "v=spf1 include:_spf.mail.hostinger.com ~all"
+;_dmarc 3600  IN  TXT   "v=DMARC1; p=none"
+
+; ---- Anti-spoofing (alternativa al bloque de correo, EXCLUYENTE con él) ----
+; Mientras bonosapp.com.ar NO mande ni reciba mail, esto evita que le spoofeen el
+; dominio. Sacarlo antes de conectar el email, o los propios mails se rechazan.
+;@      3600  IN  TXT   "v=spf1 -all"
+;_dmarc 3600  IN  TXT   "v=DMARC1; p=reject; aspf=s; adkim=s"
+;@      3600  IN  MX    0 .

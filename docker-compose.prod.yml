@@ -1,5 +1,5 @@
 # ============================================================
-# NutriApp — override de PRODUCCIÓN. Se aplica SOBRE docker-compose.yml:
+# BonosApp — override de PRODUCCIÓN. Se aplica SOBRE docker-compose.yml:
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # Cambios vs dev:
@@ -11,7 +11,7 @@
 # TOPOLOGÍA POR DEFECTO: detrás del Caddy del VPS.
 #   En este host los 80/443 los tiene `edge-caddy-1` (stack /root/stack), que ya sirve
 #   haltcatch.com.ar y jeianell.com.ar y proxea POR NOMBRE DE CONTENEDOR sobre la red
-#   docker externa `web` — no por puertos de loopback. NutriApp se suma a ese esquema:
+#   docker externa `web` — no por puertos de loopback. BonosApp se suma a ese esquema:
 #   nginx entra a `web`, no publica ni un puerto, y Caddy le manda el dominio con
 #   `reverse_proxy nutriapp-nginx:80`. El TLS lo emite y renueva Caddy solo.
 #

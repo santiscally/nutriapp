@@ -1,4 +1,11 @@
-# NUTRIAPP — Despliegue en producción
+# BONOSAPP — Despliegue en producción
+
+> **Rebranding (2026-09-03).** NutriApp pasó a llamarse **BonosApp** antes del lanzamiento y el
+> dominio productivo pasa a ser **`bonosapp.com.ar`**. Los pasos de abajo ya apuntan al dominio
+> nuevo; `nutriappok.com.ar` sigue en vivo y redirige. Checklist de la mudanza:
+> [Migración a bonosapp.com.ar](#migración-a-bonosappcomar). Los identificadores internos
+> (paquete `com.nutriapp`, realm `nutriapp`, clients `nutriapp-*`, red `nutriapp-net`, DBs,
+> nombres de contenedor) **no** cambian: son infraestructura ya desplegada, no marca visible.
 
 Stack prod = `docker-compose.yml` + override `docker-compose.prod.yml`. db, keycloak y backend
 quedan en loopback (127.0.0.1) + red interna `nutriapp-net`; nginx es el reverse proxy de la app.
@@ -23,8 +30,9 @@ Topología (single domain, path-based):
 > el modo front único (`docker-compose.edge.yml`), donde la renovación **sí es manual**.
 
 > **Pre-lanzamiento:** para publicar el dominio con una pantalla "Próximamente" y sólo el registro
-> habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS concreto de
-> `nutriappok.com.ar` en [DNS](#dns--nutriappcomar).
+> habilitado, ver [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente). DNS en
+> [DNS](#dns--nutriappcomar): `bonosapp.com.ar.zone` es el dominio nuevo, `nutriappok.com.ar.zone`
+> el viejo (sigue activo: ahí vive la casilla de contacto).
 
 ---
 
@@ -56,11 +64,11 @@ certbot puede validar con el stack ya arriba. Orden de arranque: primero un self
 (nginx no levanta sin cert), después emitir el real y recargar:
 
 ```
-bash scripts/gen-selfsigned-cert.sh nutriappok.com.ar     # placeholder para poder arrancar
+bash scripts/gen-selfsigned-cert.sh bonosapp.com.ar     # placeholder para poder arrancar
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 certbot certonly --webroot -w ./nginx/acme \
-  -d nutriappok.com.ar -d www.nutriappok.com.ar -m <mail> --agree-tos
-cp /etc/letsencrypt/live/nutriappok.com.ar/{fullchain,privkey}.pem nginx/certs/
+  -d bonosapp.com.ar -d www.bonosapp.com.ar -m <mail> --agree-tos
+cp /etc/letsencrypt/live/bonosapp.com.ar/{fullchain,privkey}.pem nginx/certs/
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
@@ -74,11 +82,12 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx
 
 ```
 docker run --rm -v "$PWD/frontend:/app" -w /app \
-  -e VITE_API_BASE_URL=https://nutriappok.com.ar \
-  -e VITE_KEYCLOAK_URL=https://nutriappok.com.ar/auth \
+  -e VITE_API_BASE_URL=https://bonosapp.com.ar \
+  -e VITE_KEYCLOAK_URL=https://bonosapp.com.ar/auth \
   -e VITE_KEYCLOAK_REALM=nutriapp \
   -e VITE_KEYCLOAK_CLIENT_ID=nutriapp-frontend \
   -e VITE_COMING_SOON=true \
+  -e VITE_CONTACTO_EMAIL=info@nutriappok.com.ar \
   node:22-alpine sh -c 'npm ci --no-audit --no-fund && npm run build'
 ```
 
@@ -90,7 +99,7 @@ grep -o 'VITE_COMING_SOON:`[^`]*`' frontend/dist/assets/*.js   # → VITE_COMING
 ```
 
 > **Ojo con `VITE_API_BASE_URL`:** el código le concatena `/api/v1`, así que el valor correcto es el
-> **origen pelado** (`https://nutriappok.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
+> **origen pelado** (`https://bonosapp.com.ar`), **sin** `/api` — con `/api` quedaría `/api/api/v1`.
 > `frontend/` es de Fran. Estos son sólo los env de build documentados; no se modifica su código.
 
 ### 3. Fijar el secret del client `nutriapp-backend` (realm de prod)
@@ -172,7 +181,7 @@ Verificación:
 
 ## Modo pre-lanzamiento ("Próximamente")
 
-Para publicar `nutriappok.com.ar` antes de que la app esté terminada. Se activa con **un solo flag de
+Para publicar `bonosapp.com.ar` antes de que la app esté terminada. Se activa con **un solo flag de
 build**, `VITE_COMING_SOON=true`:
 
 | Ruta        | Con el flag                                   | Sin el flag (normal) |
@@ -208,12 +217,12 @@ admin la aprueba, así que un registro público no da acceso a nada.
 ## Detrás del Caddy del VPS (topología actual)
 
 Los 80/443 del host los tiene `edge-caddy-1` (`caddy:2-alpine`, stack en `/root/stack`), que ya
-sirve `haltcatch.com.ar` y `jeianell.com.ar`. NutriApp se suma a ese esquema en vez de pelearle
+sirve `haltcatch.com.ar` y `jeianell.com.ar`. BonosApp se suma a ese esquema en vez de pelearle
 el puerto.
 
 **El detalle que importa: Caddy no proxea a `127.0.0.1:<puerto>`, proxea por nombre de contenedor
 sobre la red docker externa `web`.** `hac_frontend` y `jeianell_frontend` no publican un solo
-puerto al host. NutriApp hace lo mismo: `nutriapp-nginx` entra a `web`, **sin `ports:`**, y Caddy
+puerto al host. BonosApp hace lo mismo: `nutriapp-nginx` entra a `web`, **sin `ports:`**, y Caddy
 lo alcanza por DNS interno de docker. Así el host no suma superficie de red y el TLS lo maneja
 Caddy (emite y renueva solo por ACME).
 
@@ -230,9 +239,14 @@ ellos. El único puente es nginx.
 ### Site block en `/root/stack/Caddyfile`
 
 ```caddyfile
-nutriappok.com.ar, www.nutriappok.com.ar {
+bonosapp.com.ar, www.bonosapp.com.ar {
     encode zstd gzip
     reverse_proxy nutriapp-nginx:80
+}
+
+# El dominio viejo queda redirigiendo: los links ya compartidos por WhatsApp/mail no se rompen.
+nutriappok.com.ar, www.nutriappok.com.ar {
+    redir https://bonosapp.com.ar{uri} permanent
 }
 ```
 
@@ -244,7 +258,7 @@ docker exec edge-caddy-1 caddy reload  --config /etc/caddy/Caddyfile
 ```
 
 `reload` es en caliente (sin cortar conexiones) y **no toca los certs de los otros dominios**. Si
-`nutriappok.com.ar` todavía no resuelve, Caddy loguea el fallo de ACME y reintenta con backoff; los
+`bonosapp.com.ar` todavía no resuelve, Caddy loguea el fallo de ACME y reintenta con backoff; los
 demás sitios siguen sirviendo normal.
 
 > ⚠️ **Trampa del bind-mount de archivo suelto (pisada el 2026-08-11).** El compose de Caddy monta
@@ -312,10 +326,54 @@ Dos cosas fáciles de romper al pasar de una a la otra:
 
 ---
 
+## Migración a bonosapp.com.ar
+
+Rebranding pedido por el cliente el **2026-09-03**, con el sitio todavía en modo pre-lanzamiento
+(`VITE_COMING_SOON=true`) — el momento barato para hacerlo: no hay cuentas activas ni links
+repartidos más allá de las demos. El cliente ya delegó `bonosapp.com.ar` a los nameservers de
+Hostinger y mandó el kit de marca (`brand/`).
+
+**Qué cambia y qué no.** Cambia lo que ve el usuario: nombre en la SPA, `<title>` y metadatos OG,
+imagen de compartir, textos de los mails, `MAIL_FROM_NAME`, User-Agent de TiendaNube y el dominio.
+**No** cambia nada interno: paquete `com.nutriapp`, realm `nutriapp`, clients `nutriapp-frontend` /
+`nutriapp-backend`, red `nutriapp-net`, nombres de contenedor, DBs y el nombre del repo. Son
+identificadores de infraestructura ya desplegada: renombrarlos obliga a re-importar el realm y a
+re-emitir credenciales, sin que nadie lo vea.
+
+**Pasos, en orden:**
+
+1. **DNS** — importar [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone) en hPanel (`A`, `AAAA`, `www`
+   al mismo VPS). Verificar el par de NS que hPanel muestra **para este dominio** antes de importar,
+   y que no quede un `A` de parking. Detalle y trampas: [DNS](#dns--nutriappcomar).
+2. **Caddy** — agregar el site block de `bonosapp.com.ar` y dejar `nutriappok.com.ar` como `redir`
+   permanente (ver [Site block](#site-block-en-rootstackcaddyfile)). `caddy validate` **antes** del
+   `reload`, y confirmar contra la Admin API que el host quedó cargado: el bind-mount de archivo
+   suelto muerde. Caddy emite el cert nuevo solo, por ACME.
+3. **Rebuild de la SPA** con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` apuntando a
+   `https://bonosapp.com.ar` (paso 2 del despliegue). Es obligatorio: esos valores se hornean en el
+   bundle y la CSP tiene `connect-src 'self'` — con el origen viejo horneado, los fetch se bloquean.
+4. **Redirect URIs del realm** — agregar `https://bonosapp.com.ar/*` (y `+` en `webOrigins`) al
+   client `nutriapp-frontend` en el Keycloak de prod. Sin eso el login rompe por `invalid_redirect_uri`.
+   Se hace en la admin console del realm; el JSON del repo sólo aplica a realms nuevos.
+5. **Rebuild del backend** — los textos de los mails y `MAIL_FROM_NAME` viven en el jar.
+6. **`APP_PUBLIC_URL=https://bonosapp.com.ar`** en el `.env` del VPS: de ahí salen los links de los
+   mails de registro.
+7. **Avisarle a Leo** para que mude la casilla de contacto. Hasta que lo haga, la landing muestra
+   `info@nutriappok.com.ar` (pedido explícito del cliente) — cuando exista la nueva, alcanza con
+   `VITE_CONTACTO_EMAIL=info@bonosapp.com.ar` + rebuild de la SPA, sin tocar código.
+
+**El dominio viejo no se da de baja.** Ahí vive la casilla de contacto y los links ya compartidos
+por WhatsApp apuntan a él; queda redirigiendo con `301`. Su zona sigue siendo
+[`nutriappok.com.ar.zone`](nutriappok.com.ar.zone).
+
+---
+
 ## DNS — nutriappok.com.ar
 
-**Archivo listo para importar: [`nutriappok.com.ar.zone`](nutriappok.com.ar.zone)** (formato BIND, mismo
-criterio que `haltcatch.com.ar.zone`). Los registros activos son sólo estos tres:
+**Dos zonas, dos archivos:** [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone) (dominio nuevo, el que
+sirve la app) y [`nutriappok.com.ar.zone`](nutriappok.com.ar.zone) (viejo, sigue activo: redirige y
+aloja la casilla de contacto). Formato BIND, mismo criterio que `haltcatch.com.ar.zone`. Los dos
+apuntan al mismo VPS y los registros activos son los mismos tres — abajo, los de `nutriappok`:
 
 | Tipo    | Nombre | Valor                    | TTL |
 | ------- | ------ | ------------------------ | --- |
@@ -453,9 +511,11 @@ Para restaurar en una máquina nueva, importar la privada primero:
 
 - ~~Integración con el Caddy del VPS~~ **✅ hecho (2026-08-11)** — headers y rate-limit reubicados, cert
   a cargo de Caddy. La renovación automática dejó de ser un pendiente: la hace Caddy.
-- **DNS**: la delegación de `nutriappok.com.ar` todavía apunta a DonWeb y la zona de Hostinger está vacía
-  → el dominio no resuelve, el sitio no es alcanzable y Caddy no puede emitir el cert. Es lo único que
-  falta para que quede arriba. Ver [DNS](#dns--nutriappcomar).
+- ~~DNS de `nutriappok.com.ar`~~ **✅ hecho (2026-08-11)** — el dominio resuelve al VPS y Caddy emitió
+  el cert.
+- **Mudanza a `bonosapp.com.ar`** (rebranding del 2026-09-03): importar la zona, agregar el site block
+  en Caddy con el `redir` del dominio viejo, rebuild de la SPA y agregar el redirect URI en el realm de
+  prod. Checklist completo en [Migración a bonosapp.com.ar](#migración-a-bonosappcomar).
 - **Avisos por mail del registro** (Fase 2) — hoy no sale ninguno; ver
   [Modo pre-lanzamiento](#modo-pre-lanzamiento-próximamente).
 - **`BACKUP_GPG_RECIPIENT`** antes de abrir el registro: los dumps traen PII desde la primera solicitud.

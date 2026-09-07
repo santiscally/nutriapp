@@ -42,7 +42,7 @@ export function AppLayout() {
         <div className="navbar__inner">
           <Link to={isAdmin ? "/nutricionistas" : "/dashboard"} className="navbar__brand">
             <Logo size={34} />
-            NutriApp
+            BonosApp
           </Link>
 
           <nav className="navbar__nav">

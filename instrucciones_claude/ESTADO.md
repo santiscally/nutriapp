@@ -14,41 +14,47 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-08-25** — 📧 **El mail funciona de verdad** (y TiendaNube quedó cerrado contra la
-tienda demo, ver más abajo). Suite **192/192**.
+**Última actualización: 2026-09-07** — 🏷️ **Rebranding NutriApp → BonosApp** hecho y commiteado. Suite
+**199/199**. Se cerró además todo lo que venía sin commitear del 2026-08-25.
 
-**Mail — era la última integración en stub y nunca se había ejecutado.** El stub tiraba excepción antes de
-tocar nada, así que `SmtpMailSender` jamás había enviado un mensaje. Ahora se ejercita en local con **Mailpit**
-(`docker compose --profile mail up -d`, webmail en **http://localhost:8026**; 8025 lo tiene otro proyecto).
-Verificado: 13 notificaciones viejas drenaron `QUEUED→SENT`, y el flujo de **registro** manda acuse + aviso al
-admin, y la **aprobación** manda el mail de cuenta activa. Acentos correctos (verificado sobre el `.eml` crudo).
-`MAIL_SMTP_AUTH` y `MAIL_SMTP_STARTTLS` ahora son env (antes hardcodeadas en `true`). **Para 2.3 sólo falta que
-Gon elija proveedor**: son env vars sobre un camino ya probado.
+**Rebranding (pedido del cliente, 2026-09-03).** Muere NutriApp, nace **BonosApp**, dominio
+**bonosapp.com.ar**. El **isotipo no cambia** (es el mismo de Gon: lo verifiqué contra el lockup nuevo),
+así que favicon y apple-touch-icon quedaron intactos; cambia el wordmark. Kit oficial en `brand/`.
+`og-image.png` regenerada con el lockup real sobre el verde de marca. La landing y el registro muestran
+la casilla de contacto que pidió el cliente, desde **`VITE_CONTACTO_EMAIL`** (default
+`info@nutriappok.com.ar` — la casilla nueva no existe todavía). **El rename es sólo de cara al usuario:**
+paquete `com.nutriapp`, realm y clients de Keycloak, red, contenedores, DBs y el nombre del repo siguen
+igual A PROPÓSITO (ver `CLAUDE.md`).
 
-**TiendaNube — cerrado contra la demo.** App 40301 en `thebcompanydemo.mitiendanube.com` (store **8145981**),
-todos los scopes. Cupón real emitido y verificado, con **dos productos** y restringido correctamente. Dos bugs
-que sólo aparecieron pegándole a la API real: **`coupons.products[]` lleva PRODUCT id, no VARIANT id** (con
-variant → 422, ningún cupón se habría creado nunca) y **colección vacía = 404**, no array vacío (el polling
-habría logueado ERROR cada 5 min). Guard nuevo: si un producto de la receta no está mapeado, **no se llama a la
-API** y el cupón queda PENDIENTE con el motivo — sin eso salía un cupón **sin restricción = descuento a toda la
-tienda**. Endpoints admin nuevos: `mapear-productos` y `registrar-webhooks` (ambos idempotentes).
+**Falta para que el dominio nuevo esté en vivo (ops, no código)** — checklist completo en `DEPLOY.md`,
+sección "Migración a bonosapp.com.ar":
+1. Importar `bonosapp.com.ar.zone` en hPanel (verificar el par de NS **de ese** dominio, y que no quede
+   un `A` de parking).
+2. Site block en el Caddy del VPS + `redir` permanente desde `nutriappok.com.ar`.
+3. Rebuild de la SPA con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` en `https://bonosapp.com.ar` (se
+   hornean en el bundle; con el origen viejo la CSP bloquea los fetch).
+4. **Agregar `https://bonosapp.com.ar/*` a los redirect URIs del client `nutriapp-frontend` en el
+   Keycloak de prod**, o el login rompe con `invalid_redirect_uri`.
+5. `APP_PUBLIC_URL=https://bonosapp.com.ar` en el `.env` del VPS + rebuild del backend (los textos de
+   los mails viajan en el jar).
+6. Avisarle a Leo cuando esté, para que mude la casilla de contacto.
 
-**Bonos sin cantidades** (decisión del usuario): el cupón de TiendaNube no sabe de unidades, así que
-`cantidad` quedó topeada en 1 (`@Max(1)`) y el emisor perdió el input. Se recetan N productos, uno de cada uno.
+**Backend que se commiteó junto (venía del 2026-08-25):** notificaciones de registro (enum
+`TipoNotificacion`, migración **V013**, templates de recibido/aprobado/rechazado + aviso al admin,
+dispatcher con batch y reintentos), `PublicacionPolicy` con las 5 reglas de qué producto es recetable y
+el motivo en castellano, `TiendaNubeMapeoService` + `TiendaNubeWebhookRegistrar` (ambos idempotentes,
+estado en `/integraciones/estado`), y handlers 415/400/422 en `GlobalExceptionHandler`.
 
-**Otros:** `HttpMediaTypeNotSupportedException` → **415** (antes `/registro`, endpoint público, devolvía 500).
-Emoji fuera del mensaje de WhatsApp + **link a la tienda** en el WhatsApp y en el mail (`TIENDANUBE_STORE_URL`).
-Frontend (con permiso explícito del usuario, ver DIARIO): acciones con íconos en Pacientes y Bonos, columna
-"Acciones" alineada, notas del paciente en modal.
+**Falta para la tienda del cliente (2.5):** instalar la app en TBC → nuevo store_id/token, correr el
+mapeo (mirar `skusSinMatch` / `pendientes`) y registrar el webhook. En local quedan **691 publicados sin
+mapear**: no están en la demo.
 
-**Falta para la tienda del cliente (2.5):** instalar la app en TBC → nuevo store_id/token, correr el mapeo
-(mirar `skusSinMatch` / `pendientes`) y registrar el webhook. En local quedan **691 publicados sin mapear**:
-no están en la demo.
+**Decisión abierta (3 veces planteada, sin respuesta):** un producto sin mapear hoy sigue siendo
+recetable y el bono sale con un cupón que nunca se crea. ¿Se sacan del buscador hasta mapearse? Son ~691
+de un saque.
 
-**Decisión abierta (2 veces planteada, sin respuesta):** un producto sin mapear hoy sigue siendo recetable y la
-receta sale con un cupón que nunca se crea. ¿Se sacan del buscador hasta mapearse? Son ~691 de un saque.
-
-**Sin commitear**: todo en el working tree.
+**Mail:** para 2.3 sólo falta que Gon elija proveedor — son env vars sobre un camino ya probado con
+Mailpit (`docker compose --profile mail up -d`).
 
 ## Fran / frontend
 

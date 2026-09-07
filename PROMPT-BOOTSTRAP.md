@@ -1,4 +1,4 @@
-# Prompt de bootstrap para Claude Code — NUTRIAPP
+# Prompt de bootstrap para Claude Code — BONOSAPP
 
 > **Para Fran (o quien sea el segundo dev):** copiá y pegá el bloque de abajo **tal cual** en tu Claude Code,
 > la primera vez que abras el proyecto. Una sola vez es suficiente. Después de eso, cada sesión nueva arrancá
@@ -11,7 +11,7 @@
 ## Prompt (copy-paste entero)
 
 ```
-Arrancás sesión en el proyecto NUTRIAPP. Antes de que te pida nada:
+Arrancás sesión en el proyecto BONOSAPP (ex NutriApp; el repo conserva el nombre viejo). Antes de que te pida nada:
 
 1. Leé `CLAUDE.md` (raíz del repo) completo. Es la guía maestra: stack, split de propiedad entre dos devs,
    regla de oro (nada mockeado / integraciones stub→live), convenciones, fases, comandos.

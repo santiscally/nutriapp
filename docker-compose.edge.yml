@@ -1,5 +1,5 @@
 # ============================================================
-# NutriApp — override OPCIONAL: nginx como front único (dueño de 80/443 y del TLS).
+# BonosApp — override OPCIONAL: nginx como front único (dueño de 80/443 y del TLS).
 #
 #   NGINX_CONF_DIR=./nginx/conf.d \
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.edge.yml up -d --build

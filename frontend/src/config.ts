@@ -16,6 +16,8 @@ export const config = {
    * Se hornea en el build (Vite): apagarlo requiere `npm run build` de nuevo.
    */
   comingSoon: env.VITE_COMING_SOON === "true",
+  /** Casilla pública de contacto. Sigue en @nutriappok.com.ar hasta que el cliente mude el mail. */
+  contactoEmail: env.VITE_CONTACTO_EMAIL ?? "info@nutriappok.com.ar",
   keycloak: {
     url: env.VITE_KEYCLOAK_URL ?? "http://localhost:8081",
     realm: env.VITE_KEYCLOAK_REALM ?? "nutriapp",

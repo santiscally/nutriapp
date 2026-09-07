@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Smoke test e2e de la Fase 1 del backend de NutriApp.
+# Smoke test e2e de la Fase 1 del backend de BonosApp.
 # Verifica contra el stack real: notificaciones, ciclo de receta (anular/reenviar),
 # 409 de borrado de paciente, cierre mensual, y el flujo registro -> aprobación (Keycloak).
 #

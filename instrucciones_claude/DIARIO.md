@@ -32,6 +32,48 @@
 
 ## Entradas
 
+## 2026-09-07 — Santi — marca/frontend/infra (rebranding NutriApp → BonosApp)
+**Qué:** El cliente (Leo, 2026-09-03) decidió el cambio de nombre **antes del lanzamiento**, después de
+analizar a la competencia (Avanter): muere NutriApp, nace **BonosApp**, dominio **bonosapp.com.ar** (ya
+delegado a los mismos NS de Hostinger). Mandó el kit por mail; quedó en `brand/` (horizontal, vertical y
+wordmark, en png y jpg) más una variante de wordmark blanco que generé para fondos oscuros.
+1. **El isotipo NO cambia.** Lo verifiqué comparando el mark recortado del lockup nuevo contra
+   `frontend/src/assets/logo.png`: es el mismo dibujo de Gon. Por eso `logo.png`, `favicon.png` y
+   `apple-touch-icon.png` quedaron intactos — sólo cambia el wordmark.
+2. **Front:** marca en navbar, footer, login, registro y landing; `<title>`, `description` y metadatos OG.
+   `og-image.png` regenerada con el **lockup oficial** (wordmark en blanco) sobre el verde `--ink` — es lo
+   que se ve cuando comparten el link por WhatsApp, así que ahí sí va la tipografía real de la marca.
+3. **Casilla de contacto**, pedido explícito del cliente: la landing y el registro muestran
+   "Por cualquier consulta, envianos un mail a …". Sale de **`VITE_CONTACTO_EMAIL`**, no hardcodeada.
+4. **Backend:** textos de los mails, `MAIL_FROM_NAME`, User-Agent de TiendaNube, título de OpenAPI y los
+   tests que asertaban sobre esos strings.
+5. **Dominio:** `bonosapp.com.ar.zone` nuevo, sección "Migración a bonosapp.com.ar" en `DEPLOY.md` con el
+   checklist, y el site block de Caddy con el `redir` permanente del dominio viejo.
+**Por qué:** el momento barato para hacerlo es ahora — el sitio está en pre-lanzamiento
+(`VITE_COMING_SOON=true`), no hay cuentas activas ni links repartidos más allá de las demos.
+**Decisión que importa: el rename es SÓLO de cara al usuario.** Los identificadores internos siguen
+diciendo `nutriapp` **a propósito**: paquete `com.nutriapp`, realm y clients de Keycloak, red
+`nutriapp-net`, nombres de contenedor, DBs, `artifactId` y el nombre del repo. Renombrarlos obliga a
+re-importar el realm y re-emitir credenciales del client en un Keycloak que ya está desplegado, sin que
+nadie lo vea. Está anotado en `CLAUDE.md` para que no venga alguien "a terminar el rename".
+**Ojo con el mail:** el cliente pidió mostrar **`info@nutriappok.com.ar`** —el dominio viejo— porque la
+casilla nueva todavía no existe; la muda cuando el sitio esté en `bonosapp.com.ar`. Por eso el dominio
+viejo **no se da de baja**: queda redirigiendo y aloja el correo. Cuando exista la nueva alcanza con
+`VITE_CONTACTO_EMAIL=info@bonosapp.com.ar` + rebuild de la SPA, sin tocar código.
+**Verificado:** `tsc -b && vite build` limpio, `oxlint` sin hallazgos, y el bundle sale con `BonosApp`,
+el `og:image` en `bonosapp.com.ar` y las dos clases nuevas de CSS.
+**Falta (ops, no código):** importar la zona en hPanel, agregar el site block en el Caddy del VPS,
+rebuild de la SPA con `VITE_API_BASE_URL=https://bonosapp.com.ar`, **agregar `https://bonosapp.com.ar/*`
+a los redirect URIs del client `nutriapp-frontend` en el Keycloak de prod** (si no, el login rompe con
+`invalid_redirect_uri`) y `APP_PUBLIC_URL` en el `.env` del VPS.
+**Impacto para el otro (Fran):** cambió el nombre visible y hay una entrada nueva en `config.ts`
+(`contactoEmail`). El contrato REST no se tocó. Los identificadores internos siguen siendo `nutriapp`:
+si ves `nutriapp-frontend` o `com.nutriapp` en el código, **está bien así**.
+**Refs:** `brand/`, `frontend/index.html`, `frontend/src/{config.ts,index.css}`,
+`frontend/src/pages/{Proximamente,Registro,Login}.tsx`, `frontend/src/components/layout/*`,
+`frontend/public/og-image.png`, `backend/**/NotificacionTemplates.java`, `bonosapp.com.ar.zone`,
+`DEPLOY.md`, `CLAUDE.md`, `README.md`.
+
 ## 2026-08-25 — Santi — backend/infra (el pipeline de mail se ejecutó de verdad por primera vez + 415 en vez de 500)
 **Qué:** El mail era la única integración en stub, y el stub tira excepción **antes** de tocar nada: o sea
 `SmtpMailSender` **nunca había enviado un mensaje** y el camino de éxito del dispatcher (QUEUED→SENT) nunca
