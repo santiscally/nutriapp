@@ -341,40 +341,59 @@ imagen de compartir, textos de los mails, `MAIL_FROM_NAME`, User-Agent de Tienda
 identificadores de infraestructura ya desplegada: renombrarlos obliga a re-importar el realm y a
 re-emitir credenciales, sin que nadie lo vea.
 
-### Estado verificado al 2026-09-07
+### Estado verificado al 2026-09-07 (tarde)
+
+**El par de NS de `bonosapp.com.ar` es `helios` + `aster`.dns-parking.com, NO nova/cosmos.** Se
+confirmó de nuevo la regla de agosto: hPanel asigna el par **por dominio, no por cuenta**. La
+delegación en nic.ar se cargó copiando la de nutriappok (nova/cosmos) y por eso el dominio daba
+SERVFAIL. Se alinea **la delegación al par que muestra hPanel**, nunca al revés.
 
 | Qué | Estado |
 | --- | --- |
-| Delegación de `bonosapp.com.ar` en nic.ar | ✅ `nova.dns-parking.com` + `cosmos.dns-parking.com` (el **mismo par** que nutriappok) |
-| Zona de `bonosapp.com.ar` en hPanel | ❌ **no existe** — nova y cosmos contestan `REFUSED` |
-| `bonosapp.com.ar` en resolvers públicos | ❌ `SERVFAIL` (consecuencia de lo anterior) |
+| Zona de `bonosapp.com.ar` en hPanel | ✅ **existe** — helios (`172.64.52.58`) y aster (`172.64.53.70`) contestan autoritativamente, SOA serial `2026090701` |
+| Contenido de la zona | ❌ **vacía** — `A`/`AAAA`/`MX`/`TXT` dan NODATA, `www` da NXDOMAIN. Faltan los 3 registros del `.zone` |
+| ¿`A` de parking autopoblado? | ✅ no hay — esta vez no autopobló nada, no hay que borrar |
+| Delegación en nic.ar | ❌ todavía en nova/cosmos — pedido el cambio a helios/aster |
+| `bonosapp.com.ar` en resolvers públicos | ❌ `SERVFAIL` (consecuencia de la delegación desalineada) |
 | `nutriappok.com.ar` | ✅ en vivo, `A → 187.127.36.153` |
 
-`REFUSED` de un nameserver autoritativo significa **"no soy autoritativo para esa zona"**: nic.ar
-delega a nova/cosmos, pero del otro lado no hay zona creada, y de ahí el `SERVFAIL` río abajo. No es
-propagación: esperar no lo arregla. Comprobarlo **por IP**, no por nombre (el resolver local cachea
-la resolución del nombre del nameserver y devuelve estado viejo):
+**Hacen falta las dos cosas, y son independientes:** alinear la delegación **y** cargar los
+registros. Con la delegación arreglada pero la zona vacía, el dominio resuelve a nada y Caddy
+tampoco emite el cert. Cargar los registros no depende de la delegación: la zona vive en hPanel.
+
+Diagnóstico **por IP**, nunca por nombre (el resolver local cachea la resolución del nombre del
+nameserver y devuelve estado viejo). Cómo leer la respuesta:
+
+- `REFUSED` → el nameserver **no es autoritativo**: la zona no existe ahí (o la delegación apunta al
+  par equivocado, que es el mismo síntoma visto desde afuera).
+- Sólo `SOA` en la respuesta (NODATA) → la zona **existe pero está vacía** de ese tipo de registro.
+- Datos → listo.
 
 ```powershell
-Resolve-DnsName nova.dns-parking.com -Server 1.1.1.1 -Type A     # → 172.64.52.46
-Resolve-DnsName bonosapp.com.ar -Server 172.64.52.46 -Type SOA   # REFUSED = zona inexistente
-Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A   # control: esta sí responde
+Resolve-DnsName helios.dns-parking.com -Server 1.1.1.1 -Type A    # → 172.64.52.58
+Resolve-DnsName bonosapp.com.ar -Server 172.64.52.58 -Type SOA    # ¿existe la zona?
+Resolve-DnsName bonosapp.com.ar -Server 172.64.52.58 -Type A      # ¿tiene los registros?
+Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control contra nova (172.64.52.46)
 ```
 
 **Pasos, en orden:**
 
-1. **DNS — crear una zona NUEVA para `bonosapp.com.ar` en hPanel** e importar
-   [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone) (`A`, `AAAA`, `www` al mismo VPS).
+1. **DNS.** Son **dos tareas independientes** y hacen falta las dos; no se esperan entre sí.
+   - **1a. Delegación en nic.ar → `helios` + `aster`.dns-parking.com** (la carga el cliente, que es
+     el titular). Estaba en nova/cosmos por haberla copiado de nutriappok, y por eso el dominio da
+     SERVFAIL. Se alinea la delegación **al par que muestra hPanel**, nunca al revés: ese
+     desalineamiento es el que produce el `409 "Domain is pending verification"`, que es circular
+     (hPanel verifica la titularidad resolviendo los NS, y mientras dé SERVFAIL no puede pasar nunca).
+   - **1b. Cargar los registros en la zona** — importar [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone)
+     (`A`, `AAAA`, `www` al VPS). La zona ya existe en hPanel pero está **vacía**, y esto **no
+     depende de la delegación**: se puede hacer ya. Si sólo se arregla la delegación, el dominio
+     resuelve a nada y Caddy tampoco emite el cert.
    - **La zona de `nutriappok.com.ar` NO se toca ni se borra.** Son zonas independientes, una por
      dominio; y ese dominio tiene que seguir vivo igual, porque ahí queda el `redir` y vive la
      casilla de contacto `info@nutriappok.com.ar`.
-   - **Al agregar el dominio, mirar qué par de NS le asigna hPanel a ESTE dominio.** El par se asigna
-     **por dominio, no por cuenta**. La delegación en nic.ar ya está en nova/cosmos: si hPanel le
-     asigna otro par, hay que cambiar la **delegación en nic.ar a ESE par** — no al revés. Ese
-     desalineamiento es el que produce el `409 "Domain is pending verification"`, que es circular
-     (hPanel verifica la titularidad resolviendo los NS, y mientras dé SERVFAIL no puede pasar nunca).
-   - **El importador hace merge, no reemplazo**: Hostinger autopobla con un `A` de parking más `MX` y
-     `SPF` propios. Corregir `A`/`AAAA` a mano al VPS y **borrar el `MX`/`SPF`** — ese SPF autentica
+   - **El importador hace merge, no reemplazo**: en agosto Hostinger autopobló con un `A` de parking
+     más `MX` y `SPF` propios. Esta vez no autopobló nada, pero revisar igual después de importar:
+     `A`/`AAAA` tienen que apuntar al VPS y no debe quedar `MX`/`SPF` de Hostinger — ese SPF autentica
      al remitente equivocado y manda los mails de los bonos a spam.
    - Más contexto y el resto de las trampas de agosto: [DNS](#dns--nutriappcomar).
 2. **Caddy** — agregar el site block de `bonosapp.com.ar` y dejar `nutriappok.com.ar` como `redir`

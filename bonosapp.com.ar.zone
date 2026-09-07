@@ -6,30 +6,32 @@ $TTL 3600
 ; Dominio del rebranding NutriApp → BonosApp (cliente, 2026-09-03). Apunta al MISMO
 ; VPS que nutriappok.com.ar y haltcatch.com.ar: srv1786758.hstgr.cloud, dual-stack.
 ;
-; ESTADO VERIFICADO AL 2026-09-07:
-;   - Delegacion en nic.ar: nova + cosmos.dns-parking.com (el MISMO par que nutriappok).
-;   - Zona en hPanel: NO EXISTE TODAVIA. Preguntandoles por IP, nova (172.64.52.46) y
-;     cosmos (172.64.53.200) contestan REFUSED para bonosapp.com.ar y responden bien
-;     para nutriappok.com.ar. REFUSED = "no soy autoritativo para esa zona".
+; EL PAR DE NS DE ESTE DOMINIO ES helios + aster.dns-parking.com, NO nova/cosmos.
+; Se confirmo la regla de agosto: hPanel asigna el par POR DOMINIO, no por cuenta
+; (haltcatch → lunar/solar, jeianell → ns1/ns2, nutriappok → nova/cosmos,
+; bonosapp → helios/aster). La delegacion inicial en nic.ar se cargo copiando la de
+; nutriappok (nova/cosmos) y por eso el dominio daba SERVFAIL: hay que alinear la
+; DELEGACION EN NIC.AR al par que muestra hPanel, no al reves.
+;
+; ESTADO VERIFICADO AL 2026-09-07 (tarde):
+;   - Zona en hPanel: EXISTE. helios (172.64.52.58) y aster (172.64.53.70) contestan
+;     autoritativamente, SOA helios.dns-parking.com serial 2026090701.
+;   - Zona VACIA: A, AAAA, MX y TXT dan NODATA y www da NXDOMAIN. Faltan los 3 registros
+;     de abajo. Nota buena: NO autopoblo un A de parking ni MX/SPF, no hay que borrar nada.
+;   - Delegacion en nic.ar: todavia en nova/cosmos → pedido a Leo el cambio a helios/aster.
 ;   - Consecuencia: los resolvers publicos dan SERVFAIL. No es propagacion.
-; O sea: falta crear la zona. La de nutriappok.com.ar NO se toca ni se borra — son zonas
-; independientes y ese dominio sigue vivo (redirect + casilla info@nutriappok.com.ar).
+; Las dos cosas hacen falta: alinear la delegacion Y cargar los registros. Con la
+; delegacion arreglada pero la zona vacia el dominio resuelve a nada y Caddy no emite cert.
 ;
-; AL AGREGAR EL DOMINIO, MIRAR QUE PAR DE NS LE ASIGNA hPANEL A ESTE DOMINIO: el par se
-; asigna POR DOMINIO, no por cuenta (haltcatch → lunar/solar, jeianell → ns1/ns2,
-; nutriappok → nova/cosmos). Si hPanel le da un par distinto a nova/cosmos, hay que
-; cambiar la DELEGACION EN NIC.AR a ese par, no al reves. Ese desalineamiento es el que
-; produce el 409 "Domain is pending verification", que es circular.
-;
-; AL IMPORTAR: verificar que no quede un A de parking autopoblado por Hostinger. El
-; importador hace merge, no reemplazo. Estado final = los 3 registros de abajo.
+; La zona de nutriappok.com.ar NO se toca ni se borra — son zonas independientes y ese
+; dominio sigue vivo (redirect + casilla info@nutriappok.com.ar).
 ; ============================================================
 
 ; Nameservers: comentados a propósito, igual que en nutriappok.com.ar.zone — la
 ; delegación la definen hPanel y el registro .ar, y un NS en el apex hace que el
 ; importador rechace la zona o cree duplicados. Descomentar sólo como referencia.
-;@      3600  IN  NS    nova.dns-parking.com.
-;@      3600  IN  NS    cosmos.dns-parking.com.
+;@      3600  IN  NS    helios.dns-parking.com.
+;@      3600  IN  NS    aster.dns-parking.com.
 
 ; ---- Web -> VPS ----
 @       300   IN  A     187.127.36.153
