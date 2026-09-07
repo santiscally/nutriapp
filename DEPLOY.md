@@ -385,9 +385,14 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control cont
      desalineamiento es el que produce el `409 "Domain is pending verification"`, que es circular
      (hPanel verifica la titularidad resolviendo los NS, y mientras dé SERVFAIL no puede pasar nunca).
    - **1b. Cargar los registros en la zona** — importar [`bonosapp.com.ar.zone`](bonosapp.com.ar.zone)
-     (`A`, `AAAA`, `www` al VPS). La zona ya existe en hPanel pero está **vacía**, y esto **no
-     depende de la delegación**: se puede hacer ya. Si sólo se arregla la delegación, el dominio
-     resuelve a nada y Caddy tampoco emite el cert.
+     (`A`, `AAAA`, `www` al VPS). La zona ya existe en hPanel pero está **vacía**. Si sólo se arregla
+     la delegación, el dominio resuelve a nada y Caddy tampoco emite el cert: hacen falta las dos.
+     > ⚠️ **1b está BLOQUEADO por 1a: no se pueden cargar los registros antes.** Comprobado el
+     > 2026-09-07: hPanel no deja tocar la zona mientras no verifique la titularidad, y la verifica
+     > **resolviendo los `NS` por DNS** — que con la delegación desalineada dan SERVFAIL. Es el mismo
+     > lazo circular del `409 "Domain is pending verification"` de agosto. O sea: **el orden es
+     > estricto, primero la delegación y recién después los registros**, aunque técnicamente sean
+     > dos cosas distintas. No es propagación y esperar no lo destraba: lo destraba alinear el par.
    - **La zona de `nutriappok.com.ar` NO se toca ni se borra.** Son zonas independientes, una por
      dominio; y ese dominio tiene que seguir vivo igual, porque ahí queda el `redir` y vive la
      casilla de contacto `info@nutriappok.com.ar`.

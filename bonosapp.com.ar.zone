@@ -22,6 +22,9 @@ $TTL 3600
 ;   - Consecuencia: los resolvers publicos dan SERVFAIL. No es propagacion.
 ; Las dos cosas hacen falta: alinear la delegacion Y cargar los registros. Con la
 ; delegacion arreglada pero la zona vacia el dominio resuelve a nada y Caddy no emite cert.
+; Y EL ORDEN ES ESTRICTO: hasta que la delegacion no apunte a helios/aster, hPanel NO DEJA
+; cargar los registros — verifica la titularidad resolviendo los NS, que dan SERVFAIL, y de
+; ahi el lazo circular del 409 "Domain is pending verification". Comprobado el 2026-09-07.
 ;
 ; La zona de nutriappok.com.ar NO se toca ni se borra — son zonas independientes y ese
 ; dominio sigue vivo (redirect + casilla info@nutriappok.com.ar).
