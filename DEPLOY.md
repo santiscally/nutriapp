@@ -432,6 +432,106 @@ Resolve-DnsName nutriappok.com.ar -Server 172.64.52.46 -Type A    # control cont
    `info@nutriappok.com.ar` (pedido explícito del cliente) — cuando exista la nueva, alcanza con
    `VITE_CONTACTO_EMAIL=info@bonosapp.com.ar` + rebuild de la SPA, sin tocar código.
 
+### Runbook del VPS
+
+La secuencia de arriba en comandos, partida en dos fases por una razón concreta: **el origen se
+hornea en el bundle de la SPA y en `KC_HOSTNAME`**. Si se apunta al dominio nuevo antes de que
+resuelva, se rompe el sitio que HOY está en vivo en `nutriappok.com.ar`. Todo lo demás no depende
+del DNS y conviene dejarlo hecho mientras propaga.
+
+#### Fase A — ahora, sin esperar al DNS
+
+```
+cd /root/nutriapp        # ajustar si el checkout está en otro lado
+git pull origin main
+```
+
+**A1. Caddy** — editar `/root/stack/Caddyfile` con los dos site blocks de
+[Site block](#site-block-en-rootstackcaddyfile), y después:
+
+```
+docker exec edge-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+docker exec edge-caddy-1 caddy reload  --config /etc/caddy/Caddyfile
+docker exec edge-caddy-1 wget -qO- http://127.0.0.1:2019/config/ | tr '}' '\n' | grep -o '"host":\[[^]]*\]'
+```
+
+El tercer comando **no es opcional**: el Caddyfile se monta como archivo suelto y un editor que
+reemplace el inodo deja al contenedor viendo la versión vieja, con `reload` contestando
+`"config is unchanged"` — un no-op que parece un éxito. Si `bonosapp.com.ar` no aparece en esa
+salida, el reload no aplicó: `docker restart edge-caddy-1`.
+
+Mientras el dominio no resuelva, Caddy loguea el fallo de ACME y reintenta con backoff. Es
+esperable y **no afecta a los otros sitios del VPS**.
+
+**A2. `.env`** — agregar/ajustar sólo esto (el `KEYCLOAK_HOSTNAME` va en la fase B):
+
+```
+APP_PUBLIC_URL=https://bonosapp.com.ar
+```
+
+**A3. Rebuild del backend** — los textos de los mails y `MAIL_FROM_NAME` viajan dentro del jar:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build backend
+```
+
+`--build` es obligatorio, no alcanza `up -d`: `application.yml` viaja **dentro** del jar, así que
+sin rebuild el contenedor toma el env nuevo pero corre el yml viejo — y el síntoma engaña, porque
+`printenv` muestra los valores correctos. Sin riesgo para el sitio en vivo: el mail está en `stub`,
+no sale nada.
+
+**A4. Redirect URIs** — el comando del paso 4, pero **incluyendo también el dominio viejo**, porque
+en esta ventana el `redir` todavía no está y el login de `nutriappok.com.ar` tiene que seguir
+andando:
+
+```
+-s 'redirectUris=[\"https://bonosapp.com.ar/*\",\"https://www.bonosapp.com.ar/*\",\"https://nutriappok.com.ar/*\"]'
+-s 'webOrigins=[\"https://bonosapp.com.ar\",\"https://www.bonosapp.com.ar\",\"https://nutriappok.com.ar\"]'
+```
+
+#### Puerta entre las dos fases
+
+No arrancar la fase B hasta que esto devuelva la IP del VPS contra un resolver público:
+
+```
+Resolve-DnsName bonosapp.com.ar -Server 1.1.1.1 -Type A     # → 187.127.36.153
+```
+
+Si da SERVFAIL, el problema está antes: preguntarle **por IP** a helios (`172.64.52.58`) para
+separar "falta la delegación" de "falta el contenido de la zona" — ver
+[Estado verificado](#estado-verificado-al-2026-09-07-tarde).
+
+#### Fase B — con el dominio resolviendo
+
+**B1. Rebuild de la SPA** con el origen nuevo (paso 2 del despliegue, ya con
+`VITE_API_BASE_URL=https://bonosapp.com.ar`). Verificar que quedó horneado:
+
+```
+grep -o 'bonosapp\.com\.ar' frontend/dist/assets/*.js | head -1
+```
+
+**B2. `KEYCLOAK_HOSTNAME`** → `https://bonosapp.com.ar/auth` (con `/auth`, ver la nota de hostname
+v2) y reiniciar Keycloak:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d keycloak
+```
+
+**B3. Verificación de punta a punta:**
+
+```
+curl -I https://bonosapp.com.ar                          # 200, cert válido
+curl -I https://nutriappok.com.ar                        # 301 → bonosapp
+curl -s https://bonosapp.com.ar/auth/realms/nutriapp/.well-known/openid-configuration | grep -o '"issuer":"[^"]*"'
+curl -s https://bonosapp.com.ar/actuator/health
+```
+
+El `issuer` tiene que decir `https://bonosapp.com.ar/auth/realms/nutriapp` — **con** el `/auth`. Si
+sale sin el prefijo, `KEYCLOAK_HOSTNAME` quedó pelado y el login del SPA rompe.
+
+**B4. Limpieza (opcional)** — una vez confirmado el `301`, sacar `nutriappok.com.ar` de
+`redirectUris` y `webOrigins` con el mismo comando del paso 4, esta vez sólo con el dominio nuevo.
+
 **El dominio viejo no se da de baja.** Ahí vive la casilla de contacto y los links ya compartidos
 por WhatsApp apuntan a él; queda redirigiendo con `301`. Su zona sigue siendo
 [`nutriappok.com.ar.zone`](nutriappok.com.ar.zone).
