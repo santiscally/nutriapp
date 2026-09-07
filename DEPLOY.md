@@ -337,10 +337,13 @@ Hostinger y mandó el kit de marca (`brand/`).
 
 **Qué cambia y qué no.** Cambia lo que ve el usuario: nombre en la SPA, `<title>` y metadatos OG,
 imagen de compartir, textos de los mails, `MAIL_FROM_NAME`, User-Agent de TiendaNube y el dominio.
-**No** cambia nada interno: paquete `com.bonosapp`, realm `bonosapp`, clients `bonosapp-frontend` /
-`bonosapp-backend`, red `bonosapp-net`, nombres de contenedor, DBs y el nombre del repo. Son
-identificadores de infraestructura ya desplegada: renombrarlos obliga a re-importar el realm y a
-re-emitir credenciales, sin que nadie lo vea.
+Y —por la decisión del 2026-09-07— **también todo lo interno**: paquete `com.bonosapp`, realm
+`bonosapp`, clients `bonosapp-frontend` / `bonosapp-backend`, red `bonosapp-net`, proyecto de compose
+y nombres de contenedor, base y rol de Postgres. **Lo único que sigue diciendo `nutriapp` es el
+nombre del repo.** Por eso esto es una ventana de mantenimiento y no un simple cambio de DNS.
+
+> Este párrafo decía lo contrario ("**No** cambia nada interno") y quedó desactualizado por el
+> segundo commit del rebranding. Se corrigió al ejecutar la migración.
 
 ### Estado verificado al 2026-09-07 (tarde)
 
@@ -513,6 +516,59 @@ Es una **ventana de mantenimiento**: acá se mudan de una sola vez el dominio, l
 los nombres de contenedor. La app queda caída unos minutos. Hacerla entera de un tirón — dejarla por
 la mitad es el peor de los estados posibles.
 
+> ⚠️ **Corregido el 2026-09-07 al ejecutarlo.** La secuencia de abajo, tal como estaba escrita
+> originalmente, **no funciona y en un paso destruía datos**. Cuatro cosas que hay que saber antes:
+>
+> 1. **El rename cambió `name:` en `docker-compose.yml` (`nutriapp` → `bonosapp`), o sea el nombre
+>    del PROYECTO de compose, y con él el nombre del volumen** (`nutriapp_nutriapp_db_data` →
+>    `bonosapp_bonosapp_db_data`). Consecuencia: `docker compose ... down` **no ve** el stack viejo
+>    (queda corriendo), y `up -d` crea un stack nuevo con un **volumen VACÍO** — Postgres corre su
+>    init y arranca una base en blanco, mientras los datos quedan huérfanos en el volumen viejo.
+>    Hay que **migrar el volumen a mano** (paso B0 nuevo). Es el paso más importante de todos.
+> 2. **El rename del realm va ANTES de levantar el stack nuevo**, contra el Keycloak viejo todavía
+>    en pie. Si arranca primero el nuevo, `--import-realm` ve que no existe el realm `bonosapp` y lo
+>    **crea desde el JSON del repo** —con el secret placeholder de dev y los usuarios seed—, y
+>    después el `update realms/nutriapp -s realm=bonosapp` choca por nombre duplicado.
+> 3. **`ALTER ROLE ... RENAME` falla si la sesión es de ese mismo rol** (`session user cannot be
+>    renamed`), que es exactamente lo que hace `psql -U nutriapp`. `rename-db.sh` renombraba la base
+>    y moría ahí, dejando el trabajo por la mitad y sin actualizar el `.env`.
+> 4. **`pg_restore -l -` no existe**: pg_restore no lee el formato custom desde stdin. La
+>    verificación del dump de `rename-db.sh` fallaba **siempre**, abortando el script aun con un
+>    backup perfectamente sano.
+>
+> (3) y (4) ya están arreglados dentro de `scripts/rename-db.sh`. (1) y (2) son de orden y están
+> incorporados abajo.
+
+**B0. Migrar el volumen de datos al proyecto nuevo.** Con el stack viejo **todavía arriba** se hace
+el backup; después se baja a mano (compose no lo alcanza) y se copia el volumen. El volumen viejo
+**no se borra**: es el rollback.
+
+```
+# 1) backup verificado, contra los contenedores viejos (compose ya no los ve)
+STAMP=$(date +%Y%m%d-%H%M%S)
+for DB in nutriapp keycloak; do
+  docker exec -i nutriapp-db pg_dump -U nutriapp -Fc "$DB" \
+    | gpg --batch --yes --recipient backups@nutriappok.com.ar --encrypt \
+          --output "backups/${DB}-${STAMP}.dump.gpg"
+done
+
+# 2) bajar el stack viejo POR NOMBRE (sin -v: los volúmenes quedan)
+docker stop nutriapp-backend nutriapp-nginx nutriapp-keycloak nutriapp-db
+docker rm   nutriapp-backend nutriapp-nginx nutriapp-keycloak nutriapp-db
+
+# 3) copiar el volumen al nombre que espera el proyecto nuevo
+docker volume create bonosapp_bonosapp_db_data
+docker run --rm -v nutriapp_nutriapp_db_data:/from:ro -v bonosapp_bonosapp_db_data:/to \
+  alpine sh -c 'cp -a /from/. /to/'
+
+# 4) arrancar SÓLO la base con el proyecto nuevo y confirmar que los datos viajaron
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d db
+docker exec -i bonosapp-db psql -U nutriapp -d nutriapp -tAc "SELECT count(*) FROM flyway_schema_history;"
+```
+
+`cp -a` preserva dueño (uid/gid 70) y permisos, que es lo que Postgres exige para arrancar. Comparar
+`du -sh` de origen y destino antes de seguir.
+
 **B1. Base de datos** — `nutriapp` → `bonosapp`, con backup verificado:
 
 ```
@@ -525,20 +581,32 @@ renombra base y rol, **recensa y aborta si no coincide**, y deja `POSTGRES_DB`/`
 en `.env` con una copia previa en `.env.bak-<stamp>`. Es idempotente: si ya se corrió, sale sin tocar
 nada. Ante cualquier falla no renombra y te dice dónde quedó el dump.
 
-**B2. Realm y clients de Keycloak** — con Keycloak arriba y la base ya renombrada:
+**B2. Realm y clients de Keycloak.** ⚠️ **Esto va ANTES de B0**, contra el contenedor
+`nutriapp-keycloak` **viejo** todavía corriendo (ver la nota 2 del recuadro). Hecho en ese orden, el
+`--import-realm` del stack nuevo encuentra el realm `bonosapp` ya existente y lo **saltea**, que es
+lo que se quiere. El rename **no pierde usuarios ni cambia el secret del client** (se verificó:
+`KEYCLOAK_ADMIN_CLIENT_SECRET` del `.env` sigue siendo válido); sí invalida las sesiones vivas.
+
+Aprovechar la misma pasada para dejar los `redirectUris`/`webOrigins` en el dominio nuevo — en prod
+todavía tenían los `http://localhost:5173/*` de dev, que pasaban inadvertidos porque el login es
+**ROPC** y no usa redirect.
 
 ```
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d db keycloak
 set -a; . ./.env; set +a
+# Por NOMBRE de contenedor, no por compose: el proyecto pasó a llamarse `bonosapp` y
+# `docker compose exec keycloak` ya no encuentra al contenedor viejo.
+docker exec -e KCU="$KEYCLOAK_ADMIN" -e KCP="$KEYCLOAK_ADMIN_PASSWORD" -i nutriapp-keycloak sh <<'EOS'
+set -e
 KC=/opt/keycloak/bin/kcadm.sh
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T keycloak sh -c "
-  $KC config credentials --server http://localhost:8080/auth --realm master \
-      --user '$KEYCLOAK_ADMIN' --password '$KEYCLOAK_ADMIN_PASSWORD' &&
-  FE=\$($KC get clients -r nutriapp -q clientId=nutriapp-frontend --fields id --format csv --noquotes) &&
-  BE=\$($KC get clients -r nutriapp -q clientId=nutriapp-backend  --fields id --format csv --noquotes) &&
-  $KC update clients/\$FE -r nutriapp -s clientId=bonosapp-frontend &&
-  $KC update clients/\$BE -r nutriapp -s clientId=bonosapp-backend &&
-  $KC update realms/nutriapp -s realm=bonosapp"
+$KC config credentials --server http://localhost:8080/auth --realm master --user "$KCU" --password "$KCP"
+FE=$($KC get clients -r nutriapp -q clientId=nutriapp-frontend --fields id --format csv --noquotes)
+BE=$($KC get clients -r nutriapp -q clientId=nutriapp-backend  --fields id --format csv --noquotes)
+$KC update clients/$FE -r nutriapp -s clientId=bonosapp-frontend \
+  -s 'redirectUris=["https://bonosapp.com.ar/*","https://www.bonosapp.com.ar/*"]' \
+  -s 'webOrigins=["https://bonosapp.com.ar","https://www.bonosapp.com.ar"]'
+$KC update clients/$BE -r nutriapp -s clientId=bonosapp-backend
+$KC update realms/nutriapp -s realm=bonosapp
+EOS
 ```
 
 Los clients se renombran **antes** que el realm: después del `update realms` la ruta `realms/nutriapp`
@@ -546,19 +614,42 @@ deja de existir y el comando falla a la mitad. El rename del realm **no pierde u
 cambio de nombre, no una re-importación — pero **invalida todas las sesiones**, que en pre-lanzamiento
 no molesta a nadie. El JSON del repo no interviene: sólo se importa en realms nuevos.
 
-> El mapper de audiencia (`included.client.audience`) apunta al clientId viejo. Verificar y corregir:
+> **El mapper de audiencia existe, pero cuelga de un CLIENT SCOPE, no del client** — buscarlo en
+> `clients/$BE/protocol-mappers/models` no devuelve nada y parece que no hay nada que corregir. Vive
+> en el scope `nutriapp-audience`, con `included.client.audience: nutriapp-backend` apuntando a un
+> clientId que después del rename ya no existe:
+>
 > ```
-> $KC get clients/\$BE/protocol-mappers/models -r bonosapp --fields name,config
+> SID=$($KC get client-scopes -r bonosapp --fields id,name --format csv --noquotes | grep nutriapp-audience | cut -d, -f1)
+> $KC get client-scopes/$SID/protocol-mappers/models -r bonosapp
+> $KC update client-scopes/$SID -r bonosapp -s name=bonosapp-audience
 > ```
+>
+> Para el mapper: el valor de `config` se actualiza bajando el JSON y subiéndolo con `-f`, pero
+> **Keycloak ignora en silencio el cambio de `name` de un mapper existente** (es su identidad dentro
+> del scope). Para que quede igual que una importación limpia hay que **crearlo de nuevo y borrar el
+> viejo**. Nada valida `aud`, así que la operación es de bajo riesgo.
 
 **B3. `.env`** — además de lo que ya escribió el script:
 
 ```
 KEYCLOAK_HOSTNAME=https://bonosapp.com.ar/auth
 KEYCLOAK_JWK_SET_URI=http://keycloak:8080/auth/realms/bonosapp/protocol/openid-connect/certs
+KEYCLOAK_ISSUER_URI=https://bonosapp.com.ar/auth/realms/bonosapp
 APP_PUBLIC_URL=https://bonosapp.com.ar
 KEYCLOAK_ADMIN_CLIENT_ID=bonosapp-backend
 ```
+
+> ⚠️ **`KEYCLOAK_ISSUER_URI` NO es opcional, y dejarlo vacío no es "validar sólo la firma".**
+> `application-prod.yml` tiene `issuer-uri: ${KEYCLOAK_ISSUER_URI:}`, que resuelve al **string
+> vacío** — y Spring, si la property está presente (aunque sea vacía), arma igual el
+> `JwtIssuerValidator`, con issuer `""`. Resultado: **todo token válido se rechaza** con
+> `401 The iss claim is not valid`. El síntoma engaña bastante, porque Keycloak emite el token sin
+> problema y el `.well-known` se ve perfecto; lo único que lo delata es el header
+> `WWW-Authenticate` de la respuesta. Tiene que ser el issuer público **exacto**, el mismo que
+> publica el `.well-known` (con `/auth`). Esto venía mal desde el deploy de agosto: la API
+> autenticada de prod nunca había respondido 200 (no se notó porque el sitio está en
+> pre-lanzamiento y nadie había hecho login contra prod).
 
 `KEYCLOAK_HOSTNAME` va **con** `/auth` (ver la nota de hostname v2): sin el prefijo el `.well-known`
 publica URLs sin él y el login del SPA rompe.

@@ -32,6 +32,63 @@
 
 ## Entradas
 
+## 2026-09-07 (3) — Santi — infra/auth/db (⚑ bonosapp.com.ar EN VIVO: la migración ejecutada en el VPS)
+**Qué:** Se ejecutó la migración entera en producción. `https://bonosapp.com.ar` sirve la SPA con
+cert propio y `VITE_COMING_SOON=true`; `nutriappok.com.ar` quedó como **301 permanente**. Se mudaron
+en la misma ventana el dominio, el volumen de datos, la base y el rol de Postgres, el realm y los
+clients de Keycloak, y los nombres de contenedor y de red. **Cero pérdida de datos** (censo de filas
+idéntico antes y después, 3 usuarios de Keycloak intactos, Flyway validó las 13 migraciones sin
+checksum mismatch y aplicó la V013 nueva).
+**Por qué:** el DNS ya resolvía (`bonosapp.com.ar` y `www` → 187.127.36.153, delegación helios/aster
+alineada), o sea la puerta entre las fases A y B del runbook estaba abierta.
+**Problemas — el runbook de `DEPLOY.md` estaba MAL en cuatro puntos, uno de ellos destructivo:**
+1. 🔴 **El rename cambió `name:` en `docker-compose.yml`, o sea el nombre del PROYECTO de compose, y
+   con él el del volumen** (`nutriapp_nutriapp_db_data` → `bonosapp_bonosapp_db_data`). Siguiendo el
+   runbook al pie de la letra, `down` no ve el stack viejo (sigue corriendo) y `up -d` levanta uno
+   nuevo **con un volumen vacío**: Postgres corre su init y arranca una base en blanco. Hubo que
+   migrar el volumen a mano (`docker run ... cp -a`, con el stack abajo). **Es el paso que faltaba
+   y era el que borraba todo.** El volumen viejo se conservó como rollback.
+2. **El rename del realm tiene que ir ANTES de levantar el stack nuevo**, contra el Keycloak viejo.
+   Si arranca primero el nuevo, `--import-realm` no encuentra el realm `bonosapp` y lo **crea desde
+   el JSON del repo** (secret placeholder de dev + usuarios seed), y después el rename choca por
+   nombre duplicado. Hecho en el orden correcto, el import lo saltea.
+3. **`rename-db.sh` moría a mitad de camino**: `ALTER ROLE ... RENAME` falla con `session user cannot
+   be renamed` porque la sesión es `psql -U nutriapp`, justo el rol que se renombra. Dejó la base
+   renombrada, el rol sin renombrar y el `.env` sin tocar. Se completó creando un superusuario
+   temporal, renombrando desde su sesión y borrándolo.
+4. **`pg_restore -l -` no existe** (pg_restore no lee el formato custom de stdin), así que la
+   verificación del dump fallaba **siempre** y abortaba el script con un backup sano. Arreglado en
+   `scripts/rename-db.sh`: el dump se copia al contenedor y se verifica por path.
+**Dos bugs más, ajenos al runbook:**
+5. 🔴 **`KEYCLOAK_ISSUER_URI` vacío rompía TODA la API autenticada.** `application-prod.yml` hace
+   `issuer-uri: ${KEYCLOAK_ISSUER_URI:}` → string vacío, y Spring arma igual el `JwtIssuerValidator`
+   con issuer `""`: **todo token se rechaza** con `401 The iss claim is not valid`. El comentario del
+   `.env` afirmaba lo contrario ("vacío = sólo se valida la firma"). **Venía así desde el deploy de
+   agosto**: la API autenticada de prod nunca había respondido 200; no se notó porque el sitio está
+   en pre-lanzamiento. Resuelto seteando el issuer público exacto.
+6. **`nginx/conf.d-proxied/bonosapp.conf` seguía con `server_name nutriappok.com.ar`** y el `server`
+   catch-all devuelve `444`. Caddy preserva el `Host`, así que el dominio nuevo habría caído en el
+   catch-all y cerrado la conexión sin responder. Corregido a `bonosapp.com.ar www.bonosapp.com.ar`.
+**Además:** el client `nutriapp-frontend` de prod tenía todavía los `redirectUris` de dev
+(`http://localhost:5173/*`), invisible porque el login es ROPC y no usa redirect — ya apuntan al
+dominio nuevo. Y el mapper de audiencia **no cuelga del client sino del client scope**
+`nutriapp-audience`, con `included.client.audience: nutriapp-backend`; se renombró el scope y se
+recreó el mapper (Keycloak ignora en silencio el cambio de `name` de un mapper existente).
+**Verificado de punta a punta:** `https://bonosapp.com.ar` 200 con cert válido y los security headers;
+`nutriappok.com.ar` → 301; `/actuator/health` UP; issuer `https://bonosapp.com.ar/auth/realms/bonosapp`;
+`/auth/admin` 404; login ROPC → token con `aud: bonosapp-backend`, `scope: bonosapp-audience` y
+`resource_access.bonosapp-backend: ['admin:manage']`; `/api/v1/me` y `/api/v1/admin/nutricionistas`
+**200**; `/api/v1/registro` devuelve el 415 con `ApiError`; haltcatch y jeianell intactos.
+**⚠️ HALLAZGO DE SEGURIDAD, sin resolver (decisión del usuario):** la credencial **seed de dev**
+`admin@nutriapp.dev` / `test1234` **funciona en producción** y trae `ADMIN` + `admin:manage`. La
+contraseña está en el JSON del realm versionado en el repo y en este mismo DIARIO. Viene de haber
+importado el realm de dev en prod en agosto. **Hay que rotarla o borrar la cuenta antes del
+lanzamiento** — y lo mismo con `nutri@nutriapp.dev`.
+**Impacto para el otro (Fran):** el sitio en vivo pasó a `https://bonosapp.com.ar`; el viejo redirige.
+El contrato REST no cambió. En local, lo más rápido sigue siendo `docker compose down -v && up -d --build`.
+**Refs:** `DEPLOY.md` (runbook corregido, fase B + B0 nuevo), `scripts/rename-db.sh`,
+`nginx/conf.d-proxied/bonosapp.conf`, `.env` y `/root/stack/Caddyfile` del VPS.
+
 ## 2026-09-07 (2) — Santi — backend/infra/auth (el rename interno: todo pasa a bonosapp menos el repo)
 **Qué:** Segunda mitad del rebranding. La primera tanda había dejado los identificadores internos en
 `nutriapp` a propósito; por decisión del usuario ahora **también se renombran**. Lo único que sigue

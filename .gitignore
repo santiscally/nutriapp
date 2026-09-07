@@ -1,5 +1,7 @@
 # Secretos — NUNCA commitear
 .env
+# Copias que deja scripts/rename-db.sh (y las manuales): traen TODOS los secretos de prod.
+.env.bak-*
 *.env.txt
 *.env.local
 
@@ -20,6 +22,9 @@ backend/target/
 # Node / Vite (frontend)
 frontend/node_modules/
 frontend/dist/
+# Bundles anteriores conservados como rollback durante un deploy.
+frontend/dist-old-*/
+frontend/dist-new/
 frontend/.env
 
 # IDEs

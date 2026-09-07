@@ -78,13 +78,22 @@ DUMP="$(ls -1t "${REPO_ROOT}/backups/${FROM_DB}-"*.dump "${REPO_ROOT}/backups/${
 [ -s "${DUMP}" ] || die "el dump ${DUMP} quedo vacio."
 # Que exista y pese no alcanza: pg_restore -l prueba que el dump es integro y restaurable.
 # Corre DENTRO del contenedor porque el VPS no tiene cliente de Postgres instalado.
+# OJO: pg_restore NO lee el formato custom desde stdin — `pg_restore -l -` responde
+# "could not open input file". Hay que darle un archivo real, asi que el dump se copia
+# adentro del contenedor y se verifica por path (el VPS no tiene cliente de Postgres).
+VERIFY_IN="/tmp/rename-db-verify-$$.dump"
 if [ "${DUMP##*.}" = "gpg" ]; then
-  gpg --batch --quiet --decrypt "${DUMP}" 2>/dev/null | dc exec -T db pg_restore -l - >/dev/null 2>&1 \
-    || die "el dump cifrado ${DUMP} no se pudo verificar con pg_restore -l. NO se renombro nada."
+  gpg --batch --quiet --decrypt "${DUMP}" 2>/dev/null | dc exec -T db sh -c "cat > ${VERIFY_IN}" \
+    || die "no se pudo descifrar ${DUMP} (falta la clave privada?). NO se renombro nada."
 else
-  dc exec -T db pg_restore -l - < "${DUMP}" >/dev/null 2>&1 \
-    || die "el dump ${DUMP} no pasa pg_restore -l (truncado o corrupto). NO se renombro nada."
+  dc exec -T db sh -c "cat > ${VERIFY_IN}" < "${DUMP}" \
+    || die "no se pudo copiar ${DUMP} al contenedor. NO se renombro nada."
 fi
+verify_rc=0
+dc exec -T db pg_restore -l "${VERIFY_IN}" >/dev/null 2>&1 || verify_rc=1
+dc exec -T db rm -f "${VERIFY_IN}" >/dev/null 2>&1 || true
+[ "${verify_rc}" = "0" ] \
+  || die "el dump ${DUMP} no pasa pg_restore -l (truncado o corrupto). NO se renombro nada."
 echo "   dump verificado: ${DUMP}"
 
 echo "== 3/7 censo de filas =="

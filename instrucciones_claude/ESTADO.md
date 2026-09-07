@@ -14,54 +14,43 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-07** — 🏷️ **Rebranding NutriApp → BonosApp** hecho y commiteado. Suite
-**199/199**. Se cerró además todo lo que venía sin commitear del 2026-08-25.
+**Última actualización: 2026-09-07 (noche)** — 🚀 **`bonosapp.com.ar` ESTÁ EN VIVO**, en modo
+pre-lanzamiento (`VITE_COMING_SOON=true`). La migración del VPS se ejecutó entera y verificada.
+`nutriappok.com.ar` quedó como **301 permanente** (no se da de baja: ahí vive la casilla de contacto).
 
-**Rebranding (pedido del cliente, 2026-09-03).** Muere NutriApp, nace **BonosApp**, dominio
-**bonosapp.com.ar**. El **isotipo no cambia** (es el mismo de Gon: lo verifiqué contra el lockup nuevo),
-así que favicon y apple-touch-icon quedaron intactos; cambia el wordmark. Kit oficial en `brand/`.
-`og-image.png` regenerada con el lockup real sobre el verde de marca. La landing y el registro muestran
-la casilla de contacto que pidió el cliente, desde **`VITE_CONTACTO_EMAIL`** (default
-`info@nutriappok.com.ar` — la casilla nueva no existe todavía).
+**Qué se mudó, todo en una ventana:** dominio + cert (ACME de Caddy), volumen de datos de Postgres,
+base y rol (`nutriapp` → `bonosapp`), realm y clients de Keycloak, proyecto de compose, nombres de
+contenedor y red, y el bundle de la SPA. **Sin pérdida de datos**: censo de filas idéntico, 3 usuarios
+de Keycloak intactos, Flyway validó 13 migraciones sin checksum mismatch y aplicó la V013.
 
-**El rename es COMPLETO, también adentro** (decisión del usuario, 2026-09-07): paquete `com.bonosapp`,
-`artifactId`, properties `bonosapp.*`, realm y clients de Keycloak, red `bonosapp-net`, contenedores,
-upstreams de nginx, base y rol de Postgres. **Lo único que sigue diciendo `nutriapp` es el nombre del
-repo.** Dos excepciones deliberadas: las migraciones Flyway ya aplicadas (tocarlas cambia el checksum
-y el backend no arranca) y el dominio `nutriappok.com.ar`, que es real y sigue en vivo.
+**Estado verificado:** `/` 200 con cert válido y security headers · `nutriappok` → 301 · health UP ·
+issuer `https://bonosapp.com.ar/auth/realms/bonosapp` · `/auth/admin` 404 · login ROPC → token con
+`resource_access.bonosapp-backend: ['admin:manage']` · `/api/v1/me` y `/api/v1/admin/nutricionistas`
+**200** · `/registro` 415 con `ApiError` · haltcatch y jeianell del VPS intactos.
 
-**Falta para que el dominio nuevo esté en vivo (ops, no código)** — checklist completo en `DEPLOY.md`,
-sección "Migración a bonosapp.com.ar":
-1. Importar `bonosapp.com.ar.zone` en hPanel (verificar el par de NS **de ese** dominio, y que no quede
-   un `A` de parking).
-2. Site block en el Caddy del VPS + `redir` permanente desde `nutriappok.com.ar`.
-3. Rebuild de la SPA con `VITE_API_BASE_URL` / `VITE_KEYCLOAK_URL` en `https://bonosapp.com.ar` (se
-   hornean en el bundle; con el origen viejo la CSP bloquea los fetch).
-4. **Agregar `https://bonosapp.com.ar/*` a los redirect URIs del client de la SPA en el Keycloak de
-   prod**, o el login rompe con `invalid_redirect_uri`.
-5. `APP_PUBLIC_URL=https://bonosapp.com.ar` en el `.env` del VPS + rebuild del backend (los textos de
-   los mails viajan en el jar).
-6. **Rename interno en prod, en la MISMA ventana**: `scripts/rename-db.sh` (backup verificado + ALTER
-   DATABASE/ROLE), rename de realm y clients por `kcadm`, `down`+`up` para recrear red y contenedores,
-   y **editar el Caddyfile del VPS a `bonosapp-nginx:80`** o queda 502.
-7. Avisarle a Leo cuando esté, para que mude la casilla de contacto.
+**🔴 LO ÚNICO URGENTE — hallazgo de seguridad abierto.** La credencial **seed de dev**
+`admin@nutriapp.dev` / `test1234` **funciona en producción** con `ADMIN` + `admin:manage`. Esa
+contraseña está en el realm JSON versionado en el repo. Viene del deploy de agosto (se importó el
+realm de dev en prod). **Rotarla o borrar la cuenta antes del lanzamiento**; ídem `nutri@nutriapp.dev`.
+No la toqué: son las únicas cuentas admin y la decisión es del usuario.
 
-**Backend que se commiteó junto (venía del 2026-08-25):** notificaciones de registro (enum
-`TipoNotificacion`, migración **V013**, templates de recibido/aprobado/rechazado + aviso al admin,
-dispatcher con batch y reintentos), `PublicacionPolicy` con las 5 reglas de qué producto es recetable y
-el motivo en castellano, `TiendaNubeMapeoService` + `TiendaNubeWebhookRegistrar` (ambos idempotentes,
-estado en `/integraciones/estado`), y handlers 415/400/422 en `GlobalExceptionHandler`.
+**Bugs encontrados y arreglados al ejecutar** (el runbook estaba mal en 4 puntos, uno destructivo —
+detalle completo en el DIARIO y ya corregido en `DEPLOY.md`): el cambio de `name:` del compose movía
+el nombre del **volumen** y `up -d` habría arrancado con una **base vacía**; el rename del realm tenía
+que ir antes de levantar el stack nuevo; `rename-db.sh` moría en `ALTER ROLE` (session user) y su
+verificación de dump nunca pasaba (`pg_restore -l -` no existe); `nginx/conf.d-proxied` seguía con
+`server_name nutriappok.com.ar` (habría dado 444); y `KEYCLOAK_ISSUER_URI` vacío rechazaba **todos**
+los tokens (la API autenticada de prod nunca había funcionado).
 
-**Falta para la tienda del cliente (2.5):** instalar la app en TBC → nuevo store_id/token, correr el
-mapeo (mirar `skusSinMatch` / `pendientes`) y registrar el webhook. En local quedan **691 publicados sin
-mapear**: no están en la demo.
+**Rollback disponible:** volumen `nutriapp_nutriapp_db_data` intacto, dumps cifrados en `backups/`
+(`*-20260907-*.dump.gpg`), `frontend/dist-old-*`, `.env.bak-*` y la imagen `nutriapp/backend:prod`.
+Conviene conservarlos unos días y después limpiarlos.
 
-**Decisión abierta (3 veces planteada, sin respuesta):** un producto sin mapear hoy sigue siendo
-recetable y el bono sale con un cupón que nunca se crea. ¿Se sacan del buscador hasta mapearse? Son ~691
-de un saque.
-
-**Mail:** para 2.3 sólo falta que Gon elija proveedor — son env vars sobre un camino ya probado con
-Mailpit (`docker compose --profile mail up -d`).
+**Pendiente (sin cambios respecto de antes):** avisarle a Leo para que mude la casilla de contacto a
+`bonosapp.com.ar` (hoy sale `info@nutriappok.com.ar` desde `VITE_CONTACTO_EMAIL`) · integraciones en
+`stub` en prod (Contabilium, TiendaNube, mail) · instalar la app en la tienda TBC y correr el mapeo ·
+proveedor de mail a elección de Gon · la decisión abierta de si un producto sin mapear sigue siendo
+recetable.
 
 ## Fran / frontend
 
