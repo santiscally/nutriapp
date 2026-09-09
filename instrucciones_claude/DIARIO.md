@@ -32,6 +32,47 @@
 
 ## Entradas
 
+## 2026-09-09 — Fran — frontend + verificación de prod (contacto → @bonosapp.com.ar; MAIL prod sigue stub)
+**Qué:** El cliente dio de alta `info@bonosapp.com.ar` → cambié el contacto del front de `@nutriappok` a
+`@bonosapp`: default en `frontend/src/config.ts` (`contactoEmail`) + `frontend/.env.example`. `tsc` verde.
+**⚠️ Para Santi (deploy):** para que el cambio se vea en prod hay que **rebuildear el front en el VPS**
+(el contacto se hornea en el build vía `VITE_CONTACTO_EMAIL`). Además: actualizar el **`.env.example` raíz**
+(líneas 45 y 151, siguen `nutriappok`) y, si el build de prod setea `VITE_CONTACTO_EMAIL` explícito, cambiarlo
+a `info@bonosapp.com.ar` (o borrarlo y dejar el nuevo default). El comentario del `CLAUDE.md` sobre "sigue en
+nutriappok hasta que el cliente mude" ya no aplica.
+**Verificación de prod hoy (con `admin@nutriapp.dev`):**
+- ✅ **CORS arreglado** por Santi en el VPS (server-side, sin commit): `/admin/integraciones/estado` responde con `Origin`.
+- ⚠️ **MAIL sigue en `stub` en prod** (`/admin/integraciones/estado` → `mail: stub, "integración no conectada"`):
+  por eso aprobar un registro NO manda mail. Falta el bloque `MAIL_*` live en el `.env` del VPS (ver más abajo).
+  Contabilium y TiendaNube también en `stub` (por eso no hay productos en prod).
+- 🔴 **Credenciales seed SIGUEN abiertas en prod:** `admin@nutriapp.dev` / `test1234` loguea con `ADMIN`
+  (verificado hoy). El hallazgo de la entrada (3) NO se resolvió → **rotar/borrar antes del launch.**
+**Bloque MAIL para el VPS (`.env` server + restart backend; la key va a mano, NO por git):**
+  `MAIL_MODE=live` · `MAIL_SMTP_HOST=smtp.resend.com` · `MAIL_SMTP_PORT=587` · `MAIL_SMTP_USERNAME=resend` ·
+  `MAIL_SMTP_PASSWORD=<key re_…>` · `MAIL_SMTP_AUTH=true` · `MAIL_SMTP_STARTTLS=true` ·
+  `MAIL_FROM_ADDRESS=info@bonosapp.com.ar` · `MAIL_FROM_NAME=BonosApp` ·
+  `ADMIN_NOTIFICATION_EMAIL=info@bonosapp.com.ar` · `APP_PUBLIC_URL=https://bonosapp.com.ar`
+**Refs:** `frontend/src/config.ts`, `frontend/.env.example`, `.env.example` (raíz, de Santi).
+
+## 2026-09-07 (5) — Fran — ⚠ BUG PROD (Santi): `403 Invalid CORS request` bloquea /registro y todo browser→API
+**Qué:** En `https://bonosapp.com.ar`, "Solicitar acceso" (`POST /api/v1/registro`) devuelve **403** en el
+navegador. NO es el front (todo pusheado y correcto) ni el endpoint (es `permitAll` y funciona): es **CORS**.
+**Diagnóstico (con repro):**
+- Empty POST → **415** en prod y local: el endpoint se alcanza, la seguridad lo deja pasar.
+- Multipart real por **curl SIN header `Origin`** → **400** validación, prod y local: el endpoint anda perfecto.
+- Mismo multipart con **`Origin: https://bonosapp.com.ar`** → **403 `Invalid CORS request`**. Preflight
+  `OPTIONS` → 403 sin `Access-Control-Allow-Origin`. El browser SIEMPRE manda `Origin` (incluso same-origin
+  en POST), Spring lo valida contra `bonosapp.cors.allowed-origins` = `${APP_CORS_ALLOWED_ORIGINS}`, y en el
+  **VPS está VACÍO** → rechaza todo.
+**Causa raíz:** el `.env` del server no incluye el origen público. El comentario del `.env.example` ("SPA
+same-origin → CORS normalmente vacío") es lo que indujo el error: same-origin **igual manda `Origin`**.
+**Impacto:** bloquea `/registro` ahora y el **login** cuando se apague el pre-lanzamiento (toda llamada
+autenticada del browser). Independiente del mail: aunque el mail esté live, el registro no llega al backend.
+**Fix (Santi, VPS `/root/stack/.env` + restart backend):**
+  `APP_CORS_ALLOWED_ORIGINS=https://bonosapp.com.ar,https://www.bonosapp.com.ar`
+  Y corregir el comentario engañoso en `.env.example` (sección PROD).
+**Refs:** `SecurityConfig.java` (`.cors(withDefaults())`), `application.yml:88` (`allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:...}`), `.env.example` (bloque prod).
+
 ## 2026-09-07 (3) — Santi — infra/auth/db (⚑ bonosapp.com.ar EN VIVO: la migración ejecutada en el VPS)
 **Qué:** Se ejecutó la migración entera en producción. `https://bonosapp.com.ar` sirve la SPA con
 cert propio y `VITE_COMING_SOON=true`; `nutriappok.com.ar` quedó como **301 permanente**. Se mudaron
