@@ -42,12 +42,25 @@ tienda **real** (`bienestarandsalud.mitiendanube.com`, `store_id` 4135704). Sync
 mapeo por SKU → **609 de 614, 0 sin match**; **578 publicados (recetables)**. Webhook `order/paid`
 registrado y verificado. ⚠️ Emitir un bono ahora crea un **cupón real** en la tienda del cliente.
 
-**Lo que falta:** 🔴 **Resend / `MAIL_*`** — el mail sigue en `stub` con **3 notificaciones encoladas**;
-es el único hueco funcional (aprobar un registro no avisa a nadie) · **import del maestro de artículos**:
-lo hace el cliente desde la UI, hasta entonces los filtros de departamento/categoría/subcategoría/
-laboratorio quedan vacíos (`sinMaestro=2277`) · **emisión de un bono e2e contra la tienda real**, sin
-correr todavía porque crea un cupón de verdad · verificación **visual** del login nuevo · 🔴 rotar la
-credencial seed `admin@nutriapp.dev`, que ahora es la home pública.
+**✅ El hallazgo de seguridad está CERRADO** (venía abierto desde el 2026-09-07). Contraseña del admin
+rotada (la vieja `test1234` verificada como rechazada), `admin@nutriapp.dev` renombrado a
+`admin@bonosapp.com.ar`, y borradas las dos cuentas basura: `nutri@nutriapp.dev` (huérfana: usuario de
+Keycloak sin fila en `nutricionistas`, por eso tiraba "no tiene perfil de nutricionista") y
+`test-403@example.com`. **Padrón final, 3 usuarios:** `admin@bonosapp.com.ar` ·
+`nutricionista@bonosapp.com.ar` (genérica para el cliente, `APROBADA` y activa) ·
+`franallende2000@gmail.com` (Fran, intacta). Las contraseñas no están en el repo.
+
+**Lo que falta — todo cuelga de una sola cosa, la key de Resend:** 🔴 **`MAIL_MODE` sigue en `stub`** con
+**4 notificaciones encoladas**; aprobar un registro no avisa a nadie. Y cuando se conecte hay que
+arreglar en el mismo movimiento dos cosas del `.env` del VPS: **`ADMIN_NOTIFICATION_EMAIL` no existe**
+(el aviso de registro nuevo no llegaría a nadie igual) y **`MAIL_FROM_ADDRESS` sigue en
+`no-reply@nutriappok.com.ar`** (dominio viejo → Resend rechazaría los envíos; el verificado es
+`bonosapp.com.ar`).
+
+**Otros pendientes:** import del maestro de artículos — **lo hace el cliente** desde la UI; hasta
+entonces `sinMaestro=2277` y los filtros de taxonomía quedan vacíos · emisión de un bono e2e contra la
+tienda real, sin correr porque crea un cupón de verdad · verificación **visual** del login nuevo · la
+decisión abierta de si un producto sin mapear sigue siendo recetable.
 
 ## Fran / frontend
 

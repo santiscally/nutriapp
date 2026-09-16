@@ -32,6 +32,65 @@
 
 ## Entradas
 
+## 2026-09-16 (4) — Santi — auth (padrón de usuarios limpio: rotada la seed, borradas las huérfanas, admin renombrado)
+
+**Qué:** Se cerró el hallazgo de seguridad que venía abierto desde el 2026-09-07 y se dejó el padrón de
+producción en **3 usuarios reales**. Todo a pedido del usuario, sobre prod.
+1. **Nutricionista genérica creada** (`nutricionista@bonosapp.com.ar`) para que el cliente tenga con qué
+   entrar sin usar una cuenta personal. Hecha **por el flujo real de registro** + aprobación del admin,
+   no a mano: es la única vía que crea el usuario de Keycloak **y** la fila en `nutricionistas` de forma
+   consistente (no existe endpoint de admin para alta directa). Quedó `APROBADA`, activa, 15 %/10 %.
+   Verificada: loguea, `/me` 200, ve los 578 productos recetables.
+2. **Contraseña del admin rotada** y verificada por los dos lados: la nueva entra, la vieja `test1234`
+   queda **rechazada**. Era la que estaba en el realm JSON versionado y en este DIARIO.
+3. **`admin@nutriapp.dev` renombrado a `admin@bonosapp.com.ar`** (username + email + nombre para mostrar,
+   que decía "Admin NutriApp").
+4. **Borradas dos cuentas:** `test-403@example.com` (la prueba con la que se cazó el bug de CORS el
+   2026-09-07, vía `DELETE /admin/nutricionistas/{id}` → 204) y `nutri@nutriapp.dev`.
+
+**Por qué `nutri@nutriapp.dev` daba "El usuario logueado no tiene perfil de nutricionista":** era un
+**usuario huérfano**. Existía en Keycloak con el rol `NUTRICIONISTA` (vino del import del realm de dev en
+agosto) pero **sin fila en la tabla `nutricionistas`**, así que autenticaba bien y después
+`NutricionistaService.getCurrent()` —que busca por `keycloak_user_id` con fallback por email— no
+encontraba nada y devolvía 404. No era un bug: **ninguna migración `V001`–`V013` siembra nutricionistas**,
+el perfil se crea únicamente por el flujo de registro. Por eso no se podía arreglar solo, y por eso se
+borró en vez de darle perfil. Se borró **por Keycloak**, no por la API de la app: sin fila en la tabla,
+el `DELETE /admin/nutricionistas/{id}` no lo alcanza.
+
+**Problema del rename (para la próxima):** `kcadm update users/...` con `username=` falla con
+**`error-user-attribute-read-only`**. La causa no aparece en el mensaje: el realm tiene
+**`editUsernameAllowed: false`**, un candado deliberado. Hay que abrirlo
+(`update realms/bonosapp -s editUsernameAllowed=true`), renombrar, y **volver a cerrarlo** — verificado
+que quedó en `false`. Cambiar `firstName`/`lastName` no necesita nada de esto.
+
+**Padrón final:** `admin@bonosapp.com.ar` (ADMIN) · `nutricionista@bonosapp.com.ar` (genérica del
+cliente) · `franallende2000@gmail.com` (Fran, **intacta a propósito**: es su cuenta de trabajo).
+Las contraseñas **no van acá** — se le pasaron al usuario por el canal de la sesión. Si alguna se pierde,
+se rotan; no hay flujo de "olvidé mi contraseña" por diseño.
+
+**Dos huecos encontrados mirando el `.env` para ver qué dependía del mail viejo:**
+1. 🟡 **`ADMIN_NOTIFICATION_EMAIL` no está seteada en el VPS** — no es que apunte mal, directamente no
+   existe. Aunque se conecte Resend, el aviso de "nueva solicitud de registro" **no le llega a nadie**.
+   Debería ser `info@bonosapp.com.ar`.
+2. 🟡 **`MAIL_FROM_ADDRESS=no-reply@nutriappok.com.ar`** — dominio viejo. El dominio verificado en Resend
+   es `bonosapp.com.ar` (entrada del 2026-09-07 (4)), así que tal cual está **Resend rechazaría los
+   envíos** por remitente no verificado. Tiene que ser `no-reply@bonosapp.com.ar`.
+Las dos se arreglan junto con la key de Resend, que sigue siendo lo único que falta. Hay **4
+notificaciones encoladas**.
+
+**⚠️ La causa raíz sigue viva en el repo, y conviene no olvidarlo:** `keycloak/realms/bonosapp-realm.json`
+**todavía trae `admin@bonosapp.dev` y `nutri@bonosapp.dev` con la contraseña `test1234` en texto plano**.
+Es correcto — es el seed de **dev** y ahí no molesta. Pero importar ese JSON en prod es literalmente lo
+que pasó en agosto y lo que generó este agujero. Si algún día hay que recrear el realm de producción,
+**hay que borrar el bloque `users` antes de importar**, o volvés a tener una cuenta ADMIN con contraseña
+pública. El realm de prod hoy ya **no** contiene ninguno de esos dos usuarios.
+
+**Impacto para el otro (Fran):** tu cuenta no se tocó. Si te aparece un usuario menos en el listado de
+admin es el `test-403` borrado. El realm quedó con `editUsernameAllowed: false`, como estaba.
+
+**Refs:** `modules/nutricionista/service/NutricionistaService.java:30`,
+`modules/registro/controller/RegistroController.java`, `AdminNutricionistaController`, realm `bonosapp`.
+
 ## 2026-09-16 (3) — Santi — integraciones (Contabilium LIVE en prod: catálogo poblado y mapeado, 578 recetables)
 
 **Qué:** Con las credenciales de Contabilium cargadas por el usuario en el `.env` del VPS, se completó la
