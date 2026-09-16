@@ -37,11 +37,16 @@ realm JSON versionado en el repo. Con el login como **home pública**, esto ya n
 **rotarla o borrar la cuenta ahora**; ídem `nutri@nutriapp.dev`. No la toqué: son las únicas cuentas
 admin y la decisión es del usuario.
 
-**Pendiente para que la app esté funcionalmente completa:** `MAIL_*` de Resend en el `.env` del VPS
-(hoy `stub` → aprobar un registro no manda mail; receta en el DIARIO del 2026-09-09) · Contabilium y
-TiendaNube en `stub` en prod (→ catálogo vacío, no se puede emitir un bono real) · instalar la app en
-la tienda TBC + mapeo + import del maestro de artículos · verificación **visual** del login nuevo (el
-VPS no tiene navegador; typecheck y build verdes, pero nadie lo miró) · la decisión abierta de si un
+**TiendaNube: CONECTADO EN LIVE contra la tienda REAL** (2026-09-16). `bienestarandsalud.mitiendanube.com`,
+`store_id` 4135704, webhook `order/paid` registrado y verificado. 609 de 614 productos con nombre y SKU.
+⚠️ Un bono emitido ahora crea un **cupón de verdad** en la tienda del cliente — ojo con las pruebas.
+
+**Pendiente para que la app esté funcionalmente completa:** 🔴 **Contabilium** — sigue en `stub` con
+credenciales vacías, y por eso el catálogo local está en **0 productos** y el mapeo por SKU todavía no se
+puede correr (`PublicacionPolicy` regla 6 pide el producto en Contabilium **y** en TiendaNube). Orden
+obligado: Contabilium live → sync de catálogo → mapeo TiendaNube → import del maestro (Excel). Falta de
+Gon el email de la cuenta y la API key · **Resend**: `MAIL_*` en el `.env` del VPS (hoy `stub`, con **3
+notificaciones encoladas**) · verificación **visual** del login nuevo · la decisión abierta de si un
 producto sin mapear sigue siendo recetable.
 
 ## Fran / frontend

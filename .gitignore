@@ -42,3 +42,6 @@ Thumbs.db
 
 # Backups de DB (scripts/backup-db.sh) — datos, no van al repo
 backups/
+
+# Token temporal del canje OAuth de TiendaNube (ver DIARIO 2026-09-16 (2)) — nunca se commitea.
+.tn-token.json

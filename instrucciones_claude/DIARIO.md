@@ -32,6 +32,57 @@
 
 ## Entradas
 
+## 2026-09-16 (2) — Santi — integraciones (TiendaNube LIVE contra la tienda REAL de TBC + webhook registrado)
+
+**Qué:** Se conectó la app de TiendaNube a la **tienda real** del cliente (`bienestarandsalud.mitiendanube.com`,
+`store_id` **4135704**), no a la demo. `TIENDANUBE_MODE=live` en el `.env` del VPS y webhook `order/paid`
+registrado (id 39603479 → `https://bonosapp.com.ar/api/v1/webhooks/tiendanube`), verificado del lado de
+TiendaNube con un GET a `/webhooks`.
+
+**Cómo se consiguió el token (para la próxima, porque no es obvio):** el `access_token` **no se muestra
+en ninguna pantalla del Partner Portal**. La pantalla de "Tu solicitud fue confirmada" trae el `code`
+**en la barra de direcciones** (`?code=...`), que vence en **5 minutos**, y recién canjeándolo contra
+`POST https://www.tiendanube.com/apps/authorize/token` salen `access_token` + `user_id` (= `store_id`).
+Re-autorizar es idempotente: si el code vence, se vuelve a abrir `/apps/<app_id>/authorize` y listo.
+
+**No hizo falta crear una app nueva.** Que la app figure "en desarrollo" sólo significa que no está
+publicada en la App Store de TiendaNube; una app no publicada se instala igual en una tienda real por
+link directo, y es lo correcto acá: BonosApp es una integración privada de una sola tienda y publicarla
+sólo agregaría revisión técnica y soporte a comercios ajenos.
+
+**Problemas / hallazgos:**
+1. ⚠️ **Los scopes que trajo el token NO son los que pide la doc del proyecto.** Vinieron
+   `write_products, read_coupons, write_coupons, read_orders, write_orders, read_draft_orders,
+   write_draft_orders, write_orders_risk, read_orders_risk` — **sin `read_products`**, y con permisos
+   de escritura de órdenes que no necesitamos. Probado contra la API: `products`, `orders` y `coupons`
+   responden **200**, o sea `write_products` alcanza para leer y **no hace falta reinstalar**. Queda
+   anotado igual porque los scopes viven DENTRO del token: si algún día falta uno, hay que editar
+   Datos Básicos en el portal y **reinstalar la app**.
+2. **`TIENDANUBE_WEBHOOK_SECRET` tenía un valor propio** (correcto mientras el modo era stub). Al pasar
+   a live **tiene que ser el `client_secret` de la app**, que es con lo que TiendaNube firma el HMAC;
+   si no, toda firma entrante falla y las conversiones no se detectan nunca. Ya está corregido.
+3. **`TIENDANUBE_STORE_URL` no existía en el `.env` del VPS** (sí en el `.env.example`). Vacío no rompe,
+   pero el mail del bono sale sin link a la tienda. Seteado a la vitrina real.
+4. **5 de los 614 productos de la tienda están vacíos** (sin nombre, sin SKU, stock 0, creados el
+   2024-08-28). No van a mapear nunca; es basura de la tienda, no un bug nuestro. Los otros **609 tienen
+   nombre y SKU**, que es lo que usa `TiendaNubeMapeoService`.
+5. El canje del `code` se hizo con un archivo temporal `.tn-token.json` dentro del repo, que **no está
+   en `.gitignore`**. Se borró apenas se escribió el `.env`. Si se repite el procedimiento, hacerlo
+   fuera del repo — o agregarlo al `.gitignore`.
+
+**Lo que NO quedó hecho y por qué:** el **mapeo por SKU no se corrió**. El catálogo local está en **0
+productos** (`/admin/productos/resumen` → `total: 0`) porque **Contabilium sigue en `stub`** con las
+credenciales vacías. Con `PublicacionPolicy` regla 6 (producto en Contabilium **y** en TiendaNube), el
+mapeo mapearía 0. El orden obligado es: **Contabilium live → sync de catálogo → mapeo TiendaNube →
+import del maestro**. Falta de Gon el email de la cuenta de Contabilium y la API key.
+
+**Impacto para el otro (Fran):** prod ya pega contra la tienda REAL. Un bono emitido ahora crea un cupón
+de verdad en la tienda del cliente — cuidado con las pruebas. `mail` sigue en `stub` y tiene **3
+notificaciones encoladas** esperando que se conecte Resend.
+
+**Refs:** `.env` del VPS (backup `.env.bak-tnlive-*`), `AdminIntegracionesController`,
+`modules/producto/service/TiendaNubeMapeoService.java`, `modules/webhook/service/TiendaNubeWebhookRegistrar.java`.
+
 ## 2026-09-16 — Santi — frontend + infra (PRE-LANZAMIENTO APAGADO: `/` ya es el login, con la landing adentro)
 
 **Qué:** Se sacó el modo "Próximamente" de producción. `https://bonosapp.com.ar` ya no muestra la
