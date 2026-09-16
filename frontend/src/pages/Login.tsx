@@ -1,10 +1,37 @@
 // Pantalla de login (ROPC). Si ya hay sesión, redirige al dashboard.
+//
+// El panel izquierdo absorbió la propuesta de valor que vivía en la landing "Próximamente"
+// (`Proximamente.tsx`): al apagar el pre-lanzamiento, `/` pasa a ser este login y esa
+// información — qué es BonosApp, los 3 pasos y la casilla de contacto — no tenía dónde
+// mostrarse. La landing queda en el repo por si hay que volver a encenderla.
 
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { homeDe } from "../lib/home";
+import { Icon } from "../components/ui/Icon";
 import { Logo } from "../components/ui/Logo";
+import { config } from "../config";
+
+const PASOS = [
+  {
+    icon: "file-plus",
+    titulo: "Emitís bono profesional",
+    texto: "Elegís paciente y productos, y se emite el descuento exclusivo.",
+  },
+  {
+    icon: "send",
+    titulo: "Tu paciente adquiere",
+    texto:
+      "Le llega por mail y/o WhatsApp el bono profesional, que podrá usar en una tienda especializada.",
+  },
+  {
+    icon: "trending-up",
+    titulo: "Seguís todo acá",
+    texto:
+      "Podés ver el seguimiento de los bonos, y si el paciente convierte, recibirás beneficios exclusivos.",
+  },
+] as const;
 
 export function Login() {
   const { me, initializing, login } = useAuth();
@@ -33,7 +60,7 @@ export function Login() {
 
   return (
     <div className="auth">
-      {/* Panel izquierdo: marca + propuesta de valor */}
+      {/* Panel izquierdo: marca + propuesta de valor (ex landing "Próximamente") */}
       <aside className="auth__brand">
         <div className="auth__brand-top">
           <Logo size={36} />
@@ -42,11 +69,37 @@ export function Login() {
 
         <div className="auth__value">
           <h2 className="auth__headline">Recomendaciones profesionales, con beneficios exclusivos.</h2>
+
+          <p className="auth__lead">
+            La plataforma digital para profesionales de nutrición, salud y bienestar: emitís bonos
+            profesionales, con descuentos y beneficios exclusivos para tus pacientes.
+          </p>
+
+          <ul className="auth__steps auth__steps--icon">
+            {PASOS.map((p) => (
+              <li key={p.titulo}>
+                <span className="auth__step-icon">
+                  <Icon name={p.icon} size={16} />
+                </span>
+                <span>
+                  <b>{p.titulo}</b>
+                  <span className="auth__step-texto">{p.texto}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        <p className="auth__note">
-          Acceso exclusivo para nutricionistas validados por el administrador.
-        </p>
+        <div>
+          <p className="auth__note">
+            Cada cuenta se valida individualmente: verificamos tu matrícula antes de habilitarte. Te
+            avisaremos por mail cuando la misma esté habilitada.
+          </p>
+          <p className="auth__note auth__contacto">
+            Por cualquier consulta, envianos un mail a{" "}
+            <a href={`mailto:${config.contactoEmail}`}>{config.contactoEmail}</a>
+          </p>
+        </div>
       </aside>
 
       {/* Panel derecho: formulario */}

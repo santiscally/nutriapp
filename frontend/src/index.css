@@ -1282,6 +1282,27 @@ select {
 }
 .auth__steps li { display: flex; gap: 11px; align-items: flex-start; font-size: 0.9rem; color: #cfe0db; }
 .auth__steps b { color: var(--primary-mint); font-weight: 700; }
+/* Variante con icono (la que usa el Login: los 3 pasos que venían de la landing
+   "Próximamente"). El `b` deja de ser el numerito mint y pasa a ser el título del paso. */
+.auth__steps--icon li { align-items: center; gap: 12px; }
+.auth__steps--icon b { display: block; color: #fff; font-size: 0.92rem; }
+.auth__step-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(87, 211, 166, 0.14);
+  color: var(--primary-mint);
+}
+.auth__step-texto {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #a9c2bc;
+}
 .auth__note { margin: 0; font-size: 0.78rem; color: #7d968f; }
 .auth__contacto { margin-top: 8px; }
 .auth__contacto a {

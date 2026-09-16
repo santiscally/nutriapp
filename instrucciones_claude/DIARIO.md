@@ -32,6 +32,61 @@
 
 ## Entradas
 
+## 2026-09-16 — Santi — frontend + infra (PRE-LANZAMIENTO APAGADO: `/` ya es el login, con la landing adentro)
+
+**Qué:** Se sacó el modo "Próximamente" de producción. `https://bonosapp.com.ar` ya no muestra la
+landing: muestra el **login**, y la propuesta de valor que vivía en `Proximamente.tsx` se mudó al
+**panel izquierdo del login** (headline, lead, los 3 pasos con icono y la casilla de contacto), que
+antes sólo tenía el isotipo, el titular y una línea de nota.
+- `frontend/src/pages/Login.tsx`: constante `PASOS` (misma copy que la landing), `.auth__value` con
+  `auth__lead` + `auth__steps--icon`, y el bloque de nota + contacto al pie del aside.
+- `frontend/src/index.css`: variante `.auth__steps--icon` (+ `.auth__step-icon` / `.auth__step-texto`).
+  Reusa el `.auth__steps` que ya existía para el Registro; el `b` deja de ser el numerito mint y pasa
+  a ser el título del paso. La media query de `max-height: 880px` ya comprimía el ritmo vertical, así
+  que el panel más largo entra sin scroll en notebook.
+- `.env` del VPS: `VITE_COMING_SOON=true -> false` y `VITE_CONTACTO_EMAIL` -> `info@bonosapp.com.ar`
+  (lo que Fran pidió el 2026-09-09; el default del código ya estaba, faltaba el env del build).
+- `.env.example` (raíz): contacto a `@bonosapp.com.ar`, el comentario de CORS que indujo el bug del
+  2026-09-07, y `KEYCLOAK_ISSUER_URI` — que seguía documentado como "vacío = sólo firma", que es
+  justo lo que rompió toda la API autenticada. Ahora dice que es OBLIGATORIO y trae el valor real.
+
+**Por qué:** pedido del usuario — la app va a versión final; vendrán cambios, pero el pre-lanzamiento
+ya no tiene sentido. `Proximamente.tsx` y la rama `config.comingSoon` **quedan en el repo**: volver a
+encenderlo es `VITE_COMING_SOON=true` + rebuild, sin tocar código.
+
+**Deploy ejecutado:** build en contenedor `node:22-alpine` (el VPS no tiene node) con los `VITE_*` del
+`.env` -> `tsc -b` verde, bundle nuevo `index-D_7wzobQ.js`. Como nginx monta `frontend/dist` por bind
+mount, quedó servido sin reload. Backup del bundle previo en `frontend/dist-old-20260916-*` y del env
+en `.env.bak-comingsoff-*`.
+
+**Verificado contra el dominio público:** `/` y `/ingresar` 200 · asset nuevo servido (344 kB) ·
+flags horneados (`VITE_COMING_SOON` en `false`, contacto `@bonosapp.com.ar`, API/issuer/realm/client
+correctos) · CSP y HSTS intactos · `.well-known` con el issuer bueno · **login ROPC con `Origin` ->
+token**, y con ese token `/api/v1/me` **200** y `/api/v1/admin/nutricionistas` **200**. O sea: el CORS
+que Fran reportó el 2026-09-07 está efectivamente arreglado y la API autenticada anda desde el browser.
+
+**Problemas / lo que NO se hizo:**
+1. 🔴 **La credencial seed de dev `admin@nutriapp.dev` sigue viva en prod con su contraseña conocida**
+   (la de siempre, la que está en el realm JSON versionado) — y ahora el login es la **home pública**,
+   así que la exposición dejó de ser teórica. **Rotarla o borrar la cuenta es lo próximo que hay que
+   hacer**, junto con `nutri@nutriapp.dev`. No se tocó: es la única cuenta admin y la decisión es del
+   usuario. Al rotarla, sacar también la contraseña del JSON del realm.
+2. **MAIL sigue en `stub` en prod**: aprobar un registro no manda mail. Falta el bloque `MAIL_*` de
+   Resend en el `.env` del VPS (la key va a mano) — receta completa en la entrada del 2026-09-09.
+3. **Contabilium y TiendaNube también en `stub` en prod** -> catálogo vacío, no se puede emitir un bono
+   real todavía. Es lo que queda para que la app esté funcionalmente completa de cara al cliente.
+4. **Sin verificación visual**: el VPS no tiene navegador y no se instaló uno por un screenshot.
+   Typecheck y build verdes, markup reusando clases existentes — pero conviene que alguien abra el
+   sitio y mire el panel izquierdo en desktop y en < 860px (ahí el aside se oculta por diseño).
+
+**Impacto para el otro (Fran):** toqué `frontend/` (Login + index.css) por pedido explícito del
+usuario. `Proximamente.tsx` quedó **sin usar en la práctica** pero referenciado en `App.tsx` detrás de
+`config.comingSoon` — no lo borres. Si tocás el login, la copy de los 3 pasos ahora está duplicada
+entre `Login.tsx` y `Proximamente.tsx`: si hay que cambiarla, cambiala en los dos o extraé la constante.
+
+**Refs:** `frontend/src/pages/Login.tsx`, `frontend/src/index.css` (`.auth__steps--icon`),
+`frontend/src/pages/Proximamente.tsx`, `.env.example`, `.env` del VPS, `DEPLOY.md` §2.
+
 ## 2026-09-11 (2) — Santi — catálogo (faltaba importar el maestro: la taxonomía venía vacía)
 
 **Qué:** Al revisar el stack recién levantado, departamento / categoría / subcategoría / laboratorio

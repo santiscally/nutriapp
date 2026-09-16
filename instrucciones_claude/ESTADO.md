@@ -14,43 +14,35 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-07 (noche)** — 🚀 **`bonosapp.com.ar` ESTÁ EN VIVO**, en modo
-pre-lanzamiento (`VITE_COMING_SOON=true`). La migración del VPS se ejecutó entera y verificada.
-`nutriappok.com.ar` quedó como **301 permanente** (no se da de baja: ahí vive la casilla de contacto).
+**Última actualización: 2026-09-16** — 🚀 **PRE-LANZAMIENTO APAGADO.** `https://bonosapp.com.ar`
+dejó de mostrar la landing "Próximamente" y muestra el **login**. La propuesta de valor de la landing
+(headline, lead, los 3 pasos y la casilla de contacto) se mudó al **panel izquierdo del login**;
+`Proximamente.tsx` queda en el repo detrás de `config.comingSoon` por si hay que reencenderlo.
 
-**Qué se mudó, todo en una ventana:** dominio + cert (ACME de Caddy), volumen de datos de Postgres,
-base y rol (`nutriapp` → `bonosapp`), realm y clients de Keycloak, proyecto de compose, nombres de
-contenedor y red, y el bundle de la SPA. **Sin pérdida de datos**: censo de filas idéntico, 3 usuarios
-de Keycloak intactos, Flyway validó 13 migraciones sin checksum mismatch y aplicó la V013.
+**Qué se tocó:** `frontend/src/pages/Login.tsx` + `frontend/src/index.css` (variante
+`.auth__steps--icon`) — `frontend/` es de Fran, se tocó **por pedido explícito del usuario** y está
+avisado en el DIARIO. En el `.env` del VPS: `VITE_COMING_SOON=false` y `VITE_CONTACTO_EMAIL` a
+`info@bonosapp.com.ar`. En `.env.example` (raíz): contacto, el comentario de CORS y el de
+`KEYCLOAK_ISSUER_URI` (los dos comentarios que habían inducido bugs reales en prod).
 
-**Estado verificado:** `/` 200 con cert válido y security headers · `nutriappok` → 301 · health UP ·
-issuer `https://bonosapp.com.ar/auth/realms/bonosapp` · `/auth/admin` 404 · login ROPC → token con
-`resource_access.bonosapp-backend: ['admin:manage']` · `/api/v1/me` y `/api/v1/admin/nutricionistas`
-**200** · `/registro` 415 con `ApiError` · haltcatch y jeianell del VPS intactos.
+**Deploy hecho y verificado contra el dominio público:** build en `node:22-alpine` (el VPS no tiene
+node), `tsc -b` verde, bundle `index-D_7wzobQ.js` servido por bind mount sin reload · `/` e
+`/ingresar` 200 · flags horneados OK · CSP/HSTS intactos · **login ROPC con `Origin` → token**, y con
+él `/api/v1/me` y `/api/v1/admin/nutricionistas` **200**. Backups: `frontend/dist-old-20260916-*` y
+`.env.bak-comingsoff-*`.
 
-**🔴 LO ÚNICO URGENTE — hallazgo de seguridad abierto.** La credencial **seed de dev**
-`admin@nutriapp.dev` / `test1234` **funciona en producción** con `ADMIN` + `admin:manage`. Esa
-contraseña está en el realm JSON versionado en el repo. Viene del deploy de agosto (se importó el
-realm de dev en prod). **Rotarla o borrar la cuenta antes del lanzamiento**; ídem `nutri@nutriapp.dev`.
-No la toqué: son las únicas cuentas admin y la decisión es del usuario.
+**🔴 LO ÚNICO URGENTE — sigue abierto y ahora pesa más.** La credencial **seed de dev**
+`admin@nutriapp.dev` funciona en producción con `ADMIN` + `admin:manage`, y su contraseña está en el
+realm JSON versionado en el repo. Con el login como **home pública**, esto ya no es teórico:
+**rotarla o borrar la cuenta ahora**; ídem `nutri@nutriapp.dev`. No la toqué: son las únicas cuentas
+admin y la decisión es del usuario.
 
-**Bugs encontrados y arreglados al ejecutar** (el runbook estaba mal en 4 puntos, uno destructivo —
-detalle completo en el DIARIO y ya corregido en `DEPLOY.md`): el cambio de `name:` del compose movía
-el nombre del **volumen** y `up -d` habría arrancado con una **base vacía**; el rename del realm tenía
-que ir antes de levantar el stack nuevo; `rename-db.sh` moría en `ALTER ROLE` (session user) y su
-verificación de dump nunca pasaba (`pg_restore -l -` no existe); `nginx/conf.d-proxied` seguía con
-`server_name nutriappok.com.ar` (habría dado 444); y `KEYCLOAK_ISSUER_URI` vacío rechazaba **todos**
-los tokens (la API autenticada de prod nunca había funcionado).
-
-**Rollback disponible:** volumen `nutriapp_nutriapp_db_data` intacto, dumps cifrados en `backups/`
-(`*-20260907-*.dump.gpg`), `frontend/dist-old-*`, `.env.bak-*` y la imagen `nutriapp/backend:prod`.
-Conviene conservarlos unos días y después limpiarlos.
-
-**Pendiente (sin cambios respecto de antes):** avisarle a Leo para que mude la casilla de contacto a
-`bonosapp.com.ar` (hoy sale `info@nutriappok.com.ar` desde `VITE_CONTACTO_EMAIL`) · integraciones en
-`stub` en prod (Contabilium, TiendaNube, mail) · instalar la app en la tienda TBC y correr el mapeo ·
-proveedor de mail a elección de Gon · la decisión abierta de si un producto sin mapear sigue siendo
-recetable.
+**Pendiente para que la app esté funcionalmente completa:** `MAIL_*` de Resend en el `.env` del VPS
+(hoy `stub` → aprobar un registro no manda mail; receta en el DIARIO del 2026-09-09) · Contabilium y
+TiendaNube en `stub` en prod (→ catálogo vacío, no se puede emitir un bono real) · instalar la app en
+la tienda TBC + mapeo + import del maestro de artículos · verificación **visual** del login nuevo (el
+VPS no tiene navegador; typecheck y build verdes, pero nadie lo miró) · la decisión abierta de si un
+producto sin mapear sigue siendo recetable.
 
 ## Fran / frontend
 
