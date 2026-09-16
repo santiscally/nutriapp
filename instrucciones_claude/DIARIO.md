@@ -32,6 +32,42 @@
 
 ## Entradas
 
+## 2026-09-16 (3) — Santi — integraciones (Contabilium LIVE en prod: catálogo poblado y mapeado, 578 recetables)
+
+**Qué:** Con las credenciales de Contabilium cargadas por el usuario en el `.env` del VPS, se completó la
+cadena de puesta en marcha del catálogo en **producción**:
+1. `POST /admin/contabilium/sync-productos` → **revisados=2277 creados=2277** (el catálogo estaba en 0).
+2. `POST /admin/tiendanube/mapear-productos` → **revisados=614, mapeados=609, sinSku=5, sinMatch=0**.
+   Cruce perfecto: los 609 productos con SKU de la tienda real matchearon contra el ERP, y los 5 sin
+   match son los placeholders vacíos de la tienda ya documentados en la entrada anterior.
+3. Resultado: **2277 productos, 578 publicados (= recetables), 1699 no publicados.**
+
+**Por qué 578 y no 609:** `PublicacionPolicy` evalúa cinco reglas, no sólo la de la tienda. De los 609
+mapeados, 31 caen por alguna de las otras (precio mínimo 100, `CATALOGO_TIPOS_ERP=Producto,Combo`,
+`CATALOGO_RUBROS_PERMITIDOS=144331`, o bloqueo del maestro). Los otros 1668 no publicados son los que
+simplemente no están en la tienda. El número **no** es comparable con los 843 de la base vieja (anterior
+a la regla 6) ni con los 8 de la tienda demo.
+
+**El maestro de artículos NO se importó, y es una decisión, no un olvido:** el Excel está git-ignored y
+no existe en el VPS, y el usuario resolvió que **lo importa el cliente** desde la UI
+(`POST /admin/productos/importar-maestro`). Hasta que lo hagan, `/admin/productos/maestro/estado`
+devuelve `{}` y `sinMaestro=2277`: la app funciona y se pueden emitir bonos, pero **los filtros de
+departamento / categoría / subcategoría / laboratorio quedan vacíos**, que es el mismo síntoma de la
+entrada del 2026-09-11 (2). No es un bug — es el tercer paso pendiente.
+
+**Estado de integraciones en prod al cierre:** `contabilium: live` · `tiendanube: live` ·
+**`mail: stub`, con 3 notificaciones encoladas** — sigue siendo el único hueco funcional: aprobar un
+registro no le avisa a nadie. Falta el bloque `MAIL_*` de Resend (receta en la entrada del 2026-09-09).
+
+**Lo que NO se probó y por qué:** no se emitió un bono de punta a punta. Contra la tienda **real** eso
+crea un **cupón de verdad** en el comercio del cliente, y no es una acción para tomar por cuenta propia.
+El mismo camino de código ya se verificó e2e contra la tienda demo el 2026-09-11 (cupón `RX-XP63Y6`
+creado, `PENDIENTE → APLICADA`, comisión calculada), así que el riesgo es bajo — pero queda pendiente
+de una corrida real cuando el usuario la autorice, y conviene borrar el cupón de prueba después.
+
+**Refs:** `modules/producto/service/PublicacionPolicy.java`, `AdminIntegracionesController`,
+`AdminCatalogoController`, `.env` del VPS.
+
 ## 2026-09-16 (2) — Santi — integraciones (TiendaNube LIVE contra la tienda REAL de TBC + webhook registrado)
 
 **Qué:** Se conectó la app de TiendaNube a la **tienda real** del cliente (`bienestarandsalud.mitiendanube.com`,

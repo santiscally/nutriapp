@@ -37,17 +37,17 @@ realm JSON versionado en el repo. Con el login como **home pública**, esto ya n
 **rotarla o borrar la cuenta ahora**; ídem `nutri@nutriapp.dev`. No la toqué: son las únicas cuentas
 admin y la decisión es del usuario.
 
-**TiendaNube: CONECTADO EN LIVE contra la tienda REAL** (2026-09-16). `bienestarandsalud.mitiendanube.com`,
-`store_id` 4135704, webhook `order/paid` registrado y verificado. 609 de 614 productos con nombre y SKU.
-⚠️ Un bono emitido ahora crea un **cupón de verdad** en la tienda del cliente — ojo con las pruebas.
+**CATÁLOGO EN PRODUCCIÓN, LISTO PARA USAR** (2026-09-16). Contabilium y TiendaNube en `live` contra la
+tienda **real** (`bienestarandsalud.mitiendanube.com`, `store_id` 4135704). Sync → **2277 productos**;
+mapeo por SKU → **609 de 614, 0 sin match**; **578 publicados (recetables)**. Webhook `order/paid`
+registrado y verificado. ⚠️ Emitir un bono ahora crea un **cupón real** en la tienda del cliente.
 
-**Pendiente para que la app esté funcionalmente completa:** 🔴 **Contabilium** — sigue en `stub` con
-credenciales vacías, y por eso el catálogo local está en **0 productos** y el mapeo por SKU todavía no se
-puede correr (`PublicacionPolicy` regla 6 pide el producto en Contabilium **y** en TiendaNube). Orden
-obligado: Contabilium live → sync de catálogo → mapeo TiendaNube → import del maestro (Excel). Falta de
-Gon el email de la cuenta y la API key · **Resend**: `MAIL_*` en el `.env` del VPS (hoy `stub`, con **3
-notificaciones encoladas**) · verificación **visual** del login nuevo · la decisión abierta de si un
-producto sin mapear sigue siendo recetable.
+**Lo que falta:** 🔴 **Resend / `MAIL_*`** — el mail sigue en `stub` con **3 notificaciones encoladas**;
+es el único hueco funcional (aprobar un registro no avisa a nadie) · **import del maestro de artículos**:
+lo hace el cliente desde la UI, hasta entonces los filtros de departamento/categoría/subcategoría/
+laboratorio quedan vacíos (`sinMaestro=2277`) · **emisión de un bono e2e contra la tienda real**, sin
+correr todavía porque crea un cupón de verdad · verificación **visual** del login nuevo · 🔴 rotar la
+credencial seed `admin@nutriapp.dev`, que ahora es la home pública.
 
 ## Fran / frontend
 
