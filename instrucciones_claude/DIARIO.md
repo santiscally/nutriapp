@@ -32,6 +32,82 @@
 
 ## Entradas
 
+## 2026-09-11 (2) — Santi — catálogo (faltaba importar el maestro: la taxonomía venía vacía)
+
+**Qué:** Al revisar el stack recién levantado, departamento / categoría / subcategoría / laboratorio
+estaban **100 % en NULL** sobre los 2277 productos. No es un bug: esos campos **no vienen de
+Contabilium**, vienen del Excel maestro, y en una base nueva hay que importarlo a mano. Corrido
+`POST /api/v1/admin/productos/importar-maestro` con `maestro-articulos-tbc-2026-08-03.xlsx`:
+**2164 de 2225 filas aplicadas, 0 rechazos, 61 sin producto en el catálogo** (coincide con lo que
+`07-maestro-articulos-y-catalogo.md` §2.1 había medido: 2163). Quedaron **6 departamentos, 22
+categorías, 135 subcategorías, 124 laboratorios, 8477 tags, 174 imágenes y 519 descripciones web**.
+
+**Por qué importa el orden:** en un entorno nuevo el catálogo necesita **tres** pasos, no dos —
+sync de Contabilium → mapeo de TiendaNube → **import del maestro**. Saltear el tercero deja la app
+funcionando pero con todos los filtros de taxonomía vacíos, que es exactamente como se veía.
+
+**Problemas:**
+1. **Quedaron 8 productos publicados de 2277**, y es **correcto**: `PublicacionPolicy` regla 6
+   (decisión del cliente 2026-08-25) exige que el producto esté en Contabilium **y** en TiendaNube,
+   y la tienda demo tiene 9 productos (8 con SKU). La base vieja mostraba 843 publicados porque es
+   anterior a esa regla / al primer mapeo (con `catalogoMapeado=false` la regla se apaga sola).
+   Contra la tienda real de TBC el número va a ser el de esa tienda, no 8.
+2. Los tags se imprimen con mojibake (`energ�a`) en la terminal de Windows, pero en la DB están
+   **bien**: `energía` = `656e657267c3ad61`, UTF-8 correcto. Mismo falso positivo ya documentado en
+   la entrada del 2026-08-25 sobre el emoji — verificar siempre sobre los bytes, no de ojo.
+
+**Impacto para el otro (Fran):** si levantás de cero y ves los filtros de departamento/categoría/
+subcategoría/laboratorio vacíos, te falta el import del maestro (el Excel está en
+`instrucciones_claude/`, git-ignored). Y que se vean pocos productos recetables es esperado en local:
+sólo son recetables los que están en la tienda demo.
+
+**Refs:** `modules/producto/controller/AdminCatalogoController.java:72`,
+`modules/producto/maestro/MaestroImportService.java`, `modules/producto/service/PublicacionPolicy.java`,
+`instrucciones_claude/07-maestro-articulos-y-catalogo.md`.
+
+## 2026-09-11 — Santi — infra/integraciones (stack local reconstruido + verificación e2e con TiendaNube y Contabilium LIVE)
+
+**Qué:** Se levantó el stack local desde cero con el código post-rename y se verificó el circuito completo
+contra las APIs reales (Contabilium ERP + tienda demo de TiendaNube), no contra stubs.
+**Verificado de punta a punta:** sync Contabilium live → **2277 productos** · mapeo TiendaNube por SKU →
+**8 de 9** productos de la tienda mapeados (1 sin SKU) · emisión de bono → **cupón REAL creado en la tienda**
+(`RX-XP63Y6`, id 70083498, 15%, `max_uses=1`, restringido al product id correcto) · mail al paciente entregado
+en Mailpit · `simular-compra.sh` → **PENDIENTE → APLICADA** con comisión 10% = $1.147,50 · registro multipart
+→ acuse + aviso al admin + login bloqueado → aprobación → login OK · consolidado admin y cierre mensual 200.
+**Por qué:** demo de avances con el cliente; hacía falta saber si las credenciales seguían vivas.
+
+**Problemas:**
+1. **Docker Desktop revivió el stack VIEJO** (`nutriapp-*`, imagen pre-rename de hace 2 semanas) por
+   `restart: unless-stopped`, y se quedó con los puertos 5432/8081/8088/8026. Se detuvo (no se borró:
+   sirve de rollback junto con el volumen `nutriapp_nutriapp_db_data`, que quedó intacto).
+2. **El `.env` local estaba pre-rename** (`POSTGRES_DB/USER=nutriapp`, `VITE_KEYCLOAK_REALM=nutriapp`).
+   Alineado a `bonosapp` (backup en `.env.bak-prereu-*`). Las keys que faltan respecto del `.env.example`
+   (`KEYCLOAK_ADMIN_CLIENT_SECRET`, `TIENDANUBE_BASE_URL`, `CATALOGO_*`) NO hacen falta: los defaults del
+   compose coinciden exactamente con el realm y con el example.
+3. 🟡 **`POST /admin/tiendanube/registrar-webhooks` devuelve `500 "Error interno"`** cuando `APP_PUBLIC_URL`
+   no es HTTPS. El guard funciona bien, pero tira `IllegalStateException` sin mapear en el
+   `GlobalExceptionHandler` → el admin ve "Error interno" en vez del motivo real, que el log sí dice:
+   `"APP_PUBLIC_URL tiene que ser HTTPS para registrar el webhook"`. **Muerde justo en la puesta en marcha
+   de la tienda del cliente**, que es el único momento en que se llama a este endpoint. Mapearlo a 409/422.
+4. 🟡 **`ADMIN_NOTIFICATION_EMAIL` del `.env` local sigue en `admin@nutriapp.dev`** — el aviso de registro
+   nuevo llega ahí. Cosmético en local; en el VPS hay que confirmar que apunte a `info@bonosapp.com.ar`.
+5. **`scripts/smoke-fase1.sh` quedó desactualizado**: da 10 FAIL que NO son regresiones. Espera el canal
+   `WHATSAPP` (eliminado en V010, hoy es link `wa.me`), manda `/registro` como JSON (es multipart desde el
+   registro de 11 campos) y asume que el seeder siembra bonos — no lo hace desde que V003 es no-op a
+   propósito (catálogo vacío por diseño), así que sin bonos PENDIENTE los 3 checks que dependen de uno
+   fallan en cascada. `GET /recetas/{id}` **sí** trae `notificaciones` y `conversion`, verificado a mano.
+6. **`POST /admin/nutricionistas/{id}/aprobar` ignoró el body** `{descuentoPct:20, comisionPct:12}`: la
+   nutricionista quedó con los defaults 15/10. No se investigó si es by-design (los % se setean en la ficha,
+   endpoint aparte) o si es un bug — **queda abierto**.
+
+**Impacto para el otro (Fran):** el stack local ahora es el proyecto compose **`bonosapp`** (contenedores
+`bonosapp-*`); si te quedó corriendo el viejo `nutriapp-*`, detenelo o te pelea los puertos. El catálogo
+local arranca VACÍO: hay que correr "Sincronizar catálogo" (Contabilium live) y después el mapeo de
+TiendaNube antes de emitir, o el cupón queda PENDIENTE con el motivo. Nada del contrato cambió.
+
+**Refs:** `.env` (no versionado), `docker-compose.yml`, `scripts/smoke-fase1.sh`,
+`modules/webhook/service/TiendaNubeWebhookRegistrar.java:43`, `common/error/GlobalExceptionHandler.java`.
+
 ## 2026-09-09 — Fran — frontend + verificación de prod (contacto → @bonosapp.com.ar; MAIL prod sigue stub)
 **Qué:** El cliente dio de alta `info@bonosapp.com.ar` → cambié el contacto del front de `@nutriappok` a
 `@bonosapp`: default en `frontend/src/config.ts` (`contactoEmail`) + `frontend/.env.example`. `tsc` verde.
