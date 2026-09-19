@@ -64,26 +64,22 @@ decisión abierta de si un producto sin mapear sigue siendo recetable.
 
 ## Fran / frontend
 
-**Última actualización: 2026-08-13** — de vuelta de vacaciones y sincronizado con el pull.
+**Última actualización: 2026-09-19.**
 
-**Contexto:** en mis 3 semanas Santi avanzó muchísimo (tocó `frontend/` con mi permiso, avisado en DIARIO): la app
-está **EN PROD** (`nutriappok.com.ar`, pre-lanzamiento), con Fase 1, Fase 2 (Contabilium live; TiendaNube/email en
-stub; WhatsApp por `wa.me`) y las **4 olas post-demo** hechas. El front del repo ya refleja todo eso (coming-soon,
-taxonomía/catálogo admin, %-por-nutricionista, liquidación, archivos DNI/CUIT/matrícula, foto de perfil, precios
-fuera de casi toda la app, admin sin emisión). Todo mi sprint pre-vacaciones (F.1–F.6) quedó absorbido y superado.
+**Hitos recientes cerrados:**
+- ✅ **Mail EN VIVO en prod** (`bonosapp.com.ar`, ya sin pre-lanzamiento). Resend conectado, dominio verificado,
+  `MAIL_MODE=live` en el VPS, `from = info@bonosapp.com.ar`. Verificado con un mail real entregado. (Cuidado:
+  el TXT DKIM `resend._domainkey` se había borrado del DNS y rompía el envío — re-agregado, **no tocar**.)
+- ✅ Contacto del front migrado a `info@bonosapp.com.ar` (`config.ts` + `frontend/.env.example`).
+- ✅ Rebranding a BonosApp absorbido; rename "Receta → Bono Profesional" en el front.
 
-**Entorno local puesto a punto (2026-08-13):**
-- Puertos alineados con Santi para esquivar imedba/GIA: `.env` local con `BACKEND_PORT=8088`, front `:5174`
-  (`VITE_DEV_PORT`), keycloak `:8081`. `vite.config.ts` ahora lee el puerto de env.
-- Dropeé mis 3 fixes CRLF locales (`.gitattributes` de Santi ya cubre mvnw/*.sh). **Queda un hueco:**
-  `maven-wrapper.properties` no está cubierto → arreglo local + flag a Santi en DIARIO.
-- Stack local levantado (back `:8088`, keycloak `:8081`, db `:5432`) + front `:5174`. Contabilium en stub →
-  **catálogo local vacío** (se puebla sólo con credenciales + "Sincronizar catálogo").
+**En qué estoy ahora:** arranca la tanda de **modificaciones post 1ª entrega** (feedback de Gon). El plan y la
+división Fran/Santi está en `modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`.
+**Mi mitad (Fran):** todo `frontend/` (renames a "Profesionales", validaciones de registro, desplegables
+Provincias/Profesión, estados en masculino solo-display, filtro y % de descuento por producto, 2 solapas admin
+nuevas PANEL/BONOS) + el **vertical mail** (link directo al producto en wa.me/mail, descripción del producto,
+PDF del bono + re-descarga, deliverability desde el contenido).
 
-**En qué estoy ahora / próximo:**
-- **Verificación visual** de las pantallas nuevas que Santi dejó marcadas como "falta mirar" (C-02 precios, C-07
-  admin sin emisión, registro de 11 campos, catálogo, rediseño R.1–R.7).
-- **Funcionalidad pendiente de email del registro** (bloqueante funcional: proveedor mail en stub → nadie recibe
-  el aviso de "solicitud recibida/aprobada").
-
-**Bloqueado por el otro:** nada.
+**Bloqueado por el otro (contract-first, ver PLAN):** descuento por producto (S-02), campo Profesión (S-11),
+comisión en `/me` (S-12), endpoints de las solapas admin (S-13/14), URL de tienda en el VPS (S-17), términos de
+uso hosteados (S-16). **Bloqueo externo:** template del PDF del bono lo manda el cliente la próxima semana (F-20).

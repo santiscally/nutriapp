@@ -32,6 +32,43 @@
 
 ## Entradas
 
+## 2026-09-19 — Fran — planificación (modificaciones post 1ª entrega: plan + división Fran/Santi)
+**Qué:** Llegó el feedback del cliente tras la 1ª entrega (2 mails casi idénticos = un solo set + 4 adjuntos).
+Armé el plan completo con la **división de trabajo Fran/Santi** en
+`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`.
+**Criterio:** mail y lo que dispara/arma el mail o WhatsApp → **Fran** (+ todo `frontend/`); Hostinger, DNS,
+VPS, Keycloak, catálogo/ERP e integraciones → **Santi**. Balanceado por esfuerzo, con zonas de propiedad
+delimitadas para no pisarse y **contract-first** en las features compartidas (Santi define el endpoint/campo,
+Fran hace la UI).
+**Tuyo (Santi), lo grueso:** maestro nuevo + **descuento por producto** (S-01/02), filtros de catálogo
+RUBRO/TIPO (S-03/04, hoy trae cajas y combos), timing conversión→dashboard + cierre de comisiones (S-06),
+auth: anti-brute-force / recupero de pass / verificación de mail (S-08/09/10), comisión default 1% (S-12),
+2 endpoints agregados para las solapas admin PANEL y BONOS (S-13/14), hostear Términos de Uso (S-16),
+`TIENDANUBE_STORE_URL`→thebcompany (S-17), deliverability/DMARC anti-spam (S-18).
+**Mío (Fran):** todo el front (renames, validaciones, desplegables, estados en masculino solo-display) + el
+vertical mail (URL directa al producto, descripción, PDF del bono, re-descarga). El template del PDF lo manda
+el cliente la próxima semana (F-20 bloqueado parcial).
+**Impacto para el otro:** es una PROPUESTA — revisá tu mitad en el PLAN y ajustá. Nada de código todavía.
+**Refs:** `modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md` (+ adjuntos del cliente en esa carpeta).
+
+## 2026-09-17 — Fran — integraciones/email (⚑ MAIL LIVE en prod + incidente: el TXT DKIM estaba borrado del DNS)
+**Qué:** Se conectó Resend en producción y **el mail quedó andando end-to-end** (verificado: llegó un mail real
+a la bandeja). Faltaba el último tramo: cargar el bloque `MAIL_*` en el `.env` del VPS (`/root/nutriapp/.env`)
++ recrear el backend (`docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d backend`). Quedó
+`MAIL_MODE=live`, host `smtp.resend.com`, `MAIL_FROM_ADDRESS=info@bonosapp.com.ar`, `ADMIN_NOTIFICATION_EMAIL=info@bonosapp.com.ar`.
+**⚠️ Incidente (para no repetir):** al pasar a live, Resend **rechazaba** los envíos: el registro **TXT
+`resend._domainkey` (DKIM) estaba BORRADO** del DNS de Hostinger — los dos CNAME de sending (`send`, `rsend`)
+sobrevivieron, pero el TXT largo no (se perdió en alguna edición de zona posterior a la verificación del 09-07).
+Sin DKIM el dominio queda sin verificar → Resend rechaza. Se **re-agregó** el TXT `resend._domainkey` en
+Hostinger (valor idéntico, verificado por nslookup y por "restart verification" en Resend → Verified).
+**Que NO se toque ese TXT en futuras ediciones de zona.**
+**Detalle:** las 4 notificaciones que estaban encoladas llegaron a `FAILED` (intentos=5) mientras el DKIM
+faltaba; el dispatcher no reintenta las FAILED. Se re-encoló una a mano (`UPDATE ... SET estado='QUEUED',
+intentos=0`) para la prueba y salió `SENT`. Las viejas a `nutricionista@bonosapp.com.ar` quedaron sin re-encolar
+a propósito (esa cuenta ya está activa).
+**Impacto para el otro:** prod ya manda mail. El `.env` del VPS tiene ahora la key de Resend (a mano, no por git).
+**Refs:** `/root/nutriapp/.env` (VPS), DNS de bonosapp.com.ar en Hostinger, entrada 2026-09-07 (4).
+
 ## 2026-09-16 (4) — Santi — auth (padrón de usuarios limpio: rotada la seed, borradas las huérfanas, admin renombrado)
 
 **Qué:** Se cerró el hallazgo de seguridad que venía abierto desde el 2026-09-07 y se dejó el padrón de
