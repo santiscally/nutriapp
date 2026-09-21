@@ -27,7 +27,9 @@ public record ProductoFiltrosResponse(
          * máximo fijo dejaría medio catálogo fuera del recorrido del control.
          */
         BigDecimal precioMin,
-        BigDecimal precioMax
+        BigDecimal precioMax,
+        /** % de descuento que existen hoy en el catálogo recetable (S-02). */
+        List<BigDecimal> descuentos
 ) {
     public record Departamento(String nombre, List<Categoria> categorias) {}
 

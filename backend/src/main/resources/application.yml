@@ -93,13 +93,9 @@ bonosapp:
     # rubros-permitidos: IdRubro de Contabilium que cuentan como "producto terminado". Hoy tenemos
     #   uno solo; Gon quedó en pasar la lista completa (call 34:26). Vacío = sin filtro de rubro.
     rubros-permitidos: ${CATALOGO_RUBROS_PERMITIDOS:144331}
-    # Tipos del ERP que se recetean. El mail de Gon dice "solo quedarnos con Producto", pero ese campo
-    # tiene TRES valores en la cuenta de TBC —Producto (2004), Combo (209) y Servicio (54)— y los Combo
-    # son los packs x2/x3 y los exhibidores de la línea ON-ROLL propia. Su intención era sacar los
-    # servicios, no los packs, así que van los dos: se venden en TiendaNube como cualquier artículo y el
-    # cupón les aplica igual. **A confirmar con Gon**; para volver a su instrucción literal alcanza con
-    # CATALOGO_TIPOS_ERP=Producto (el catálogo recetable pasa de 702 a 496). Vacío = sin filtro.
-    tipos-erp-permitidos: ${CATALOGO_TIPOS_ERP:Producto,Combo}
+    # S-04: Gon confirmó que van sólo los Producto — los Combo (packs x2/x3, exhibidores) salen.
+    # Vacío = sin filtro. Cambiarlo no recalcula nada: hay que correr la sync para que se aplique.
+    tipos-erp-permitidos: ${CATALOGO_TIPOS_ERP:Producto}
     # Umbral de precio irrisorio: tienen ~1000 artículos cargados a $1 (call 44:52).
     precio-minimo: ${CATALOGO_PRECIO_MINIMO:100}
     # Tope del Excel maestro que sube el admin (el real pesa ~1,5 MB).
@@ -110,7 +106,7 @@ bonosapp:
     # nadie elige ahí su propio descuento. El admin los ajusta al aprobarla y desde entonces manda
     # el valor de su ficha.
     descuento-pct-default: ${NUTRICIONISTA_DESCUENTO_PCT_DEFAULT:15.00}
-    comision-pct-default: ${NUTRICIONISTA_COMISION_PCT_DEFAULT:10.00}
+    comision-pct-default: ${NUTRICIONISTA_COMISION_PCT_DEFAULT:1.00}
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
     # Los % de descuento y comisión no viven acá: son de cada nutricionista (ver arriba).

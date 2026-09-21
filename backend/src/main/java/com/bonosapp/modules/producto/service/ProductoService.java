@@ -34,7 +34,7 @@ public class ProductoService {
     public Page<ProductoResponse> search(ProductoFiltro filtro, Pageable pageable) {
         return repository.search(filtro.q(), filtro.marca(), filtro.departamento(), filtro.categoria(),
                         filtro.subcategoria(), filtro.laboratorio(), filtro.tag(), filtro.conStock(),
-                        filtro.precioMin(), filtro.precioMax(), pageable)
+                        filtro.precioMin(), filtro.precioMax(), filtro.descuentoPct(), pageable)
                 .map(mapper::toResponse);
     }
 
@@ -103,7 +103,8 @@ public class ProductoService {
                 repository.distinctLaboratorios(),
                 arbol(filas),
                 decimal(minMax, 0),
-                decimal(minMax, 1));
+                decimal(minMax, 1),
+                repository.distinctDescuentos());
     }
 
     /** Catálogo vacío o sin precios: devolvemos null y el front no dibuja el slider. */
@@ -169,6 +170,7 @@ public class ProductoService {
             String tag,
             boolean conStock,
             BigDecimal precioMin,
-            BigDecimal precioMax
+            BigDecimal precioMax,
+            BigDecimal descuentoPct
     ) {}
 }

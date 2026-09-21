@@ -29,6 +29,15 @@ public record IntegrationsProperties(
             String u = storeUrl.trim();
             return u.endsWith("/") ? u.substring(0, u.length() - 1) : u;
         }
+
+        /** Link directo al producto (S-02). Null si falta el dominio o el slug. */
+        public String urlDeProducto(String handle) {
+            String base = storeUrlNormalizada();
+            if (base == null || handle == null || handle.isBlank()) {
+                return null;
+            }
+            return base + "/productos/" + handle.trim();
+        }
     }
 
     public record Mail(String mode, String fromAddress, String fromName) {}

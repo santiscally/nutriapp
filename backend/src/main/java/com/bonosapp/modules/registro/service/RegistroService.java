@@ -9,6 +9,7 @@ import com.bonosapp.modules.nutricionista.entity.Nutricionista;
 import com.bonosapp.modules.nutricionista.entity.TipoArchivo;
 import com.bonosapp.modules.nutricionista.service.ArchivoService;
 import com.bonosapp.modules.nutricionista.repository.NutricionistaRepository;
+import com.bonosapp.modules.profesion.service.ProfesionService;
 import com.bonosapp.modules.registro.dto.RegistroRequest;
 import com.bonosapp.modules.registro.dto.RegistroResponse;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class RegistroService {
     private final ArchivoService archivoService;
     private final NutricionistaProperties props;
     private final NotificacionService notificaciones;
+    private final ProfesionService profesiones;
 
     @Transactional
     public RegistroResponse registrar(RegistroRequest req, MultipartFile matricula) {
@@ -44,6 +46,9 @@ public class RegistroService {
         repository.findByDniAndDeletedAtIsNull(req.dni()).ifPresent(n -> {
             throw new ConflictException("Ese DNI ya está registrado");
         });
+
+        // Antes de crear nada en Keycloak: una profesión inválida no debe dejar un usuario huérfano.
+        String profesion = profesiones.validar(req.profesion());
 
         // Keycloak es la fuente de verdad de identidad: crea el usuario deshabilitado + rol.
         // (También valida unicidad de email a nivel realm como backstop de la carrera.)
@@ -58,6 +63,8 @@ public class RegistroService {
             n.setEmail(req.email());
             n.setTelefono(req.telefono());
             n.setMatricula(req.matricula());
+            n.setJurisdiccionMatricula(req.jurisdiccion());
+            n.setProfesion(profesion);
             n.setDni(req.dni());
             n.setCuit(req.cuitNormalizado());
             n.setCondicionFiscal(req.condicionFiscal());

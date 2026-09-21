@@ -50,7 +50,8 @@ public interface TiendaNubeClient {
     /** {@code hasNext} sale del header {@code Link rel="next"}: pedir una página de más da 404, no vacío. */
     record ProductPage(List<Product> items, boolean hasNext) {}
 
-    record Product(long id, String name, List<Variant> variants) {}
+    /** {@code handle} es el slug público del producto: con él se arma el link directo del mail. */
+    record Product(long id, String name, String handle, List<Variant> variants) {}
 
     /** {@code sku} es la clave de conciliación con el catálogo local; puede venir null. */
     record Variant(long id, String sku) {}

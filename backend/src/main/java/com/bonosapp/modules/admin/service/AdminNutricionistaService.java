@@ -204,6 +204,8 @@ public class AdminNutricionistaService {
                 n.getEmail(),
                 n.getTelefono(),
                 n.getMatricula(),
+                n.getJurisdiccionMatricula(),
+                n.getProfesion(),
                 n.getDni(),
                 n.getCuit(),
                 n.getCondicionFiscal(),

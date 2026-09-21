@@ -14,6 +14,8 @@ import java.util.Set;
  * @param sku            clave de cruce con {@code productos.sku} (= {@code Codigo} de Contabilium).
  * @param idContabilium  verificación del cruce; null si la planilla no trae la columna.
  * @param bloqueado      ESTADO = BLOQUEADO → no se muestra en bonosapp.
+ * @param descuentoPct   DESCUENTO % normalizado a escala 0-100; null si la planilla no lo trae.
+ * @param estadoBonosapp ESTADO BONOSAPP = SI/NO; null si la planilla no trae la columna.
  */
 public record MaestroFila(
         int fila,
@@ -26,7 +28,9 @@ public record MaestroFila(
         boolean bloqueado,
         String imagenUrl,
         String descripcionWeb,
-        List<String> tags
+        List<String> tags,
+        java.math.BigDecimal descuentoPct,
+        Boolean estadoBonosapp
 ) {
     /** Los tags vienen separados por salto de línea dentro de una celda, no por coma. */
     public static List<String> parsearTags(String celda) {

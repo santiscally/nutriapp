@@ -32,6 +32,54 @@
 
 ## Entradas
 
+## 2026-09-21 — Santi — backend/db (plan confirmado + contratos de las 7 features cruzadas + S-01/02/04/11/12)
+**Qué:** Confirmé el reparto del PLAN y escribí en `05-api-endpoints.md` (sección "Modificaciones post 1ª
+entrega") los **contratos de las 7 features que Fran tiene bloqueadas**: S-02 descuento por producto, S-11
+profesión, S-12 comisión en `/me`, S-13/S-14 endpoints admin, S-16 URL de términos, S-17 URL de tienda.
+Después implementé la primera tanda: **S-01/S-02** (maestro nuevo + descuento por producto + link directo al
+producto), **S-11** (profesión y jurisdicción como campos propios + `GET /profesiones`), **S-12** (default
+1 %, `/me` expone `comisionPct`), **S-04** (fuera los Combo del catálogo) y el mensaje del CUIT de F-04.
+**Por qué:** contract-first: Fran arranca 8 tareas de front contra un shape cerrado sin esperar al backend.
+
+**Migraciones nuevas:** `V014__profesion_y_jurisdiccion.sql` (dos columnas + tabla `profesiones` con las 76
+del Excel del cliente) y `V015__descuento_por_producto.sql` (`descuento_pct`, `estado_bonosapp`,
+`tiendanube_handle`).
+
+**Decisiones que quedaron tomadas en el código:**
+- El **descuento del producto manda**; si el producto no lo tiene (maestro sin importar), cae al % de la
+  profesional. Dos productos con % distintos en un mismo bono → `409`: el cupón de TiendaNube es un solo
+  porcentaje.
+- El link al producto se arma con `TIENDANUBE_STORE_URL` + el `handle` de la tienda, **no** con
+  `canonical_url` (no existe en la API de TiendaNube, verificado en la doc). Así el dominio sigue saliendo de
+  config y la mudanza a thebcompany.com.ar no toca código.
+- `ESTADO BONOSAPP` manda sobre el `ESTADO` de TBC cuando la planilla lo trae.
+- `profesion` y `jurisdiccion` entran **opcionales**: prod está recibiendo registros y exigirlos antes de que
+  Fran despliegue rompería el alta con 400.
+
+**Problemas:** la función del trigger es `update_updated_at()`, no `set_updated_at()` — con el nombre
+equivocado la V014 hubiera reventado el arranque del backend. `ProductoMapper` pasó de interfaz a clase
+abstracta para poder inyectarle la config del dominio de la tienda.
+
+**⚠️ Dos cosas que hay que preguntarle a Gon antes de importar el maestro nuevo en prod** (están en el PLAN,
+sección "Cambios al alcance"): (1) `DESCUENTO %` viene como `0.2`/`0.55` sin formato de porcentaje — se lee
+como 20 % y 55 %; (2) `ESTADO` y `ESTADO BONOSAPP` se contradicen: **1497 de 2252 filas están BLOQUEADO** y a
+la vez las 2252 están en `SI`. Importar sin aclarar esto cambia de golpe qué se puede recetar.
+
+**Impacto para el otro (Fran):** ya podés construir F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25 contra el
+contrato. **F-14 todavía NO**: hasta que el cliente importe el maestro, el % de la ficha del admin es el único
+descuento que existe. Los paths del API siguen diciendo `recetas`, no `bonos`. Parte de F-04 (el mensaje de
+error del CUIT) la hice yo: sale del backend.
+
+**Pendiente de esta tanda:** S-13 y S-14 (los endpoints admin) están **contratados pero no implementados**;
+S-03 (filtro de RUBRO) necesita mirar datos de prod — la hipótesis es que `rubro_id` viene null desde
+`/api/conceptos/search` y por eso el filtro no bloquea nada (`permitido()` deja pasar los valores ausentes).
+Query para confirmarlo: `SELECT rubro_id, rubro, count(*) FROM productos WHERE deleted_at IS NULL GROUP BY 1,2
+ORDER BY 3 DESC;`.
+
+**Refs:** `instrucciones_claude/05-api-endpoints.md`, `modificaciones post primera entrega/PLAN-...md`,
+`V014`/`V015`, `MaestroXlsxParser`, `PublicacionPolicy`, `RecetaService.descuentoDe`, `ProductoMapper`,
+`IntegrationsProperties.TiendaNube.urlDeProducto`.
+
 ## 2026-09-19 — Fran — planificación (modificaciones post 1ª entrega: plan + división Fran/Santi)
 **Qué:** Llegó el feedback del cliente tras la 1ª entrega (2 mails casi idénticos = un solo set + 4 adjuntos).
 Armé el plan completo con la **división de trabajo Fran/Santi** en

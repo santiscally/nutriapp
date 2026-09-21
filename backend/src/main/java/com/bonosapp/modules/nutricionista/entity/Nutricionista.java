@@ -30,6 +30,13 @@ public class Nutricionista extends BaseEntity {
 
     private String matricula;
 
+    /** S-11: antes viajaba concatenada adentro de matricula. Null en las altas anteriores. */
+    @Column(name = "jurisdiccion_matricula")
+    private String jurisdiccionMatricula;
+
+    /** Valor de la tabla profesiones. Null en las altas anteriores a V014. */
+    private String profesion;
+
     // --- C-08: datos que pidieron en la call (40:05–42:34) ---
 
     /** Gon: la mejor forma de detectar que una persona no esté cargada dos veces. */

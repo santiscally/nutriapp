@@ -58,7 +58,7 @@ class TiendaNubeMapeoServiceTest {
     @Test
     void escribeLosIdsDeTiendaNubeMatcheandoPorSku() {
         when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
-                page(false, new Product(363154002L, "ON-ROLL", List.of(new Variant(1583970721L, "119")))));
+                page(false, new Product(363154002L, "ON-ROLL", "slug-363154002", List.of(new Variant(1583970721L, "119")))));
         Producto p = local("119");
         when(repo.findBySkuInAndDeletedAtIsNull(any())).thenReturn(List.of(p));
 
@@ -75,7 +75,7 @@ class TiendaNubeMapeoServiceTest {
     @Test
     void productIdYVariantIdSonDistintosYNoSeConfunden() {
         when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
-                page(false, new Product(100L, "x", List.of(new Variant(999L, "119")))));
+                page(false, new Product(100L, "x", "slug-100", List.of(new Variant(999L, "119")))));
         Producto p = local("119");
         when(repo.findBySkuInAndDeletedAtIsNull(any())).thenReturn(List.of(p));
 
@@ -85,13 +85,30 @@ class TiendaNubeMapeoServiceTest {
         assertThat(p.getTiendanubeVariantId()).isEqualTo(999L);
     }
 
+    /** S-02: un catálogo ya mapeado antes del handle lo completa en la corrida siguiente. */
     @Test
-    void loQueYaEstabaMapeadoNoSeReescribe() {
+    void alProductoYaMapeadoSinHandleSeLoCompleta() {
         when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
-                page(false, new Product(100L, "x", List.of(new Variant(999L, "119")))));
+                page(false, new Product(100L, "x", "on-roll-flow", List.of(new Variant(999L, "119")))));
         Producto p = local("119");
         p.setTiendanubeProductId(100L);
         p.setTiendanubeVariantId(999L);
+        when(repo.findBySkuInAndDeletedAtIsNull(any())).thenReturn(List.of(p));
+
+        MapeoTiendaNubeResponse r = service.mapear();
+
+        assertThat(p.getTiendanubeHandle()).isEqualTo("on-roll-flow");
+        assertThat(r.mapeados()).isEqualTo(1);
+    }
+
+    @Test
+    void loQueYaEstabaMapeadoNoSeReescribe() {
+        when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
+                page(false, new Product(100L, "x", "slug-100", List.of(new Variant(999L, "119")))));
+        Producto p = local("119");
+        p.setTiendanubeProductId(100L);
+        p.setTiendanubeVariantId(999L);
+        p.setTiendanubeHandle("slug-100");
         when(repo.findBySkuInAndDeletedAtIsNull(any())).thenReturn(List.of(p));
 
         MapeoTiendaNubeResponse r = service.mapear();
@@ -104,7 +121,7 @@ class TiendaNubeMapeoServiceTest {
     @Test
     void reportaLosSkusDeLaTiendaQueNoEstanEnElCatalogo() {
         when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
-                page(false, new Product(1L, "fantasma", List.of(new Variant(2L, "NO-EXISTE")))));
+                page(false, new Product(1L, "fantasma", "slug-1", List.of(new Variant(2L, "NO-EXISTE")))));
         when(repo.findBySkuInAndDeletedAtIsNull(any())).thenReturn(List.of());
 
         MapeoTiendaNubeResponse r = service.mapear();
@@ -117,7 +134,7 @@ class TiendaNubeMapeoServiceTest {
     @Test
     void laVarianteSinSkuSeSaltea() {
         when(tiendaNubeClient.listProducts(anyInt(), anyInt())).thenReturn(
-                page(false, new Product(1L, "sin sku", List.of(new Variant(2L, null)))));
+                page(false, new Product(1L, "sin sku", "slug-1", List.of(new Variant(2L, null)))));
 
         MapeoTiendaNubeResponse r = service.mapear();
 
@@ -129,9 +146,9 @@ class TiendaNubeMapeoServiceTest {
     @Test
     void recorreTodasLasPaginasHastaQueNoHayaSiguiente() {
         when(tiendaNubeClient.listProducts(1, 200)).thenReturn(
-                page(true, new Product(1L, "a", List.of(new Variant(11L, "A")))));
+                page(true, new Product(1L, "a", "slug-1", List.of(new Variant(11L, "A")))));
         when(tiendaNubeClient.listProducts(2, 200)).thenReturn(
-                page(false, new Product(2L, "b", List.of(new Variant(22L, "B")))));
+                page(false, new Product(2L, "b", "slug-2", List.of(new Variant(22L, "B")))));
         when(repo.findBySkuInAndDeletedAtIsNull(any())).thenAnswer(inv -> {
             Collection<String> skus = inv.getArgument(0);
             return skus.stream().map(TiendaNubeMapeoServiceTest::local).toList();

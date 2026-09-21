@@ -42,9 +42,10 @@ public class ProductoController {
             @RequestParam(defaultValue = "false") boolean conStock,
             @RequestParam(required = false) BigDecimal precioMin,
             @RequestParam(required = false) BigDecimal precioMax,
+            @RequestParam(required = false) BigDecimal descuentoPct,
             @PageableDefault(size = 20) Pageable pageable) {
         ProductoFiltro filtro = new ProductoFiltro(q, marca, departamento, categoria, subcategoria,
-                laboratorio, tag, conStock, precioMin, precioMax);
+                laboratorio, tag, conStock, precioMin, precioMax, descuentoPct);
         return PageResponse.of(service.search(filtro, pageable));
     }
 

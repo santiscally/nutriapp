@@ -29,7 +29,10 @@ public enum MaestroColumna {
     ESTADO("ESTADO", true),
     IMAGEN_URL("LINK IMAGEN TIENDA NUBE", true),
     DESCRIPCION_WEB("DESCRIPCION WEB", true),
-    TAGS("TAGS TIENDANUBE", true);
+    TAGS("TAGS TIENDANUBE", true),
+    /** Opcionales: el maestro anterior no las trae y no queremos rechazarlo por eso. */
+    DESCUENTO("DESCUENTO %", false),
+    ESTADO_BONOSAPP("ESTADO BONOSAPP", false);
 
     private final String header;
     private final boolean obligatoria;

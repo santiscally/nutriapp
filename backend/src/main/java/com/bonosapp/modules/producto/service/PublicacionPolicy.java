@@ -20,7 +20,8 @@ import org.springframework.stereotype.Component;
  *       cuenta de TBC ese campo también vale {@code Combo} (209 artículos), así que la regla tal cual
  *       la pidió deja afuera los packs — pendiente de confirmar, se cambia por env var.</li>
  *   <li><b>Rubro permitido</b> — C-13: solo producto terminado (144331), configurable.</li>
- *   <li><b>No bloqueado en el maestro</b> — "los bloqueados no deberían mostrarse en Nutriapp".</li>
+ *   <li><b>Habilitado en el maestro</b> — ESTADO BONOSAPP si la planilla lo trae (S-01); si no, el
+ *       ESTADO de TBC: "los bloqueados no deberían mostrarse en Nutriapp".</li>
  *   <li><b>Existe en la tienda</b> — decisión del cliente (2026-08-25): recetable = está en Contabilium
  *       <b>y</b> en TiendaNube. Sin id de la tienda no se le puede crear el cupón, así que el bono
  *       saldría muerto (ver {@code CuponSyncService}).</li>
@@ -54,8 +55,17 @@ public class PublicacionPolicy {
                 && p.isActivoErp()
                 && permitido(props.tiposErpPermitidos(), p.getTipoErp())
                 && permitido(props.rubrosPermitidos(), p.getRubroId())
-                && !p.isBloqueadoMaestro()
+                && habilitadoEnElMaestro(p)
                 && estaEnLaTienda(p, catalogoMapeado);
+    }
+
+    /**
+     * S-01: el maestro nuevo trae ESTADO BONOSAPP, que es la columna con la que el cliente decide qué
+     * se puede recetar; cuando viene, manda sobre el ESTADO de TBC. Mientras no venga sigue mandando
+     * el bloqueo de siempre.
+     */
+    private static boolean habilitadoEnElMaestro(Producto p) {
+        return p.getEstadoBonosapp() != null ? p.getEstadoBonosapp() : !p.isBloqueadoMaestro();
     }
 
     private static boolean estaEnLaTienda(Producto p, boolean catalogoMapeado) {
@@ -85,8 +95,10 @@ public class PublicacionPolicy {
         if (!permitido(props.rubrosPermitidos(), p.getRubroId())) {
             return "Rubro fuera de los permitidos (no es producto terminado)";
         }
-        if (p.isBloqueadoMaestro()) {
-            return "Bloqueado en el maestro de artículos";
+        if (!habilitadoEnElMaestro(p)) {
+            return p.getEstadoBonosapp() != null
+                    ? "Marcado ESTADO BONOSAPP = NO en el maestro"
+                    : "Bloqueado en el maestro de artículos";
         }
         if (!estaEnLaTienda(p, catalogoMapeado)) {
             return "No está publicado en la tienda online";

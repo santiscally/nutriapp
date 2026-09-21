@@ -99,6 +99,8 @@ public class SecurityConfig {
                                 "/error",
                                 // registro público de nutricionistas (Fase 1)
                                 "/api/v1/registro",
+                                // lista del desplegable de profesión: se completa sin estar logueada
+                                "/api/v1/profesiones",
                                 // webhooks TiendaNube: la auth es la firma HMAC, no JWT (Fase 1)
                                 "/api/v1/webhooks/**"
                         ).permitAll()

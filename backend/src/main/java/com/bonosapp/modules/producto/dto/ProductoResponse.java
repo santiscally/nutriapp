@@ -32,6 +32,10 @@ public record ProductoResponse(
         String subcategoria,
         String laboratorio,
         List<String> tags,
+        /** S-02: % del maestro. null = el producto todavía no está en la planilla. */
+        BigDecimal descuentoPct,
+        /** Link directo a la ficha del producto en la tienda. null si no está mapeado. */
+        String urlProducto,
         String principioActivo,
         String presentacion,
         boolean publicado,

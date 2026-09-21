@@ -5,7 +5,10 @@
 > **Fecha:** 2026-09-19.
 > **Objetivo de este doc:** repartir las tareas entre **Fran** y **Santi** de forma **pareja en esfuerzo**
 > y, sobre todo, **sin pisarse** — que cada uno pueda avanzar autónomo a su ritmo.
-> **Estado:** PROPUESTA de Fran. Santi tiene que confirmar/ajustar su mitad.
+> **Estado:** **CONFIRMADO por Santi el 2026-09-21** — el reparto queda como está. Los contratos de
+> las 7 features cruzadas ya están escritos en `instrucciones_claude/05-api-endpoints.md`, sección
+> "Modificaciones post 1ª entrega": Fran puede arrancar F-06/F-07/F-10/F-13/F-17/F-18/F-24/F-25 contra
+> ese shape sin esperar al backend. Ajustes de Santi sobre su mitad, abajo en "Cambios al alcance".
 
 ## Principio de reparto
 
@@ -119,6 +122,48 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
   (hoy `bienestarandsalud.mitiendanube.com`) — alimenta F-17.
 - **S-18 · Deliverability / anti-spam:** que "Recibimos tu solicitud" no caiga en Promociones/Spam (el de
   Rechazo sí llegó a prioritaria). Reputación de dominio + DMARC (hoy `p=none`) + warmup. → coordina con F-22.
+
+---
+
+# Cambios al alcance (Santi, 2026-09-21)
+
+Ajustes sobre la propuesta después de mirar el código y los adjuntos del cliente. Nada se saca del
+reparto; se corrigen tres supuestos y aparecen dos decisiones que necesitan al cliente.
+
+## Lo que crece
+
+- **S-11 se lleva también la jurisdicción de matrícula.** Hoy el front manda
+  `"{jurisdicción} · N° {matrícula}"` pegado en el campo `matricula` porque no hay columna
+  (`Registro.tsx:103`, ya estaba flageado a Santi). La migración de S-11 parte el dato en tres
+  columnas —`matricula`, `jurisdiccion`, `profesion`— así F-03 y F-05 quedan limpias en vez de seguir
+  concatenando. Las profesiones van a **tabla con seed Flyway + `GET /profesiones` público**: son 76
+  valores que manda el cliente en un Excel, no una constante — el front no los hardcodea.
+- **S-14 arrastra los filtros de `GET /recetas`.** F-25 pide "replicar los filtros del user", pero el
+  backend hoy **solo tiene `estado`**: `q`, `pacienteId`, `desde` y `hasta` estaban documentados en
+  `05-api-endpoints.md` y nunca se implementaron. S-14 los hace en los dos endpoints a la vez.
+- **Parte de F-04 es de Santi.** El mensaje de error del CUIT que muestra los guiones sale del
+  backend (`RegistroRequest`), no del front. Lo cambia Santi.
+
+## Lo que se frena
+
+- **F-14 (sacar "Descuento de bonos (%)" de la ficha del admin) no se puede hacer todavía.** El
+  descuento por producto sale del maestro, y el cliente **todavía no lo importó en prod**
+  (`sinMaestro=2277`). Hasta que lo haga, el % de la ficha es el único descuento que existe: si Fran
+  saca el campo antes, no queda forma de emitir un bono con descuento. Orden correcto: S-01/S-02
+  desplegadas → cliente importa el maestro → recién ahí F-14.
+
+## Decisiones que necesitan al cliente (Gon)
+
+1. ~~**`DESCUENTO %` viene como `0.2` y `0.55`, sin formato de porcentaje.**~~ **RESUELTO (2026-09-21):
+   son 20 % y 55 %.** El parser acepta igual las dos escalas (por debajo de 1 = fracción, de 1 en
+   adelante = porcentaje) para que un 20 tipeado a mano mañana no rompa nada.
+2. **`ESTADO` y `ESTADO BONOSAPP` se contradicen en el archivo que mandaron.** De 2252 filas,
+   **1497 están `BLOQUEADO`** en la columna `ESTADO` (la de TBC) y al mismo tiempo **las 2252 están en
+   `SI`** en `ESTADO BONOSAPP` (la nueva, la que según el plan decide si el producto aparece en el
+   buscador). Hoy el importador bloquea por `ESTADO`, así que importar ese archivo tal cual **dejaría
+   fuera del buscador a 1497 productos de golpe**. Hay que preguntar cuál manda. Mientras no haya
+   respuesta, la regla implementada es: **`ESTADO BONOSAPP` manda si viene; `ESTADO` queda como dato**
+   — es lo que dice el plan ("SI = aparece en el buscador") y lo que evita vaciar el catálogo.
 
 ---
 
