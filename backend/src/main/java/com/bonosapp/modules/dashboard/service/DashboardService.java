@@ -51,8 +51,7 @@ public class DashboardService {
         Instant desde = inicioMes.atStartOfDay(AR).toInstant();
         Instant hasta = inicioMesSiguiente.atStartOfDay(AR).toInstant();
 
-        long pendientes = recetaRepository
-                .countByNutricionistaIdAndEstadoAndDeletedAtIsNull(nutriId, EstadoReceta.PENDIENTE);
+        long pendientes = recetaRepository.countPorEstado(nutriId, EstadoReceta.PENDIENTE);
         long aplicadasMes = recetaRepository.countConvertidasEntre(nutriId, desde, hasta);
         long vencidasMes = recetaRepository
                 .countVencidasEntre(nutriId, inicioMes, inicioMesSiguiente);

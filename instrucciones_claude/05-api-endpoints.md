@@ -253,6 +253,10 @@ Shapes que fija Santi para que Fran construya sin esperar al backend. IDs del
 puede devolver 404 o el campo venir ausente); `vivo` = ya responde en prod. Cuando uno pasa a `vivo`
 va una entrada en el DIARIO.
 
+**Implementado en `main` (falta desplegar): S-02, S-11, S-12, S-13 y S-14.** Contra un backend local
+levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
+el catálogo.
+
 **Los paths siguen diciendo `recetas`, no `bonos`.** El rename del API es S-15 y es opcional: tocar
 todos los paths rompe el front entero por un cambio de palabra. El rename de la **UI** (F-08/F-09) no
 lo necesita. Lo mismo con los nombres de campo: `recetasPendientes`, `descuentoPct`, etc.
@@ -375,6 +379,13 @@ Devuelve `PageResponse<AdminRecetaResponse>` = el `RecetaResponse` de siempre **
 
 `conversion.ordenTotal` viaja **solo acá**: en los endpoints de la profesional sigue sin existir.
 
+El listado del admin **no** trae `waMeUrl` ni `notificaciones`: el link de WhatsApp lo manda la
+profesional desde su propio teléfono. El resto de los campos tienen los mismos nombres que
+`RecetaResponse`, así que el tipo del front se reusa tal cual.
+
+Los dos listados ahora salen ordenados por `emitidaAt` descendente (antes el de ella no tenía orden
+explícito y quedaba a criterio del motor).
+
 **⚠️ Contract drift que se arregla con esto:** este doc venía documentando
 `GET /recetas?estado=&pacienteId=&desde=&hasta=&q=` pero el backend **solo implementa `estado`**. Los
 otros cuatro filtros no existen todavía. S-14 los implementa **en los dos endpoints a la vez** (el de
@@ -382,7 +393,7 @@ ella y el del admin) para que F-25 pueda "replicar los filtros del user" sobre a
 
 | Filtro | Qué hace |
 |---|---|
-| `estado` | `PENDIENTE\|APLICADA\|VENCIDA\|ANULADA` |
+| `estado` | `PENDIENTE\|APLICADA\|VENCIDA\|ANULADA\|LIQUIDADA` (LIQUIDADA = convertida y ya pagada la comisión) |
 | `q` | código del bono o nombre/apellido del paciente (unaccent, contains) |
 | `pacienteId` | solo en `/recetas` |
 | `nutricionistaId` | solo en `/admin/recetas` — es el filtro "Profesional" de F-25 |

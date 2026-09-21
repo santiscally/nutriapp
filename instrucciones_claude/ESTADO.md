@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-21** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
+**Última actualización: 2026-09-21 (2)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
 el reparto del `PLAN-modificaciones-post-entrega.md` (era una propuesta de Fran) y escribí los
 **contratos de las 7 features cruzadas** en `05-api-endpoints.md` → **Fran quedó desbloqueado** en
 F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
@@ -32,11 +32,14 @@ F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
 - **S-04 — catálogo.** `CATALOGO_TIPOS_ERP` pasa a `Producto` (fuera los Combo).
 - **F-04 (la mitad que era backend):** el error del CUIT ya no muestra guiones.
 
-**🔴 Lo que falta para cerrar la tanda:** **S-13 y S-14** (endpoints admin PANEL/BONOS) están
-contratados pero **no implementados** — Fran puede maquetar, no integrar. **S-03** (el filtro de
-RUBRO que deja pasar cajas de cartón) necesita mirar datos de prod: hipótesis, `rubro_id` viene null
-desde `/api/conceptos/search` y `permitido()` deja pasar lo ausente. Sin arrancar: S-05 a S-10,
-S-15 a S-18.
+- **S-13/S-14 — las dos solapas del admin.** `GET /admin/dashboard/resumen` y `/estadisticas`
+  (consolidado de todas + facturado + padrón) y `GET /admin/recetas` (todos los bonos, con filtro por
+  profesional). De paso quedaron implementados los filtros `q`/`pacienteId`/`desde`/`hasta` que el
+  contrato prometía en `GET /recetas` y el backend nunca había tenido.
+
+**🔴 Lo que falta:** **S-03** — el filtro de RUBRO que deja pasar cajas de cartón. Necesita mirar datos
+de prod: hipótesis, `rubro_id` viene null desde `/api/conceptos/search` y `permitido()` deja pasar lo
+ausente. Sin arrancar: S-05, S-06, S-07, S-08, S-09, S-10, S-15, S-16, S-17, S-18.
 
 **⚠️ Antes de desplegar esto a prod:** correr `V014`/`V015`, re-sincronizar el catálogo (cambiar
 `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo) y correr el mapeo de TiendaNube para que se

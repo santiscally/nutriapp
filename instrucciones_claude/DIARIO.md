@@ -32,6 +32,45 @@
 
 ## Entradas
 
+## 2026-09-21 (2) — Santi — backend (S-13 y S-14: las dos solapas nuevas del admin, con los filtros que faltaban)
+**Qué:** Implementé los dos endpoints agregados del admin y, de paso, **los filtros de `GET /recetas` que
+este doc venía prometiendo y el backend nunca tuvo**.
+- **S-13** · `GET /admin/dashboard/resumen` y `/admin/dashboard/estadisticas?meses=` — el panel de la
+  profesional consolidado sobre todas, más `facturadoMesActual`/`facturadoTotal` y el estado del padrón
+  (activas / pendientes de aprobar).
+- **S-14** · `GET /admin/recetas?estado=&nutricionistaId=&q=&desde=&hasta=` → `AdminRecetaResponse`, que es
+  el `RecetaResponse` de siempre más el bloque `nutricionista` y `conversion.ordenTotal`.
+- **Filtros nuevos en los dos listados a la vez:** `q` (código del bono o nombre del paciente),
+  `pacienteId`, `desde`, `hasta`. Antes sólo existía `estado`.
+
+**Por qué:** F-25 pide "replicar los filtros del user", y los filtros del user no existían: estaban
+documentados en `05-api-endpoints.md` desde Fase 0 y nunca se implementaron. Hacerlos en los dos endpoints
+con la misma query evita que el listado de ella y el del admin se comporten distinto.
+
+**Decisiones:**
+- Las métricas del panel son **las mismas queries** del dashboard de la profesional con el id de
+  profesional en null, no una definición paralela. Si mañana cambia la regla de qué cuenta como
+  convertida (C-04/C-05), cambia en un solo lugar y los dos paneles siguen coincidiendo.
+- `AdminRecetaResponse` es **plano y con los nombres de `RecetaResponse`**: el front reusa su tipo tal
+  cual en vez de mantener una forma paralela. No incluye `waMeUrl` ni las notificaciones.
+- Un bono cuya profesional fue borrada sigue listándose con `nutricionista: null` — no se cae la página.
+- Los dos listados ahora ordenan por `emitidaAt` descendente (antes el de ella no tenía orden explícito).
+
+**Problemas:** ninguno de fondo, pero vale registrar cómo se verificó: los tests unitarios **no levantan el
+contexto de Spring**, así que una `@Query` mal escrita pasa la suite y recién revienta al arrancar el
+backend. Se corrió `mvnw verify` con Docker arriba: el IT levanta Postgres real, **Flyway aplicó V014 y
+V015 sin errores** y el contexto booteó, que es lo que valida el JPQL nuevo (incluida la subconsulta a
+`Paciente` del filtro `q`). 216 tests verdes.
+
+**Impacto para el otro (Fran):** **F-24 y F-25 quedan desbloqueadas de verdad** — los endpoints responden
+contra un backend local levantado desde `main`. El dropdown de profesionales de F-25 se puebla con
+`GET /admin/nutricionistas?estado=APROBADA`, que ya existía. Ojo con el filtro de estado: los valores son
+`PENDIENTE|APLICADA|VENCIDA|ANULADA|LIQUIDADA` — LIQUIDADA es una convertida a la que ya se le pagó la
+comisión, y si la dejás afuera del filtro el admin no ve bonos viejos.
+
+**Refs:** `AdminDashboardController`/`AdminDashboardService`, `AdminRecetaController`/`AdminRecetaService`,
+`ProfesionalesLookup`, `RecetaRepository.search`, `05-api-endpoints.md`.
+
 ## 2026-09-21 — Santi — backend/db (plan confirmado + contratos de las 7 features cruzadas + S-01/02/04/11/12)
 **Qué:** Confirmé el reparto del PLAN y escribí en `05-api-endpoints.md` (sección "Modificaciones post 1ª
 entrega") los **contratos de las 7 features que Fran tiene bloqueadas**: S-02 descuento por producto, S-11

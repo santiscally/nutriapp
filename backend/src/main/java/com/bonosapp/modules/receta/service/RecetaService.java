@@ -59,9 +59,20 @@ public class RecetaService {
     private final WaMeLinkBuilder waMeLinkBuilder;
 
     @Transactional(readOnly = true)
-    public Page<RecetaResponse> search(EstadoReceta estado, Pageable pageable) {
+    public Page<RecetaResponse> search(EstadoReceta estado, UUID pacienteId, String q,
+                                      LocalDate desde, LocalDate hasta, Pageable pageable) {
         UUID nutriId = nutricionistaService.getCurrent().getId();
-        return repo.search(nutriId, estado, pageable).map(this::toResponse);
+        return repo.search(nutriId, estado, pacienteId, q, desdeInclusive(desde), hastaInclusive(hasta),
+                pageable).map(this::toResponse);
+    }
+
+    /** Ventana [desde, hasta] en horario argentino, con los dos extremos inclusive. */
+    public static Instant desdeInclusive(LocalDate desde) {
+        return desde == null ? null : desde.atStartOfDay(AR).toInstant();
+    }
+
+    public static Instant hastaInclusive(LocalDate hasta) {
+        return hasta == null ? null : hasta.plusDays(1).atStartOfDay(AR).toInstant();
     }
 
     @Transactional(readOnly = true)
