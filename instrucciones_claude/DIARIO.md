@@ -32,6 +32,31 @@
 
 ## Entradas
 
+## 2026-09-22 — Fran — frontend (prueba a mano de las dos tandas: 25/28 pasos limpios + 3 hallazgos)
+
+**Qué:** Recorrido manual completo de los cambios post-entrega, con el stack local (mail y las dos
+integraciones en stub). **25 de 28 pasos pasaron sin observaciones.** Los otros tres:
+
+1. **El aviso de éxito duraba menos de lo que tarda en leerse.** Saltó aprobando un profesional: el
+   toast aparece justo cuando se cierra el modal y se refresca la tabla, con la atención en otro lado,
+   y a los 3,8 s ya no estaba. Ahora el de éxito dura **6 s**, se **congela al pasarle el mouse** y trae
+   una **✕ visible** (el click en todo el aviso ya cerraba, pero nada lo anunciaba). El de **error deja
+   de irse solo**: es accionable y lo cierra quien lo leyó. `Toast.tsx` + ícono `close` nuevo.
+2. **"Más info" no aparecía en el buscador** y era correcto: el botón sale sólo si el producto tiene
+   algo que mostrar, y los 3 productos del seed local no tienen descripción, imagen, tags ni descuento.
+   Cambié una cosa igual: **tener descuento propio ya alcanza** para ofrecer el botón, porque desde F-13
+   el detalle muestra el %, que es el dato por el que se elige un producto sobre otro.
+3. **F-07 (términos de uso) queda pendiente de probar en prod, no es falla.** En local el link abre una
+   pestaña que **rebota al login**: Vite devuelve el index para cualquier ruta y la SPA cae en su
+   fallback. **En prod no debería pasar** — verifiqué tu `location = /terminos` (match exacto, le gana al
+   prefijo `/`) y el montaje `./static:/usr/share/nginx/legal:ro`. Falta confirmarlo con el deploy.
+
+**Impacto para el otro (Santi):** nada que tocar de tu lado. El único ítem abierto es confirmar
+`/terminos` cuando despleguemos; si querés, lo chequeo yo apenas esté arriba.
+
+**Refs:** `frontend/src/components/ui/Toast.tsx`, `Icon.tsx`, `ProductoBuscador.tsx`, `index.css`,
+commit `f6e2fed`; `nginx/conf.d/bonosapp.conf:149`, `docker-compose.prod.yml:89`.
+
 ## 2026-09-21 (6) — Fran — frontend + vertical mail (las 8 tareas que destrabó S-01..S-16, y F-18 completo)
 
 **Qué:** Merge de tus 5 commits + las 8 que dejaste destrabadas: **F-06, F-07, F-10, F-13, F-16, F-17, F-18,
