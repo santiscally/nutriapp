@@ -5,6 +5,8 @@ import { RequireAuth } from "./components/layout/RequireAuth";
 import { RequireRol } from "./components/layout/RequireRol";
 import { DialogProvider } from "./components/ui/Dialog";
 import { ToastProvider } from "./components/ui/Toast";
+import { AdminBonos } from "./pages/AdminBonos";
+import { AdminPanel } from "./pages/AdminPanel";
 import { CierreConsolidado } from "./pages/CierreConsolidado";
 import { CierreMensual } from "./pages/CierreMensual";
 import { Dashboard } from "./pages/Dashboard";
@@ -54,7 +56,9 @@ export default function App() {
             <Route path="/cierre-mensual" element={<RequireRol rol="NUTRICIONISTA"><CierreMensual /></RequireRol>} />
             <Route path="/perfil" element={<RequireRol rol="NUTRICIONISTA"><Perfil /></RequireRol>} />
 
-            {/* Sólo admin. */}
+            {/* Sólo admin. F-24/F-25: el panel consolidado y el listado de todos los bonos. */}
+            <Route path="/panel" element={<RequireRol rol="ADMIN"><AdminPanel /></RequireRol>} />
+            <Route path="/admin/bonos" element={<RequireRol rol="ADMIN"><AdminBonos /></RequireRol>} />
             <Route path="/profesionales" element={<RequireRol rol="ADMIN"><Nutricionistas /></RequireRol>} />
             <Route path="/cierres" element={<RequireRol rol="ADMIN"><CierreConsolidado /></RequireRol>} />
             <Route path="/catalogo" element={<RequireRol rol="ADMIN"><CatalogoAdmin /></RequireRol>} />

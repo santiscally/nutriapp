@@ -24,3 +24,10 @@ const ESTADO_LABELS: Record<string, string> = {
 
 /** Etiqueta visible de un estado de bono. Si llega algo fuera del enum, se muestra tal cual. */
 export const estadoLabel = (estado: string) => ESTADO_LABELS[estado] ?? estado;
+
+/**
+ * % sin ceros al pepe: el backend manda `20.00` y en pantalla se lee mejor "20%". Acepta null
+ * para los productos que todavía no están en el maestro (S-02).
+ */
+export const pctCorto = (n?: number | null) =>
+  n == null ? null : String(Number(n)).replace(".", ",");

@@ -1,4 +1,4 @@
-import type { RegistroRequest, RegistroResponse } from "../types/registro";
+import type { Profesion, RegistroRequest, RegistroResponse } from "../types/registro";
 import { api } from "./client";
 
 /**
@@ -12,3 +12,10 @@ export const registrar = (body: RegistroRequest, matricula: File) => {
   fd.append("matricula", matricula);
   return api.post<RegistroResponse>("/registro", fd);
 };
+
+/**
+ * F-06 / S-11 — las 76 profesiones habilitadas. Endpoint **público** (el registro no tiene sesión):
+ * la lista vive en la DB, no hardcodeada en el front, así el cliente la puede cambiar sin deploy.
+ */
+export const listarProfesiones = (signal?: AbortSignal) =>
+  api.get<Profesion[]>("/profesiones", undefined, signal);

@@ -12,7 +12,7 @@ import { ProductoBuscador } from "../components/receta/ProductoBuscador";
 import { RecetaExito } from "../components/receta/RecetaExito";
 import { Icon } from "../components/ui/Icon";
 import { useAuth } from "../auth/AuthContext";
-import { money } from "../lib/format";
+import { money, pctCorto } from "../lib/format";
 import type { Paciente } from "../types/paciente";
 import type { Producto } from "../types/producto";
 import type { RecetaResponse } from "../types/receta";
@@ -29,10 +29,24 @@ export function EmitirReceta() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<RecetaResponse | null>(null);
 
-  // El descuento es el propio de esta nutricionista y lo define el admin; ella no lo edita.
-  // Viene en /me desde V011, cuando se eliminó el valor global (y con él GET /configuracion).
+  // F-16 / S-07 — TiendaNube crea los cupones combinables por defecto; el cliente quiere lo
+  // contrario, así que el checkbox arranca destildado y se manda combinable=false.
+  const [combinable, setCombinable] = useState(false);
+
   const { me } = useAuth();
-  const descuentoPct = me?.descuentoPct ?? 0;
+
+  // S-02 — el descuento pasó a ser del PRODUCTO; el de la profesional (que viene en /me desde
+  // V011) queda de fallback para los productos que todavía no están en el maestro.
+  const descuentosDeProducto = useMemo(
+    () => [...new Set(items.map((i) => i.producto.descuentoPct).filter((d): d is number => d != null))],
+    [items],
+  );
+  // Dos productos con % distinto no entran en un mismo cupón: el backend responde 409. Se avisa
+  // acá para no gastar el viaje ni dejarla adivinando por qué falló.
+  const descuentosEnConflicto = descuentosDeProducto.length > 1;
+  const descuentoPct = descuentosDeProducto.length === 1
+    ? descuentosDeProducto[0]
+    : me?.descuentoPct ?? 0;
 
   const selectedIds = useMemo(() => new Set(items.map((i) => i.producto.id)), [items]);
 
@@ -56,7 +70,8 @@ export function EmitirReceta() {
     setItems((prev) => prev.filter((i) => i.producto.id !== id));
   }
 
-  const canSubmit = paciente !== null && items.length > 0 && !submitting;
+  const canSubmit =
+    paciente !== null && items.length > 0 && !submitting && !descuentosEnConflicto;
 
   async function onSubmit() {
     if (!paciente) return;
@@ -70,6 +85,7 @@ export function EmitirReceta() {
           cantidad: 1,
           indicaciones: i.indicaciones.trim() || undefined,
         })),
+        combinable,
       });
       setResult(receta);
     } catch (err) {
@@ -82,6 +98,7 @@ export function EmitirReceta() {
   function reset() {
     setPaciente(null);
     setItems([]);
+    setCombinable(false);
     setError(null);
     setResult(null);
   }
@@ -177,7 +194,7 @@ export function EmitirReceta() {
                 <span>{money(subtotal)}</span>
               </div>
               <div>
-                <span className="muted">Descuento ({descuentoPct}%)</span>
+                <span className="muted">Descuento ({pctCorto(descuentoPct)}%)</span>
                 <span>−{money(subtotal - totalConDescuento)}</span>
               </div>
               <div className="resumen__total">
@@ -193,6 +210,24 @@ export function EmitirReceta() {
             <p className="resumen__disclaimer">
               Valores aproximados: el precio final lo define la tienda al comprar.
             </p>
+
+            {/* F-16 — destildado por default: el bono no se suma a las promos de la tienda. */}
+            <label className="resumen__combinable">
+              <input
+                type="checkbox"
+                checked={combinable}
+                onChange={(e) => setCombinable(e.target.checked)}
+              />
+              <span>Permitir combinar con otras promociones de la tienda</span>
+            </label>
+
+            {descuentosEnConflicto && (
+              <div className="alert alert--error">
+                Los productos del bono tienen descuentos distintos (
+                {descuentosDeProducto.map((d) => `${pctCorto(d)}%`).join(" y ")}). Un cupón lleva un
+                solo porcentaje: dejá uno solo, o emití un bono por cada uno.
+              </div>
+            )}
 
             {error && <div className="alert alert--error">{error}</div>}
 

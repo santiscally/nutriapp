@@ -15,7 +15,12 @@ export interface RegistroRequest {
   apellido: string;
   email: string;
   telefono: string; // E.164
+  /** S-11 — desde V014 es SOLO el número; la jurisdicción dejó de viajar pegada acá. */
   matricula: string;
+  /** S-11 — provincia o CABA. Opcional en el backend hasta que todos los fronts lo manden. */
+  jurisdiccion?: string;
+  /** S-11 — uno de los 76 valores de GET /profesiones. Un valor fuera de la lista da 422. */
+  profesion?: string;
   dni: string;
   cuit: string;
   condicionFiscal: string;
@@ -25,6 +30,12 @@ export interface RegistroRequest {
 export interface RegistroResponse {
   id: string;
   estadoValidacion: EstadoValidacion; // PENDIENTE al crearse
+}
+
+/** GET /profesiones — público, sin token. La lista sale de la DB, no del front (S-11). */
+export interface Profesion {
+  id: string;
+  nombre: string;
 }
 
 /**

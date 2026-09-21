@@ -20,6 +20,10 @@ const NAV_NUTRI: { to: string; label: string; end?: boolean }[] = [
 ];
 
 const NAV_ADMIN: { to: string; label: string; end?: boolean }[] = [
+  // F-24/F-25 — el panel va primero porque pasó a ser la home del admin, y los bonos al lado de
+  // los profesionales: son las dos vistas que el cliente pidió para mirar la operación.
+  { to: "/panel", label: "Panel" },
+  { to: "/admin/bonos", label: "Bonos" },
   { to: "/profesionales", label: "Profesionales" },
   { to: "/cierres", label: "Cierres" },
   { to: "/catalogo", label: "Productos" },
@@ -40,7 +44,7 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="navbar">
         <div className="navbar__inner">
-          <Link to={isAdmin ? "/profesionales" : "/dashboard"} className="navbar__brand">
+          <Link to={isAdmin ? "/panel" : "/dashboard"} className="navbar__brand">
             <Logo size={34} />
             BonosApp
           </Link>

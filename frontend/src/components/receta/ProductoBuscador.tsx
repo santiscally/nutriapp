@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { buscarProductos, getFiltros } from "../../api/productos";
 import { useDebounce } from "../../hooks/useDebounce";
 import { useFetch } from "../../hooks/useFetch";
-import { money } from "../../lib/format";
+import { money, pctCorto } from "../../lib/format";
 import type { Producto } from "../../types/producto";
 import { Icon } from "../ui/Icon";
 import { Modal } from "../ui/Modal";
@@ -34,6 +34,9 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
   const [laboratorio, setLaboratorio] = useState("");
   const [tag, setTag] = useState("");
   const [conStock, setConStock] = useState(false);
+  // F-13 — % de descuento del producto. Valor exacto (el catálogo tiene dos o tres valores
+  // discretos), no rango. "" = sin filtrar.
+  const [descuento, setDescuento] = useState("");
   // null = el extremo del catálogo, o sea "sin filtrar por ese lado".
   const [precioDesde, setPrecioDesde] = useState<number | null>(null);
   const [precioHasta, setPrecioHasta] = useState<number | null>(null);
@@ -59,6 +62,7 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
             laboratorio,
             tag,
             conStock,
+            descuentoPct: descuento ? Number(descuento) : undefined,
             precioMin: dMin ?? undefined,
             precioMax: dMax ?? undefined,
             page,
@@ -66,12 +70,13 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
           },
           s,
         ),
-      [dq, marca, departamento, categoria, subcategoria, laboratorio, tag, conStock, dMin, dMax, page],
+      [dq, marca, departamento, categoria, subcategoria, laboratorio, tag, conStock, descuento, dMin, dMax, page],
     ),
-    [dq, marca, departamento, categoria, subcategoria, laboratorio, tag, conStock, dMin, dMax, page],
+    [dq, marca, departamento, categoria, subcategoria, laboratorio, tag, conStock, descuento, dMin, dMax, page],
   );
 
   const f = filtros.data;
+  const descuentos = f?.descuentos ?? [];
 
   // Cascada: sin departamento elegido se ofrece todo; con uno, solo sus categorías (y lo mismo
   // para subcategoría). Se calcula sobre el árbol, así solo aparecen combinaciones que existen.
@@ -141,6 +146,9 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
   if (marca) activos.push({ label: marca, quitar: () => onFiltro(setMarca)("") });
   if (conStock) activos.push({ label: "Con stock", quitar: () => onFiltro(setConStock)(false) });
   if (tag) activos.push({ label: `#${tag}`, quitar: () => onFiltro(setTag)("") });
+  if (descuento) {
+    activos.push({ label: `${descuento}% de descuento`, quitar: () => onFiltro(setDescuento)("") });
+  }
   if (precioDesde != null || precioHasta != null) {
     activos.push({
       label: `${money(precioDesde ?? catalogoMin ?? 0)} – ${money(precioHasta ?? catalogoMax ?? 0)}`,
@@ -161,6 +169,7 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
     setMarca("");
     setConStock(false);
     setTag("");
+    setDescuento("");
     setPrecioDesde(null);
     setPrecioHasta(null);
   }
@@ -268,6 +277,22 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
                   ))}
                 </select>
               </label>
+              {/* F-13 — los % salen del catálogo, no hardcodeados. Mientras el maestro no esté
+                  importado la lista viene vacía y el filtro directamente no se ofrece: un
+                  desplegable con "Todos" y nada más sólo genera la duda de si está roto. */}
+              {descuentos.length > 0 && (
+                <label className="buscador__campo">
+                  <span>% Descuento</span>
+                  <select value={descuento} onChange={(e) => onFiltro(setDescuento)(e.target.value)}>
+                    <option value="">Todos</option>
+                    {descuentos.map((d) => (
+                      <option key={d} value={String(d)}>
+                        {pctCorto(d)}%
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
 
             <div className="buscador__panel-pie">
@@ -337,6 +362,17 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
                       {p.stock <= 0 && <> · sin stock</>}
                     </span>
                   </div>
+                  {/* F-13 — el % del producto, a la izquierda del precio. La celda va siempre
+                      (como el spacer de "Más info") para que las columnas alineen entre filas;
+                      el pill sólo aparece si el producto está en el maestro. Sin dato, el bono
+                      sale con el % de la profesional y anunciar un número acá sería mentir. */}
+                  <span className="prod-row__desc">
+                    {p.descuentoPct != null && (
+                      <b className="prod-row__desc-pill" title="Descuento de este producto">
+                        {pctCorto(p.descuentoPct)}% OFF
+                      </b>
+                    )}
+                  </span>
                   <span className="prod-row__price">{money(p.precio)}</span>
                   {tieneInfo ? (
                     <button
@@ -394,6 +430,16 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
               <img className="prod-detalle__img" src={detalle.imagenUrl} alt={detalle.nombre} />
             )}
             <dl className="prod-detalle__datos">
+              {detalle.descuentoPct != null && (
+                <div>
+                  <dt>Descuento del bono</dt>
+                  <dd>{pctCorto(detalle.descuentoPct)}%</dd>
+                </div>
+              )}
+              <div>
+                <dt>Precio de lista</dt>
+                <dd>{money(detalle.precio)}</dd>
+              </div>
               <div>
                 <dt>SKU</dt>
                 <dd className="mono">{detalle.sku}</dd>

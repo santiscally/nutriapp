@@ -1667,7 +1667,8 @@ select:focus {
 /* ---- Buscador de productos: miniatura, "más info" y tags (C-10/C-11) ---- */
 /* La fila suma dos columnas: la miniatura (siempre presente, aunque el producto no tenga imagen —
    solo 1 de cada 4 la tiene— para que las filas no queden desalineadas) y el botón "Más info". */
-.prod-row { grid-template-columns: auto 1fr auto auto auto; }
+/* La columna del % (F-13) va antes del precio y se reserva aunque el producto no lo tenga. */
+.prod-row { grid-template-columns: auto 1fr auto auto auto auto; }
 .prod-row__thumb {
   width: 34px;
   height: 34px;
@@ -2175,3 +2176,28 @@ html, body { overflow-x: hidden; }
   .soon__inner { padding: 40px 20px 32px; }
   .soon__cta { display: block; margin-top: 28px; }
 }
+
+/* F-13 — el % de descuento del producto, a la izquierda del precio en el buscador. */
+.prod-row__desc { justify-self: end; }
+.prod-row__desc-pill {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* F-16 — checkbox de "combinable" en el pie del resumen de emisión. */
+.resumen__combinable {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.6rem 0 0.2rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.resumen__combinable input { margin-top: 0.15rem; flex: none; }

@@ -15,7 +15,13 @@ export interface RecetaItemInput {
 export interface RecetaCreateRequest {
   pacienteId: string;
   items: RecetaItemInput[];
-  // El % de descuento NO viaja: es el de la nutricionista y lo define el admin (viene en /me).
+  // El % de descuento NO viaja: lo resuelve el backend (S-02: manda el del producto, y si no
+  // tiene, el de la profesional).
+  /**
+   * F-16 / S-07 — si el cupón se suma o no a las promos vigentes de la tienda. Ausente o false
+   * = no combinable, que es el default que pidió el cliente.
+   */
+  combinable?: boolean;
 }
 
 // --- Response ---
@@ -53,6 +59,8 @@ export interface RecetaResponse {
   paciente: Paciente;
   items: RecetaItem[];
   descuentoPct: number;
+  /** S-07 — si el cupón se combina con otras promos de la tienda. */
+  combinable?: boolean;
   emitidaAt: string;
   venceAt: string;
   cuponSyncEstado: string; // PENDIENTE mientras la integración esté en stub

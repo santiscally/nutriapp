@@ -22,6 +22,13 @@ export interface Producto {
   laboratorio?: string | null;
   /** Tags del maestro. Son la vía de búsqueda por propiedad/principio activo ("magnesio"). */
   tags?: string[];
+  /**
+   * S-02 — % de descuento del producto (escala humana: el maestro trae 0.2 y el API devuelve 20).
+   * null/ausente = el producto todavía no está en el maestro; ahí manda el % de la profesional.
+   */
+  descuentoPct?: number | null;
+  /** S-02 — permalink del producto en la tienda. null si no está mapeado (F-18). */
+  urlProducto?: string | null;
   publicado: boolean;
   origen: string; // SEED | CONTABILIUM | TIENDANUBE | ...
 }
@@ -49,6 +56,11 @@ export interface ProductoFiltros {
   /** Rango real de precios de lo recetable: los extremos del slider. null si el catálogo está vacío. */
   precioMin?: number | null;
   precioMax?: number | null;
+  /**
+   * S-02 — los % de descuento que existen de verdad en el catálogo (hoy: 20 y 55). **Puede venir
+   * vacío** mientras el maestro no esté importado; en ese caso no hay filtro que ofrecer.
+   */
+  descuentos?: number[];
 }
 
 // Query params de GET /productos.
@@ -64,6 +76,8 @@ export interface ProductoQuery {
   conStock?: boolean;
   precioMin?: number;
   precioMax?: number;
+  /** S-02 — valor exacto, no rango: los % del catálogo son pocos y discretos. */
+  descuentoPct?: number;
   page?: number;
   size?: number;
 }

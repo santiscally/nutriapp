@@ -18,6 +18,14 @@ export const config = {
   comingSoon: env.VITE_COMING_SOON === "true",
   /** Casilla pública de contacto. El cliente mudó el mail a @bonosapp.com.ar (2026-09-09). */
   contactoEmail: env.VITE_CONTACTO_EMAIL ?? "info@bonosapp.com.ar",
+  /**
+   * F-07 / S-16 — términos de uso. Es una página estática que sirve nginx en el mismo dominio
+   * (`static/terminos.html`), por eso el default es una ruta relativa y no una URL completa: en
+   * prod resuelve sola y no hay un host que actualizar acá si el dominio cambia.
+   * En `npm run dev` no existe (la sirve nginx, no Vite) — para probarla, apuntar
+   * `VITE_TERMINOS_URL` a la de producción.
+   */
+  terminosUrl: env.VITE_TERMINOS_URL ?? "/terminos",
   keycloak: {
     url: env.VITE_KEYCLOAK_URL ?? "http://localhost:8081",
     realm: env.VITE_KEYCLOAK_REALM ?? "bonosapp",

@@ -2,12 +2,13 @@
 // de aprobación. Rediseño 2026-07: split-screen (panel de validación + formulario).
 // La bandeja admin de aprobación queda para más adelante.
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
-import { registrar } from "../api/registro";
+import { listarProfesiones, registrar } from "../api/registro";
 import { config } from "../config";
 import { CONDICIONES_FISCALES, JURISDICCIONES } from "../types/registro";
+import { useFetch } from "../hooks/useFetch";
 import { Icon } from "../components/ui/Icon";
 import { Logo } from "../components/ui/Logo";
 
@@ -20,6 +21,7 @@ type Field =
   | "email"
   | "telefono"
   | "jurisdiccion"
+  | "profesion"
   | "matricula"
   | "dni"
   | "cuit"
@@ -46,6 +48,7 @@ export function Registro() {
     email: "",
     telefono: "",
     jurisdiccion: "",
+    profesion: "",
     matricula: "",
     dni: "",
     cuit: "",
@@ -53,6 +56,11 @@ export function Registro() {
     password: "",
     password2: "",
   });
+  // F-06 — las profesiones salen del backend (endpoint público): son 76 y el cliente las puede
+  // cambiar sin que haya que recompilar el front.
+  const fetchProfesiones = useCallback((s: AbortSignal) => listarProfesiones(s), []);
+  const { data: profesiones, error: errorProfesiones } = useFetch(fetchProfesiones, []);
+
   const [archivo, setArchivo] = useState<File | null>(null);
   const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
@@ -78,6 +86,7 @@ export function Registro() {
     if (!f.telefono.trim()) e.telefono = "Requerido.";
     else if (!E164.test(f.telefono.trim())) e.telefono = "Formato incorrecto. Ej: +5491133334444";
     if (!f.jurisdiccion.trim()) e.jurisdiccion = "Requerido.";
+    if (!f.profesion.trim()) e.profesion = "Elegí tu profesión.";
     if (!f.matricula.trim()) e.matricula = "Requerido.";
     else if (!MATRICULA.test(f.matricula.trim())) e.matricula = "Sólo números. Ej: 12483";
     if (!f.dni.trim()) e.dni = "Requerido.";
@@ -111,9 +120,11 @@ export function Registro() {
           apellido: f.apellido.trim(),
           email: f.email.trim(),
           telefono: f.telefono.trim(),
-          // El backend guarda un solo campo `matricula`; combinamos jurisdicción + número hasta que
-          // exista una columna propia de jurisdicción (flageado a Santi en el DIARIO).
-          matricula: `${f.jurisdiccion.trim()} · N° ${f.matricula.trim()}`,
+          // S-11 (V014) — ya no se concatena: jurisdicción y profesión son columnas propias y
+          // `matricula` es sólo el número.
+          matricula: f.matricula.trim(),
+          jurisdiccion: f.jurisdiccion.trim(),
+          profesion: f.profesion.trim(),
           dni: f.dni.trim(),
           cuit: f.cuit.trim(),
           condicionFiscal: f.condicionFiscal,
@@ -235,6 +246,25 @@ export function Registro() {
               {errors.jurisdiccion && <small className="auth__err">{errors.jurisdiccion}</small>}
             </label>
             <label className="field">
+              <span>Profesión</span>
+              <select value={f.profesion} onChange={set("profesion")} disabled={!profesiones}>
+                <option value="">
+                  {profesiones ? "Elegí una opción…" : "Cargando…"}
+                </option>
+                {profesiones?.map((pr) => (
+                  <option key={pr.id} value={pr.nombre}>
+                    {pr.nombre}
+                  </option>
+                ))}
+              </select>
+              {/* Si el listado no carga, el registro no se puede completar: conviene decirlo acá
+                  y no dejar un desplegable vacío sin explicación. */}
+              {errorProfesiones && (
+                <small className="auth__err">No se pudo cargar la lista de profesiones.</small>
+              )}
+              {errors.profesion && <small className="auth__err">{errors.profesion}</small>}
+            </label>
+            <label className="field">
               <span>N° de matrícula</span>
               <input
                 placeholder="12483"
@@ -303,8 +333,13 @@ export function Registro() {
           <label className="auth__terms">
             <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
             <span>
-              Declaro que la matrícula informada es propia y acepto los términos de uso de la
-              plataforma.
+              Declaro que la matrícula informada es propia y acepto los{" "}
+              {/* F-07 — pestaña nueva: si se navega en la misma, se pierde el formulario a medio
+                  llenar (incluido el archivo adjunto, que el browser no repuebla). */}
+              <a href={config.terminosUrl} target="_blank" rel="noopener noreferrer">
+                términos de uso
+              </a>{" "}
+              de la plataforma.
             </span>
           </label>
           {errors.terms && <small className="auth__err">{errors.terms}</small>}

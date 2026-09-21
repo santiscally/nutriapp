@@ -158,10 +158,24 @@ export function Perfil() {
               <dt>Estado de la cuenta</dt>
               <dd>{me?.estadoValidacion === "APROBADA" ? "Aprobada" : me?.estadoValidacion}</dd>
             </div>
-            {me?.descuentoPct != null && (
+            {me?.profesion && (
               <div>
-                <dt>Descuento de tus bonos</dt>
-                <dd>{me.descuentoPct}%</dd>
+                <dt>Profesión</dt>
+                <dd>{me.profesion}</dd>
+              </div>
+            )}
+            {me?.jurisdiccion && (
+              <div>
+                <dt>Jurisdicción de matrícula</dt>
+                <dd>{me.jurisdiccion}</dd>
+              </div>
+            )}
+            {/* F-10 — lo que le interesa a la profesional es lo que gana, no el descuento que
+                recibe la paciente (que además, desde S-02, lo define el producto). */}
+            {me?.comisionPct != null && (
+              <div>
+                <dt>Tu comisión</dt>
+                <dd>{me.comisionPct}%</dd>
               </div>
             )}
           </dl>
