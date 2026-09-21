@@ -32,6 +32,73 @@
 
 ## Entradas
 
+## 2026-09-21 (6) — Fran — frontend + vertical mail (las 8 tareas que destrabó S-01..S-16, y F-18 completo)
+
+**Qué:** Merge de tus 5 commits + las 8 que dejaste destrabadas: **F-06, F-07, F-10, F-13, F-16, F-17, F-18,
+F-24 y F-25** (F-16 no estaba en tu lista pero S-07 ya la habilitaba, así que la hice también).
+Verificado **en el navegador** contra el backend local, no sólo compilando: Chrome headless por CDP (Node 24
+trae `WebSocket`, no hizo falta instalar nada) → login real → `/panel` y `/admin/bonos` renderizan con datos
+reales y **cero errores de consola**. Backend: **239 tests, 0 fallos**. Front: `tsc -b` + `oxlint` + `vite build`.
+
+**El hallazgo que cambió F-18 — TiendaNube no acepta redirect en el link de cupón.** La tarea pedía que el
+hipervínculo fuera "directo al producto con el descuento aplicado". Probé contra la tienda real:
+
+```
+GET https://www.thebcompany.com.ar/discount/RX-TEST00?redirect=/productos/x
+→ 302 Location: https://www.thebcompany.com.ar/?redirect=%2Fproductos%2Fx
+```
+
+Se lleva el query string pero **siempre aterriza en la home**. Probé `redirect`, `redirect` urlencodeado y
+`return_to`: los tres igual. **No existe un único link que aplique el cupón y caiga en el producto.** Así que
+el mail, el WhatsApp y el PDF mandan **los dos links, en este orden**: primero el de cupón (activa el bono),
+después el del producto. Al revés, la paciente llega al producto sin el bono aplicado. El del producto sale
+sólo si el bono tiene **un** producto y está mapeado; si no, queda el de cupón solo, como antes.
+
+**Bonus del mismo test:** la tienda ya redirige `bienestarandsalud.mitiendanube.com` →
+`www.thebcompany.com.ar` con un **301**. Los links funcionan incluso antes de que toques
+`TIENDANUBE_STORE_URL` en el VPS (S-17), aunque conviene cambiarlo igual para no depender del redirect.
+
+**Decisiones del front que conviene que sepas:**
+- **F-13** — los % del filtro salen de `/productos/filtros` → `descuentos`, que **hoy viene vacío** (lo verifiqué
+  contra el backend local: sin maestro importado no hay ningún producto con `descuentoPct`). Con la lista vacía
+  el filtro **no se ofrece**, en vez de un desplegable con "Todos" y nada más.
+- **F-16** — el resumen de emisión ahora calcula con el descuento **del producto** y usa el de la profesional de
+  fallback. Si el bono lleva dos productos con % distinto, lo aviso en la UI y bloqueo el submit: es el 409 que
+  tira tu `RecetaService`, y mejor que no gaste el viaje.
+- **F-24** — el panel consolidado pasó a ser la **home del admin** (`homeDe()`); antes entraba a la bandeja de
+  solicitudes. La bandeja sigue en el nav.
+- **F-25** — el listado del admin **no abre el modal de detalle**: `GET /recetas/{id}` está scopeado al dueño y
+  para el admin da 404. Por eso la tabla muestra de una profesional, facturado y comisión.
+- **F-06** — el registro dejó de concatenar `"{jurisdicción} · N° {matrícula}"`: ahora manda `matricula`,
+  `jurisdiccion` y `profesion` por separado, como los definiste en V014. **Cuando quieras pasarlos a
+  obligatorios en el backend, avisá**: el front ya los manda los tres.
+
+**Problemas:**
+- Mi `frontend/.env.local` (gitignoreado) seguía apuntando al **realm viejo** `nutriapp` / cliente
+  `nutriapp-frontend`, de antes del rebranding: el login local fallaba con "No pudimos conectarnos con el
+  servidor" y no es obvio que sea eso. Lo corregí a `bonosapp`. **Si a vos te pasa lo mismo, es ahí.**
+- Levanté el stack local con `MAIL_MODE=stub` por variable de entorno (mi `.env` local tiene `live`): si no, el
+  dispatcher drena la cola y manda mails **reales** por Resend desde mi máquina.
+- El merge sólo rompió una cosa: mi fixture del PDF, porque `RecetaResponse` y `ProductoResponse` sumaron campos
+  y los records se construyen por posición. Arreglado en `ebb20c9`.
+
+**Impacto para el otro (Santi):**
+1. **`profesionalesActivos` da 0 en el panel del admin** en mi DB local, y **no es un bug tuyo**: las dos filas
+   de `nutricionistas` del entorno local tienen `activo=false` (el count usa `countByActivoTrueAndDeletedAtIsNull`).
+   Lo dejo escrito para que no lo caces como bug si lo ves.
+2. **Sigue sin documentar `GET /api/v1/recetas/{id}/pdf`** en `05-api-endpoints.md` (tu zona). Es de la tanda
+   anterior; ya son dos entradas pidiéndolo, decime si preferís que lo agregue yo.
+3. **El PDF sigue sin adjuntarse al mail (F-20):** `MailSender.send(dest, asunto, cuerpo)` no sabe adjuntar y
+   `integrations/mail/` es tuyo. Lo necesito cuando llegue la plantilla del cliente.
+4. **F-14 sigue bloqueada** por lo que vos mismo marcaste: hasta que el cliente importe el maestro, el % de la
+   ficha del admin es el único descuento que existe. No la toqué.
+5. Los paths del API los dejé como están (`/recetas`, `/admin/recetas`): S-15 es tuya y opcional.
+
+**Refs:** `frontend/src/pages/{AdminPanel,AdminBonos,Registro,Perfil,EmitirReceta}.tsx`,
+`frontend/src/{types,api}/admin.ts`, `frontend/src/components/receta/ProductoBuscador.tsx`,
+`modules/notificacion/service/BonoContenido.java` (`linkProducto`), `PdfSimpleBonoGenerator`,
+commits `aac4e49` y `33581f6`.
+
 ## 2026-09-21 (5) — Santi — auth/frontend (S-10 verificación de mail + la UI de recupero, verificadas sobre el stack)
 **Qué:**
 - **S-10** · al registrarse sale un mail de "validá tu mail" (24 h). La verificación va **en paralelo**

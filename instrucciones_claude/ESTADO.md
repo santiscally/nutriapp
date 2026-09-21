@@ -79,38 +79,42 @@ cliente** desde la UI y todavía no lo hizo (`sinMaestro=2277`).
 
 ## Fran / frontend
 
-**Última actualización: 2026-09-19 (2).**
+**Última actualización: 2026-09-21 (2).**
 
-**En qué estoy:** tanda de **modificaciones post 1ª entrega** (PLAN en
-`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`).
+**En qué estoy:** modificaciones post 1ª entrega (PLAN en
+`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`). **Mi mitad está cerrada salvo lo
+que depende de terceros.**
 
-**✅ Cerrado en esta sesión (front):** F-01 (copy del login) · F-02/03/04 (validaciones del registro: teléfono,
-matrícula, CUIT y DNI solo numéricos) · F-05 (jurisdicción = desplegable de provincias + CABA) · F-08/F-09
-(renames a "Profesionales" y rutas `/profesionales`, `/bonos`, `/bonos/nuevo`, con redirect desde las viejas) ·
-F-11 (mail de contacto en Perfil) · F-12 (estados en masculino, solo label) · F-15 (descarga del PDF del bono) ·
-F-23 (el error viejo de E-MAIL ya no parece una falla vigente).
+**✅ Cerrado (todo en `main`, pusheado):**
+- **1ª tanda:** F-01..F-05, F-08, F-09, F-11, F-12, F-15, F-17, F-19, F-21, F-22, F-23.
+- **2ª tanda (destrabada por S-01..S-16):** F-06 (profesión desde `GET /profesiones`), F-07 (link a
+  `/terminos`), F-10 ("Tu comisión" en el perfil), F-13 (filtro % + % por producto), F-16 (checkbox
+  combinable destildado + cálculo con el descuento del producto), F-18 **completo**, F-24 (solapa PANEL),
+  F-25 (solapa BONOS).
 
-**✅ Cerrado en esta sesión (vertical mail, backend):** F-17 (la URL de tienda ya es config, nada hardcodeado) ·
-F-18 **parcial** (link de cupón `<store>/discount/<codigo>` + la frase del cliente) · F-19 (descripción del
-producto en mail y wa.me) · F-21 (`GET /api/v1/recetas/{id}/pdf`) · F-22 (asunto del mail sin gancho comercial) ·
-F-20 **parcial** (módulo `modules/bonopdf/` con port + generador provisorio sin dependencias; el PDF abre y
-extrae texto OK).
+**Verificación:** backend **239 tests, 0 fallos** (en contenedor: no hay Java en este host). Front `tsc -b` +
+`oxlint` + `vite build`. Y las dos pantallas nuevas del admin **verificadas en el navegador** contra el backend
+local (Chrome headless por CDP): login → `/panel` y `/admin/bonos` con datos reales, sin errores de consola.
 
-**Verificación:** front `tsc -b` + `vite build` + `oxlint` verdes. Backend **207 tests, 0 fallos**. Ojo: **no hay
-Java en este host**, se compila y testea en contenedor:
-`docker run --rm -v "<repo>/backend:/app" -v bonosapp-m2:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn test`
-(en Git Bash, con `MSYS_NO_PATHCONV=1` y la ruta en formato Windows).
+**⚠️ Lo que aprendí probando F-18 (importa para el cliente):** TiendaNube **ignora** los parámetros de redirect
+en `/discount/<codigo>` — siempre cae en la home. No existe un link único que aplique el cupón *y* aterrice en
+el producto, así que el mensaje manda **dos links en orden**: primero el que activa el bono, después el del
+producto. Si Gon esperaba un solo link, esto hay que contárselo.
 
-**Pendiente mío, sin bloqueo:** nada urgente — lo que queda de mi mitad depende de Santi o del cliente.
+**Bloqueado, y no por Santi:**
+- **F-20** — la plantilla del PDF la manda el cliente. Además, adjuntarlo al mail necesita que
+  `integrations/mail/MailSender` sepa adjuntar, y esa carpeta es zona de Santi.
+- **F-14** — hasta que el cliente importe el maestro nuevo, el % de la ficha del admin es el único descuento
+  que existe (lo marcó Santi en el contrato de S-02).
 
-**Bloqueado por Santi (contract-first):** F-06 (S-11, campo Profesión) · F-07 (S-16, URL de términos) · F-10
-(S-12, `comisionPct` en `/me`) · F-13/F-14 (S-02, descuento por producto) · F-16 (S-07, flag del cupón) ·
-F-18 *la mitad que falta* (S-02, URL del producto para linkear directo a la ficha) · F-24/F-25 (S-13/S-14,
-endpoints de las solapas admin PANEL y BONOS).
+**Notas de entorno (mi máquina):**
+- `frontend/.env.local` apuntaba al realm viejo `nutriapp`: corregido a `bonosapp`. Si el login local falla con
+  "No pudimos conectarnos con el servidor", mirar ahí primero.
+- Mi `.env` de raíz tiene `MAIL_MODE=live`: **levantar el stack local con `MAIL_MODE=stub` por variable de
+  entorno**, o el dispatcher manda mails reales por Resend desde la máquina.
+- Backend sin Java en el host:
+  `docker run --rm -v "<repo>/backend:/app" -v bonosapp-m2:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn test`
+  (Git Bash: `MSYS_NO_PATHCONV=1` y la ruta en formato Windows).
 
-**Bloqueado por terceros:** F-20 — el template del PDF lo manda el cliente la semana que viene. Además, adjuntar
-el PDF al mail necesita que `integrations/mail/MailSender` sepa adjuntar, y esa carpeta es **zona de Santi**:
-lo dejé sin tocar y avisado en el DIARIO.
-
-**Para Santi, en una línea:** endpoint nuevo `GET /api/v1/recetas/{id}/pdf` sin documentar en
-`05-api-endpoints.md` (tu zona, no lo toqué).
+**Esperando de Santi:** documentar `GET /api/v1/recetas/{id}/pdf` en `05-api-endpoints.md` (su zona) y el
+adjunto en `MailSender` para F-20.
