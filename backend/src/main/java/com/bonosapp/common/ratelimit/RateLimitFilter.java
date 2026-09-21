@@ -13,7 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Aplica el rate limit por IP a los endpoints públicos POST ({@code /registro}, {@code /webhooks/*}).
+ * Aplica el rate limit por IP a los endpoints públicos POST ({@code /registro},
+ * {@code /password/recuperar}, {@code /webhooks/*}).
  * Los preflight OPTIONS y cualquier GET pasan sin consumir tokens. Al superar el límite responde
  * 429 con el {@link ApiError} uniforme + cabecera {@code Retry-After}, para que el frontend surfacee
  * el mensaje igual que el resto de los errores.

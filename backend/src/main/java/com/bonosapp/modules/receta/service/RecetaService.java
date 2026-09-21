@@ -44,6 +44,9 @@ public class RecetaService {
 
     private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
 
+    /** Borde superior cuando no hay filtro de fecha. */
+    private static final Instant SIN_TOPE = Instant.parse("9999-12-31T00:00:00Z");
+
     private final RecetaRepository repo;
     private final PacienteRepository pacienteRepository;
     private final ProductoRepository productoRepository;
@@ -66,13 +69,17 @@ public class RecetaService {
                 pageable).map(this::toResponse);
     }
 
-    /** Ventana [desde, hasta] en horario argentino, con los dos extremos inclusive. */
+    /**
+     * Ventana [desde, hasta] en horario argentino, con los dos extremos inclusive. Sin filtro
+     * devuelve los bordes del universo y no null: un parámetro temporal en null hace que Postgres
+     * no pueda inferir su tipo y la query se cae.
+     */
     public static Instant desdeInclusive(LocalDate desde) {
-        return desde == null ? null : desde.atStartOfDay(AR).toInstant();
+        return desde == null ? Instant.EPOCH : desde.atStartOfDay(AR).toInstant();
     }
 
     public static Instant hastaInclusive(LocalDate hasta) {
-        return hasta == null ? null : hasta.plusDays(1).atStartOfDay(AR).toInstant();
+        return hasta == null ? SIN_TOPE : hasta.plusDays(1).atStartOfDay(AR).toInstant();
     }
 
     @Transactional(readOnly = true)

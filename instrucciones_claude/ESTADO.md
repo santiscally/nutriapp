@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-21 (3)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
+**Última actualización: 2026-09-21 (4)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
 el reparto del `PLAN-modificaciones-post-entrega.md` (era una propuesta de Fran) y escribí los
 **contratos de las 7 features cruzadas** en `05-api-endpoints.md` → **Fran quedó desbloqueado** en
 F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
@@ -43,11 +43,18 @@ F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
 - **S-16 — términos de uso.** `static/terminos.html` (generado del .docx del cliente) servido por
   nginx en `https://bonosapp.com.ar/terminos`. Verificado sirviendo la página en un nginx local.
 
+- **S-08/S-09 — auth.** Bloqueo temporal tras 10 intentos fallidos y
+  `POST /api/v1/password/recuperar` (204 siempre, link de un solo uso emitido por Keycloak). La
+  config del realm la aplica `scripts/keycloak-config.sh`, **paso nuevo y obligatorio del deploy**:
+  el realm JSON sólo se importa la primera vez, así que sin el script prod se queda con el default
+  de 30 intentos y sin SMTP. Verificado sobre el stack: bloqueo real, mail entregado y link abierto.
+
 **🔴 Lo que falta:** **S-03** — el filtro de RUBRO que deja pasar cajas de cartón. Necesita mirar datos
 de prod: hipótesis, `rubro_id` viene null desde `/api/conceptos/search` y `permitido()` deja pasar lo
-ausente. Sin arrancar: S-05, S-06, S-08, S-09, S-10, S-15, S-17, S-18.
+ausente. **S-10** (verificación de mail en el registro) quedó sin arrancar a propósito: cambia el alta que
+está viva y necesita UI y copy de Fran. Sin arrancar también: S-05, S-06, S-15, S-17, S-18.
 
-**⚠️ Antes de desplegar esto a prod:** correr `V014`/`V015`/`V016`, re-sincronizar el catálogo (cambiar
+**⚠️ Antes de desplegar esto a prod:** correr `bash scripts/keycloak-config.sh`, `V014`/`V015`/`V016`, re-sincronizar el catálogo (cambiar
 `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo) y correr el mapeo de TiendaNube para que se
 pueble el `handle` de cada producto — sin eso `urlProducto` viaja en null y el link del mail no sale.
 El `.env` del VPS necesita además `CATALOGO_TIPOS_ERP=Producto` y `TIENDANUBE_STORE_URL=https://www.thebcompany.com.ar` (S-17).

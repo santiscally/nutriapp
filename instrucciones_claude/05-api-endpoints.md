@@ -253,7 +253,7 @@ Shapes que fija Santi para que Fran construya sin esperar al backend. IDs del
 puede devolver 404 o el campo venir ausente); `vivo` = ya responde en prod. Cuando uno pasa a `vivo`
 va una entrada en el DIARIO.
 
-**Implementado en `main` (falta desplegar): S-02, S-07, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
+**Implementado en `main` (falta desplegar): S-02, S-07, S-08, S-09, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
 levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
 el catálogo.
 
@@ -428,6 +428,30 @@ destildado). `RecetaResponse` devuelve `combinable` para que el detalle del bono
 `TIENDANUBE_STORE_URL` pasa a **`https://www.thebcompany.com.ar`** en el `.env` del VPS. El valor lo
 consumen los templates del mail y el `WaMeLinkBuilder`; **nadie lo hardcodea**, ni el front ni los
 templates: sale de config.
+
+### S-09 · "Olvidé mi contraseña" — **hecho, falta desplegar** → ⚠️ NO tiene tarea F asignada
+
+```
+POST /api/v1/password/recuperar     (público, sin token)
+{ "email": "ana@x.com" }
+→ 204 SIEMPRE
+```
+
+**Responde 204 exista o no la cuenta, y esté o no activa.** Un 404 acá convierte el endpoint en un
+oráculo para averiguar qué mails están registrados en la plataforma. Rate limit por IP: comparte el
+cupo de `/registro` (10 por minuto).
+
+El link de un solo uso lo emite y lo valida **Keycloak** (`UPDATE_PASSWORD`, 30 minutos de vigencia),
+así que la pantalla donde se tipea la contraseña nueva es la de Keycloak, no la SPA. No hay tokens
+propios que guardar ni invalidar.
+
+Sólo se manda el mail si la cuenta está **APROBADA y activa**: a una pendiente de aprobación,
+cambiarle la contraseña no la deja entrar, y el mail sólo la haría creer que sí.
+
+⚠️ **Falta la UI, y no está en el reparto:** el PLAN asignó S-09 a Santi pero no le dio a Fran una
+tarea `F-xx` para el link "¿Olvidaste tu contraseña?" en el login ni para el formulario del mail.
+Son unas pocas líneas (un input + POST + un cartel de "revisá tu casilla"), pero **hoy el endpoint no
+lo llama nadie**. Hay que decidir quién la hace.
 
 ### Suelto: el mensaje de error del CUIT (parte de F-04) es del backend
 

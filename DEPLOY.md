@@ -174,6 +174,27 @@ Verificación:
 > `KC_PROXY: edge` (del compose base) queda deprecado en KC 25 y loguea un WARN; funciona igual
 > porque el override agrega `KC_PROXY_HEADERS: xforwarded`. En KC 26 hay que sacarlo.
 
+### 6. Config del realm que el import no puede aplicar
+```
+bash scripts/keycloak-config.sh --dry-run    # ver qué haría
+bash scripts/keycloak-config.sh              # aplicar
+```
+Aplica la **protección de fuerza bruta** (S-08: bloqueo temporal tras 10 intentos fallidos) y el
+**SMTP del realm** (S-09: sin esto el mail de "olvidé mi contraseña" no sale). Es idempotente, así
+que se corre en cada deploy sin pensarlo.
+
+> **Por qué hace falta un paso aparte:** `--import-realm` corre **sólo la primera vez**. En un
+> entorno que ya arrancó, editar `keycloak/realms/bonosapp-realm.json` no cambia nada — el realm
+> vivo se queda como está. El script habla con la Admin API de Keycloak desde un contenedor
+> enganchado a su namespace de red, así que no necesita que Keycloak publique puerto.
+
+Verificación (la imprime el script solo): `failureFactor: 10`, `bruteForceProtected: true`,
+`permanentLockout: false` y un `smtpServer` con host/from poblados.
+
+> **Ojo con el SMTP:** el script sólo lo toca si `MAIL_MODE=live` y hay `MAIL_SMTP_HOST`. Con el
+> realm sin SMTP, `POST /api/v1/password/recuperar` responde 204 igual y **el mail no sale**: la
+> degradación es silenciosa por diseño (no delatar qué cuentas existen), así que verificar acá.
+
 > **Consola admin de Keycloak NO es pública:** nginx bloquea `/auth/admin` y `/auth/realms/master`
 > (devuelve 404) — la app usa la Admin API server-side por la red interna, no la consola. Para
 > entrar a la consola manualmente: túnel SSH al host y abrir `http://localhost:8081/auth/admin`

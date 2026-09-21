@@ -100,6 +100,22 @@ class AdminRecetaServiceTest {
         assertThat(page.getContent().get(0).nutricionista()).isNull();
     }
 
+    /** Sin filtro de fechas viajan los bordes del universo, no null: ver RecetaService. */
+    @Test
+    void sinFiltroDeFechasViajanLosBordesDelUniverso() {
+        when(repo.search(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service().search(null, null, null, null, null, PageRequest.of(0, 20));
+
+        ArgumentCaptor<Instant> desde = ArgumentCaptor.forClass(Instant.class);
+        ArgumentCaptor<Instant> hasta = ArgumentCaptor.forClass(Instant.class);
+        verify(repo).search(isNull(), isNull(), isNull(), isNull(), desde.capture(), hasta.capture(),
+                eq((Pageable) PageRequest.of(0, 20)));
+        assertThat(desde.getValue()).isEqualTo(Instant.EPOCH);
+        assertThat(hasta.getValue()).isAfter(Instant.parse("9000-01-01T00:00:00Z"));
+    }
+
     /** La ventana de fechas es inclusive en los dos extremos: el "hasta" es el día entero. */
     @Test
     void laVentanaDeFechasIncluyeElDiaHasta() {

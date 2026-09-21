@@ -32,6 +32,71 @@
 
 ## Entradas
 
+## 2026-09-21 (4) — Santi — auth/infra (S-08 fuerza bruta + S-09 recupero de contraseña, verificados sobre el stack)
+**Qué:** Cerré el bloque de auth que no depende de nadie.
+- **S-08** · bloqueo temporal tras 10 intentos fallidos (`failureFactor=10`), con espera creciente y
+  **sin bloqueo permanente**.
+- **S-09** · `POST /api/v1/password/recuperar` (público, 204 siempre, rate-limited con el cupo de
+  `/registro`). El link de un solo uso lo emite y valida Keycloak (`UPDATE_PASSWORD`, 30 min), así que
+  no hay tokens propios que guardar ni invalidar.
+- **`scripts/keycloak-config.sh`** (nuevo): aplica al realm vivo la config de fuerza bruta y el SMTP.
+
+**Por qué hace falta un script y no alcanza el realm JSON:** `--import-realm` corre **sólo la primera
+vez**. En un entorno que ya arrancó, editar `bonosapp-realm.json` no cambia nada — lo confirmé en los
+logs de dev: *"Realm 'bonosapp' already exists. Import skipped"*. Sin este paso, prod se quedaba con
+el default de Keycloak (30 intentos) y sin SMTP, o sea sin mail de recupero.
+
+**Decisiones:**
+- `permanentLockout=false`: con bloqueo permanente, cualquiera que sepa el mail de una profesional le
+  deja la cuenta muerta hasta que un admin la desbloquee a mano. La espera creciente frena el ataque
+  sin regalar ese poder.
+- El mail sale por el **SMTP del realm** (mismas credenciales `MAIL_*` que la app) y no por nuestra
+  cola de notificaciones: esa es zona de Fran, y hacerlo por Keycloak evita escribir el ciclo de vida
+  de un token de reseteo, que es justo el código que conviene no escribir.
+- Sólo se manda si la cuenta está **APROBADA y activa**: a una pendiente, cambiarle la contraseña no
+  la deja entrar y el mail sólo la haría creer que sí.
+
+**Problemas (cuatro, todos con su moraleja):**
+1. **`could not determine data type of parameter $7`** — `/admin/recetas` daba **500** con los filtros
+   vacíos. Postgres no puede inferir el tipo de un parámetro temporal que sólo aparece en
+   `:desde IS NULL`. Ahora la ventana viaja con extremos concretos (`Instant.EPOCH` .. 9999). **Los
+   224 tests unitarios pasaban igual**: esto sólo aparece pegándole a un Postgres real, y lo encontré
+   por correr un smoke contra el stack levantado. Vale como recordatorio de que la suite verde no
+   alcanza para una `@Query` nueva.
+2. **`source .env` está roto** y se llevaba puesto también a `backup-db.sh`: `TIENDANUBE_USER_AGENT`
+   tiene paréntesis y bash falla con *syntax error* antes de intentar nada. O sea que **el script de
+   backup fallaba de entrada con el `.env` actual**. Nuevo `scripts/lib-env.sh` que parsea sin
+   ejecutar (además evita que un `$(...)` en el .env se ejecute solo), usado por los dos scripts.
+3. **kcadm no sirve para esto:** ignora en silencio `-s smtpServer={...}` (lo manda como string) y con
+   `-f` tira `unknown_error`. Se hace con la REST API, que mergea el PUT parcial y devuelve un código
+   verificable. El curl va en un contenedor enganchado al namespace de red de Keycloak, porque la
+   imagen de KC no trae curl ni python y **en prod Keycloak no publica puerto**.
+4. `docker run` **sin `-i`** no conecta stdin: el PUT viajaba con body vacío y Keycloak respondía 500.
+
+**Verificado sobre el stack de dev (no sólo unit tests):** 11 logins con contraseña incorrecta →
+`disabled: true` en attack-detection, y **con la contraseña correcta el login igual se rechaza**;
+tras limpiar el bloqueo, entra. `POST /password/recuperar` → 204 para una cuenta que existe, para una
+que no y para una inactiva, con el log mostrando cada rama; con la cuenta activa **el mail llega a
+mailpit y el link abre la pantalla de contraseña nueva de Keycloak (200)**. Smoke de todo lo nuevo:
+`/profesiones` (76), `/admin/dashboard/*`, `/admin/recetas` con y sin filtros, `/productos?descuentoPct=20`,
+`/productos/filtros`, `/me` con `comisionPct` y `profesion`. 224 tests + el IT en verde.
+
+**Cambio en el compose de dev:** `KC_HOSTNAME` pasa de `localhost` a `http://localhost:8081`. Con el
+host sin puerto, los links que Keycloak manda por mail fallan al abrirse con *"Invalid token issuer"*.
+En prod el valor ya es el correcto (`https://bonosapp.com.ar/auth`), pero **hay que abrir un link real
+después del deploy** para confirmarlo: es el mismo tipo de bug que el del `issuer` sin `/auth` que ya
+nos comimos en agosto.
+
+**Impacto para el otro (Fran):** ⚠️ **S-09 no tiene tarea `F-xx`.** El PLAN me asignó el backend pero
+a nadie la UI: falta el link "¿Olvidaste tu contraseña?" en el login y el formulario que haga el POST
+(un input + un cartel de "revisá tu casilla"). **Hoy el endpoint no lo llama nadie.** Hay que decidir
+quién la toma. Ojo también con el asunto del mail: lo pone Keycloak y dice *"Actualiza tu cuenta"*,
+genérico; si se quiere algo con la marca hay que hacer un theme de mail, y eso conviene mirarlo junto
+con S-18 (deliverability).
+
+**Refs:** `scripts/keycloak-config.sh`, `scripts/lib-env.sh`, `KeycloakAdminClient.enviarMailDeReseteo`,
+`RecuperoPasswordService`, `RecetaRepository.search`, `bonosapp-realm.json`, `DEPLOY.md` (paso 6).
+
 ## 2026-09-21 (3) — Santi — backend/infra (S-07 cupón no combinable + S-16 términos de uso hosteados)
 **Qué:** Las dos que le faltaban a Fran para destrabar F-16 y F-07.
 

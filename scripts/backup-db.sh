@@ -18,13 +18,12 @@ cd "${REPO_ROOT}"
 # Config desde .env, que es donde el runbook dice que viven estas variables. Sin esto,
 # setear BACKUP_GPG_RECIPIENT ahí no tenía ningún efecto y los dumps salían en TEXTO PLANO
 # con sólo un aviso por stderr — invisible desde cron. Lo que ya venga del entorno gana.
-if [ -f "${REPO_ROOT}/.env" ]; then
-  _env_user="${POSTGRES_USER-}"; _env_db="${POSTGRES_DB-}"; _env_gpg="${BACKUP_GPG_RECIPIENT-}"
-  set -a; . "${REPO_ROOT}/.env"; set +a
-  [ -n "${_env_user}" ] && POSTGRES_USER="${_env_user}"
-  [ -n "${_env_db}" ]   && POSTGRES_DB="${_env_db}"
-  [ -n "${_env_gpg}" ]  && BACKUP_GPG_RECIPIENT="${_env_gpg}"
-fi
+#
+# No se hace `source` del .env: un valor con paréntesis (el user-agent de TiendaNube, sin ir más
+# lejos) rompe el script entero, y el backup fallaba sin haber intentado nada.
+# shellcheck source=scripts/lib-env.sh
+. "${REPO_ROOT}/scripts/lib-env.sh"
+cargar_env "${REPO_ROOT}/.env"
 
 PGUSER="${POSTGRES_USER:-bonosapp}"
 APPDB="${POSTGRES_DB:-bonosapp}"

@@ -91,6 +91,10 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
      *
      * <p>{@code q} busca por código del bono o por nombre/apellido del paciente. El paciente entra
      * por subconsulta y no por join: {@code Receta} guarda el id suelto, no la relación.
+     *
+     * <p>La ventana de fechas viaja con extremos concretos, nunca en null: con {@code :desde IS NULL}
+     * Postgres no puede inferir el tipo del parámetro y la query falla con "could not determine data
+     * type". Los bordes por defecto los pone {@link RecetaService}.
      */
     @Query("""
             SELECT r FROM Receta r
@@ -98,8 +102,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
               AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND (:estado IS NULL OR r.estado = :estado)
               AND (:pacienteId IS NULL OR r.pacienteId = :pacienteId)
-              AND (:desde IS NULL OR r.emitidaAt >= :desde)
-              AND (:hasta IS NULL OR r.emitidaAt < :hasta)
+              AND r.emitidaAt >= :desde
+              AND r.emitidaAt < :hasta
               AND (:q IS NULL OR :q = ''
                    OR LOWER(FUNCTION('unaccent', r.codigo))
                       LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%')))

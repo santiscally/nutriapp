@@ -101,6 +101,8 @@ public class SecurityConfig {
                                 "/api/v1/registro",
                                 // lista del desplegable de profesión: se completa sin estar logueada
                                 "/api/v1/profesiones",
+                                // "olvidé mi contraseña": quien lo usa justamente no puede entrar
+                                "/api/v1/password/recuperar",
                                 // webhooks TiendaNube: la auth es la firma HMAC, no JWT (Fase 1)
                                 "/api/v1/webhooks/**"
                         ).permitAll()

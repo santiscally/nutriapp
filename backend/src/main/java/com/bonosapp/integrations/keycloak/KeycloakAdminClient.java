@@ -130,6 +130,52 @@ public class KeycloakAdminClient {
     }
 
     /**
+     * S-09 — manda el mail de "definí tu contraseña" con un link de un solo uso que arma y valida
+     * Keycloak. El correo sale por el SMTP del realm, no por el de la app.
+     *
+     * <p>{@code lifespan} en segundos: el link vence solo. Sin {@code redirect_uri} Keycloak
+     * termina en su propia pantalla de confirmación, que es lo que queremos mientras el login del
+     * front sea ROPC y no haya a dónde volver con un código.
+     *
+     * @throws KeycloakAdminException si Keycloak no lo pudo mandar (típico: realm sin SMTP).
+     */
+    public void enviarMailDeReseteo(String userId, int lifespanSegundos) {
+        try {
+            http.put()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users/{id}/execute-actions-email")
+                            .queryParam("lifespan", lifespanSegundos)
+                            .build(props.realm(), userId))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(List.of("UPDATE_PASSWORD"))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException("No se pudo enviar el mail de recuperación", ex);
+        }
+    }
+
+    /** Id del usuario del realm por email exacto, o vacío si no existe. */
+    public java.util.Optional<String> buscarUserIdPorEmail(String email) {
+        try {
+            List<Map<String, Object>> encontrados = http.get()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users")
+                            .queryParam("email", email)
+                            .queryParam("exact", true)
+                            .build(props.realm()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .retrieve()
+                    .body(new org.springframework.core.ParameterizedTypeReference<>() {});
+            if (encontrados == null || encontrados.isEmpty()) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.ofNullable((String) encontrados.get(0).get("id"));
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException("No se pudo buscar el usuario en Keycloak", ex);
+        }
+    }
+
+    /**
      * Limpia el contador de intentos fallidos de la protección de fuerza bruta. Se llama al
      * resetear una contraseña: si el usuario quedó frenado por reintentar, la contraseña nueva no
      * le serviría de nada hasta que expire el bloqueo.
