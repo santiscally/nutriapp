@@ -86,7 +86,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
     await correr(async () => {
       if (!(await guardarParametros())) throw new Error("validación");
       if (pendiente) await aprobarNutricionista(nutri.id);
-    }, pendiente ? "Nutricionista aprobada." : "Parámetros actualizados.");
+    }, pendiente ? "Profesional aprobado." : "Parámetros actualizados.");
   }
 
   async function onRechazar() {
@@ -138,7 +138,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
       confirmar: "Borrar definitivamente",
       peligro: true,
     });
-    if (ok) correr(() => eliminarNutricionista(nutri.id), "Nutricionista eliminada.");
+    if (ok) correr(() => eliminarNutricionista(nutri.id), "Profesional eliminado.");
   }
 
   async function onResetPassword() {

@@ -26,3 +26,36 @@ export interface RegistroResponse {
   id: string;
   estadoValidacion: EstadoValidacion; // PENDIENTE al crearse
 }
+
+/**
+ * F-05 — Jurisdicción de matrícula: lista cerrada (23 provincias + CABA) en vez de texto libre.
+ * El backend sigue recibiendo `matricula` como "<jurisdicción> · N° <número>", así que esto es
+ * sólo del front.
+ */
+export const JURISDICCIONES = [
+  "Ciudad Autónoma de Buenos Aires",
+  "Buenos Aires",
+  "Catamarca",
+  "Chaco",
+  "Chubut",
+  "Córdoba",
+  "Corrientes",
+  "Entre Ríos",
+  "Formosa",
+  "Jujuy",
+  "La Pampa",
+  "La Rioja",
+  "Mendoza",
+  "Misiones",
+  "Neuquén",
+  "Río Negro",
+  "Salta",
+  "San Juan",
+  "San Luis",
+  "Santa Cruz",
+  "Santa Fe",
+  "Santiago del Estero",
+  "Tierra del Fuego",
+  "Tucumán",
+] as const;
+export type Jurisdiccion = (typeof JURISDICCIONES)[number];

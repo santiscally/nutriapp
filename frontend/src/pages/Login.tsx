@@ -105,11 +105,11 @@ export function Login() {
       {/* Panel derecho: formulario */}
       <main className="auth__panel">
         <form className="auth__card" onSubmit={onSubmit}>
-          <h1 className="auth__title">Bienvenida de nuevo</h1>
+          <h1 className="auth__title">Bienvenida</h1>
           <p className="auth__subtitle">Ingresá con tu email profesional.</p>
 
           <label className="field">
-            <span>Usuario o email</span>
+            <span>Email</span>
             <input
               type="text"
               autoComplete="username"
@@ -137,7 +137,7 @@ export function Login() {
           </button>
 
           <p className="auth__foot">
-            ¿Sos nutricionista y todavía no tenés cuenta? <Link to="/registro">Solicitar acceso</Link>
+            ¿Sos profesional y todavía no tenés cuenta? <Link to="/registro">Solicitar acceso</Link>
           </p>
         </form>
       </main>

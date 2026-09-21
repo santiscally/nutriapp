@@ -11,3 +11,16 @@ export const fechaHora = (iso: string) =>
     dateStyle: "short",
     timeStyle: "short",
   });
+
+// F-12 — el cliente quiere los estados del bono en masculino ("Aplicado", no "Aplicada"). Es SOLO
+// display: el enum del backend y la DB siguen en femenino, acá se traduce la etiqueta visible.
+const ESTADO_LABELS: Record<string, string> = {
+  PENDIENTE: "Pendiente",
+  APLICADA: "Aplicado",
+  LIQUIDADA: "Liquidado",
+  VENCIDA: "Vencido",
+  ANULADA: "Anulado",
+};
+
+/** Etiqueta visible de un estado de bono. Si llega algo fuera del enum, se muestra tal cual. */
+export const estadoLabel = (estado: string) => ESTADO_LABELS[estado] ?? estado;

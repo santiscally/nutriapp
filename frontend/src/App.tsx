@@ -46,18 +46,24 @@ export default function App() {
           >
             {/* Sólo nutricionista — el admin no emite recetas (C-07). */}
             <Route path="/dashboard" element={<RequireRol rol="NUTRICIONISTA"><Dashboard /></RequireRol>} />
-            <Route path="/recetas/nueva" element={<RequireRol rol="NUTRICIONISTA"><EmitirReceta /></RequireRol>} />
-            <Route path="/recetas" element={<RequireRol rol="NUTRICIONISTA"><Recetas /></RequireRol>} />
+            <Route path="/bonos/nuevo" element={<RequireRol rol="NUTRICIONISTA"><EmitirReceta /></RequireRol>} />
+            <Route path="/bonos" element={<RequireRol rol="NUTRICIONISTA"><Recetas /></RequireRol>} />
             <Route path="/pacientes" element={<RequireRol rol="NUTRICIONISTA"><Pacientes /></RequireRol>} />
             <Route path="/cierre-mensual" element={<RequireRol rol="NUTRICIONISTA"><CierreMensual /></RequireRol>} />
             <Route path="/perfil" element={<RequireRol rol="NUTRICIONISTA"><Perfil /></RequireRol>} />
 
             {/* Sólo admin. */}
-            <Route path="/nutricionistas" element={<RequireRol rol="ADMIN"><Nutricionistas /></RequireRol>} />
+            <Route path="/profesionales" element={<RequireRol rol="ADMIN"><Nutricionistas /></RequireRol>} />
             <Route path="/cierres" element={<RequireRol rol="ADMIN"><CierreConsolidado /></RequireRol>} />
             <Route path="/catalogo" element={<RequireRol rol="ADMIN"><CatalogoAdmin /></RequireRol>} />
             <Route path="/integraciones" element={<RequireRol rol="ADMIN"><Integraciones /></RequireRol>} />
           </Route>
+
+          {/* Rutas viejas (F-08 / F-09): el cliente ya tiene bookmarks de la 1ª entrega, así que
+              en vez de caer en el fallback redirigen al nombre nuevo. */}
+          <Route path="/recetas/nueva" element={<Navigate to="/bonos/nuevo" replace />} />
+          <Route path="/recetas" element={<Navigate to="/bonos" replace />} />
+          <Route path="/nutricionistas" element={<Navigate to="/profesionales" replace />} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />

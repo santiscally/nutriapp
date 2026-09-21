@@ -134,11 +134,18 @@ export function Integraciones() {
                   <span className="muted">Última sincronización</span>
                   <span>{it.ultimaSync ? fechaHora(it.ultimaSync) : "—"}</span>
                 </div>
+                {/* F-23 — el backend guarda el último error hasta que reinicia, aunque después
+                    haya andado bien: el mail quedó mostrando el error de cuando estaba en stub
+                    mucho después de pasar a live. Si el proveedor ya se recuperó (disponible),
+                    el error se muestra como historia y con fecha, no como una falla vigente. */}
                 {it.ultimoError && (
                   <div className="integracion__meta-row">
-                    <span className="muted">Último error</span>
-                    <span title={it.ultimoErrorAt ? fechaHora(it.ultimoErrorAt) : undefined}>
+                    <span className="muted">
+                      {it.disponible === true ? "Último error (resuelto)" : "Último error"}
+                    </span>
+                    <span className={it.disponible === true ? "muted" : undefined}>
                       {it.ultimoError}
+                      {it.ultimoErrorAt && ` · ${fechaHora(it.ultimoErrorAt)}`}
                     </span>
                   </div>
                 )}

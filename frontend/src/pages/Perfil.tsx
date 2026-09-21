@@ -8,6 +8,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { ApiRequestError } from "../api/client";
 import { borrarFoto, cambiarPassword, subirFoto } from "../api/perfil";
 import { useAuth } from "../auth/AuthContext";
+import { config } from "../config";
 import { Avatar } from "../components/ui/Avatar";
 import { useDialog } from "../components/ui/Dialog";
 import { Icon } from "../components/ui/Icon";
@@ -165,8 +166,9 @@ export function Perfil() {
             )}
           </dl>
           <p className="perfil__hint">
-            ¿Necesitás corregir tus datos o tu matrícula? Escribinos y lo actualizamos: son los
-            datos con los que se validó tu cuenta.
+            ¿Necesitás corregir tus datos o tu matrícula? Escribinos a{" "}
+            <a href={`mailto:${config.contactoEmail}`}>{config.contactoEmail}</a> y lo actualizamos:
+            son los datos con los que se validó tu cuenta.
           </p>
         </div>
 

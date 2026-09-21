@@ -13,34 +13,34 @@ import { Footer } from "./Footer";
 // no arrastra recetas:*/pacientes:*/dashboard:read, así que esos endpoints le dan 403.
 const NAV_NUTRI: { to: string; label: string; end?: boolean }[] = [
   { to: "/dashboard", label: "Panel" },
-  { to: "/recetas", label: "Bonos", end: true },
+  { to: "/bonos", label: "Bonos", end: true },
   { to: "/pacientes", label: "Pacientes" },
   { to: "/cierre-mensual", label: "Cierre mensual" },
   { to: "/perfil", label: "Mi perfil" },
 ];
 
 const NAV_ADMIN: { to: string; label: string; end?: boolean }[] = [
-  { to: "/nutricionistas", label: "Nutricionistas" },
+  { to: "/profesionales", label: "Profesionales" },
   { to: "/cierres", label: "Cierres" },
   { to: "/catalogo", label: "Productos" },
   { to: "/integraciones", label: "Integraciones" },
 ];
 
 const roleLabel = (roles?: string[]) =>
-  roles?.includes("ADMIN") ? "Administrador" : "Nutricionista";
+  roles?.includes("ADMIN") ? "Administrador" : "Profesional";
 
 export function AppLayout() {
   const { me, logout } = useAuth();
   const isAdmin = me?.roles.includes("ADMIN") ?? false;
   const nav = isAdmin ? NAV_ADMIN : NAV_NUTRI;
   // Estando ya en el emisor, el CTA "Nuevo bono" no lleva a ningún lado: se esconde.
-  const enEmision = useLocation().pathname === "/recetas/nueva";
+  const enEmision = useLocation().pathname === "/bonos/nuevo";
 
   return (
     <div className="app-shell">
       <header className="navbar">
         <div className="navbar__inner">
-          <Link to={isAdmin ? "/nutricionistas" : "/dashboard"} className="navbar__brand">
+          <Link to={isAdmin ? "/profesionales" : "/dashboard"} className="navbar__brand">
             <Logo size={34} />
             BonosApp
           </Link>
@@ -62,7 +62,7 @@ export function AppLayout() {
 
           <div className="navbar__right">
             {!isAdmin && !enEmision && (
-              <Link to="/recetas/nueva" className="navbar__cta">
+              <Link to="/bonos/nuevo" className="navbar__cta">
                 <Icon name="plus" size={17} />
                 Nuevo bono
               </Link>

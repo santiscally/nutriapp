@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
-import { anularReceta, listarRecetas, reenviarReceta } from "../api/recetas";
+import { anularReceta, descargarBonoPdf, listarRecetas, reenviarReceta } from "../api/recetas";
 import { RecetaDetalle } from "../components/receta/RecetaDetalle";
 import { EmptyState } from "../components/ui/EmptyState";
 import { EstadoBadge } from "../components/ui/EstadoBadge";
@@ -13,7 +13,7 @@ import { useDialog } from "../components/ui/Dialog";
 import { useToast } from "../components/ui/Toast";
 import { useDebounce } from "../hooks/useDebounce";
 import { useFetch } from "../hooks/useFetch";
-import { fecha } from "../lib/format";
+import { estadoLabel, fecha } from "../lib/format";
 import type { EstadoReceta, RecetaResponse } from "../types/receta";
 
 const PAGE_SIZE = 10;
@@ -89,7 +89,7 @@ export function Recetas() {
               : "Historial de bonos emitidos"}
           </p>
         </div>
-        <Link className="btn btn--primary" to="/recetas/nueva">
+        <Link className="btn btn--primary" to="/bonos/nuevo">
           <Icon name="file-plus" />
           Emitir bono
         </Link>
@@ -117,7 +117,7 @@ export function Recetas() {
             <option value="">Todos</option>
             {ESTADOS.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {estadoLabel(s)}
               </option>
             ))}
           </select>
@@ -141,7 +141,7 @@ export function Recetas() {
           hint={hasFilters ? "Ajustá los filtros." : undefined}
           action={
             !hasFilters && (
-              <Link className="btn btn--primary" to="/recetas/nueva">
+              <Link className="btn btn--primary" to="/bonos/nuevo">
                 <Icon name="file-plus" />
                 Emitir bono
               </Link>
@@ -175,9 +175,24 @@ export function Recetas() {
                   </td>
                   <td className="muted">{fecha(r.emitidaAt)}</td>
                   <td className="muted">{fecha(r.venceAt)}</td>
-                  {/* Sólo un bono PENDIENTE se puede mandar o anular; en el resto la celda va
-                      vacía en vez de con tres botones grises, que serían ruido en cada fila. */}
+                  {/* Sólo un bono PENDIENTE se puede mandar o anular; en el resto la celda queda
+                      con la descarga del PDF sola, que sirve en cualquier estado. */}
                   <td className="table__actions">
+                    {/* F-15 — el PDF se puede volver a bajar siempre: el bono ya emitido es un
+                        comprobante, aunque esté vencido o anulado. */}
+                    <button
+                      className="btn-icon"
+                      title="Descargar el bono en PDF"
+                      aria-label={`Descargar el bono ${r.codigo} en PDF`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        descargarBonoPdf(r.id, r.codigo).catch(() =>
+                          toast.error("No se pudo descargar el bono."),
+                        );
+                      }}
+                    >
+                      <Icon name="download" size={16} />
+                    </button>
                     {r.estado === "PENDIENTE" && (
                       <>
                         {r.waMeUrl && (

@@ -4,5 +4,5 @@ import type { Me } from "../types/session";
 
 /** C-07: el admin no tiene panel de recetas; su casa es la bandeja de nutricionistas (C-09). */
 export function homeDe(me: Me | null): string {
-  return me?.roles.includes("ADMIN") ? "/nutricionistas" : "/dashboard";
+  return me?.roles.includes("ADMIN") ? "/profesionales" : "/dashboard";
 }

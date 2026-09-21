@@ -2,11 +2,15 @@
 // C-02: sin importes — una vez emitida, la receta no muestra precios en ningún lado.
 
 import { Link } from "react-router-dom";
+import { descargarBonoPdf } from "../../api/recetas";
 import { fecha } from "../../lib/format";
 import { Icon } from "../ui/Icon";
+import { useToast } from "../ui/Toast";
 import type { RecetaResponse } from "../../types/receta";
 
 export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNueva: () => void }) {
+  const toast = useToast();
+
   return (
     <section className="exito">
       <div className="card exito__card">
@@ -58,10 +62,22 @@ export function RecetaExito({ receta, onNueva }: { receta: RecetaResponse; onNue
               Enviar por WhatsApp
             </a>
           )}
+          {/* F-15 — bajar el bono en PDF acá mismo, sin volver al listado. */}
+          <button
+            className="btn btn--ghost"
+            onClick={() => {
+              descargarBonoPdf(receta.id, receta.codigo).catch(() =>
+                toast.error("No se pudo descargar el bono."),
+              );
+            }}
+          >
+            <Icon name="download" size={16} />
+            Descargar PDF
+          </button>
           <button className="btn btn--ghost" onClick={onNueva}>
             Emitir otro bono
           </button>
-          <Link className="btn btn--ghost" to="/recetas">
+          <Link className="btn btn--ghost" to="/bonos">
             Ver todos los bonos
           </Link>
         </div>

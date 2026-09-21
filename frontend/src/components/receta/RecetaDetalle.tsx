@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { ApiRequestError } from "../../api/client";
-import { anularReceta, getReceta, reenviarReceta } from "../../api/recetas";
+import { anularReceta, descargarBonoPdf, getReceta, reenviarReceta } from "../../api/recetas";
 import { useFetch } from "../../hooks/useFetch";
 import { fecha, fechaHora, money } from "../../lib/format";
 import { useDialog } from "../ui/Dialog";
@@ -181,6 +181,21 @@ export function RecetaDetalle({ id, onClose, onChanged }: Props) {
               </button>
             </div>
           )}
+
+          {/* F-15 — fuera del bloque de PENDIENTE: el PDF se puede volver a bajar siempre. */}
+          <div className="detalle__actions">
+            <button
+              className="btn btn--sm btn--ghost"
+              onClick={() =>
+                descargarBonoPdf(data.id, data.codigo).catch(() =>
+                  toast.error("No se pudo descargar el bono."),
+                )
+              }
+            >
+              <Icon name="download" size={16} />
+              Descargar PDF
+            </button>
+          </div>
         </div>
       )}
     </Modal>

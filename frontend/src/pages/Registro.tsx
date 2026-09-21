@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
 import { registrar } from "../api/registro";
 import { config } from "../config";
-import { CONDICIONES_FISCALES } from "../types/registro";
+import { CONDICIONES_FISCALES, JURISDICCIONES } from "../types/registro";
 import { Icon } from "../components/ui/Icon";
 import { Logo } from "../components/ui/Logo";
 
@@ -29,7 +29,12 @@ type Field =
 type Errors = Partial<Record<Field | "terms" | "archivo", string>>;
 
 const DNI = /^[0-9]{7,9}$/;
-const CUIT = /^[0-9]{2}-?[0-9]{8}-?[0-9]$/;
+// F-04 — el CUIT se tipea sólo en dígitos (el backend acepta con o sin guiones y normaliza).
+const CUIT = /^[0-9]{11}$/;
+// F-03 — la matrícula es un número: ni letras ni puntos ni guiones.
+const MATRICULA = /^[0-9]{1,15}$/;
+/** Deja pasar sólo dígitos mientras se tipea (F-03 / F-04). */
+const soloDigitos = (v: string) => v.replace(/[^0-9]/g, "");
 /** Lo que acepta el backend para la matrícula (C-08). */
 const TIPOS_MATRICULA = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
 const MAX_MB = 5;
@@ -59,6 +64,11 @@ export function Registro() {
     (k: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       setF((prev) => ({ ...prev, [k]: e.target.value }));
 
+  /** Igual que set(), pero descarta todo lo que no sea un dígito (F-03 matrícula, F-04 CUIT). */
+  const setNum =
+    (k: Field) => (e: React.ChangeEvent<HTMLInputElement>) =>
+      setF((prev) => ({ ...prev, [k]: soloDigitos(e.target.value) }));
+
   function validate(): Errors {
     const e: Errors = {};
     if (!f.nombre.trim()) e.nombre = "Requerido.";
@@ -66,13 +76,14 @@ export function Registro() {
     if (!f.email.trim()) e.email = "Requerido.";
     else if (!EMAIL.test(f.email.trim())) e.email = "Email inválido.";
     if (!f.telefono.trim()) e.telefono = "Requerido.";
-    else if (!E164.test(f.telefono.trim())) e.telefono = "Formato E.164, ej. +5491133334444.";
+    else if (!E164.test(f.telefono.trim())) e.telefono = "Formato incorrecto. Ej: +5491133334444";
     if (!f.jurisdiccion.trim()) e.jurisdiccion = "Requerido.";
     if (!f.matricula.trim()) e.matricula = "Requerido.";
+    else if (!MATRICULA.test(f.matricula.trim())) e.matricula = "Sólo números. Ej: 12483";
     if (!f.dni.trim()) e.dni = "Requerido.";
     else if (!DNI.test(f.dni.trim())) e.dni = "Sólo números, sin puntos.";
     if (!f.cuit.trim()) e.cuit = "Requerido.";
-    else if (!CUIT.test(f.cuit.trim())) e.cuit = "11 dígitos, ej. 27-12345678-4.";
+    else if (!CUIT.test(f.cuit.trim())) e.cuit = "Sólo números, 11 dígitos. Ej: 27123456784";
     if (!f.condicionFiscal) e.condicionFiscal = "Elegí una opción.";
     // El adjunto es lo que el admin mira para validar la matrícula: sin eso no hay solicitud.
     if (!archivo) e.archivo = "Subí tu matrícula o título.";
@@ -208,26 +219,40 @@ export function Registro() {
             </label>
             <label className="field">
               <span>DNI</span>
-              <input placeholder="30111222" value={f.dni} onChange={set("dni")} inputMode="numeric" />
+              <input placeholder="30111222" value={f.dni} onChange={setNum("dni")} inputMode="numeric" />
               {errors.dni && <small className="auth__err">{errors.dni}</small>}
             </label>
             <label className="field">
               <span>Jurisdicción de matrícula</span>
-              <input
-                placeholder="Nacional / Buenos Aires / …"
-                value={f.jurisdiccion}
-                onChange={set("jurisdiccion")}
-              />
+              <select value={f.jurisdiccion} onChange={set("jurisdiccion")}>
+                <option value="">Elegí una opción…</option>
+                {JURISDICCIONES.map((j) => (
+                  <option key={j} value={j}>
+                    {j}
+                  </option>
+                ))}
+              </select>
               {errors.jurisdiccion && <small className="auth__err">{errors.jurisdiccion}</small>}
             </label>
             <label className="field">
               <span>N° de matrícula</span>
-              <input placeholder="12.483" value={f.matricula} onChange={set("matricula")} />
+              <input
+                placeholder="12483"
+                value={f.matricula}
+                onChange={setNum("matricula")}
+                inputMode="numeric"
+              />
               {errors.matricula && <small className="auth__err">{errors.matricula}</small>}
             </label>
             <label className="field">
               <span>CUIT</span>
-              <input placeholder="27-30111222-4" value={f.cuit} onChange={set("cuit")} />
+              <input
+                placeholder="27301112224"
+                value={f.cuit}
+                onChange={setNum("cuit")}
+                inputMode="numeric"
+                maxLength={11}
+              />
               {errors.cuit && <small className="auth__err">{errors.cuit}</small>}
             </label>
             <label className="field">

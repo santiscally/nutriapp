@@ -80,7 +80,7 @@ export function Dashboard() {
                 <Icon name="check-circle" />
               </span>
               <span className="tile__body">
-                <span className="tile__label">Aplicadas (mes)</span>
+                <span className="tile__label">Aplicados (mes)</span>
                 <span className="tile__value">{data.recetasAplicadasMes}</span>
               </span>
             </div>
@@ -99,7 +99,7 @@ export function Dashboard() {
 
           <div className="section-head">
             <h2 className="section-title">Últimos bonos</h2>
-            <Link className="section-head__link" to="/recetas">
+            <Link className="section-head__link" to="/bonos">
               Ver todas →
             </Link>
           </div>

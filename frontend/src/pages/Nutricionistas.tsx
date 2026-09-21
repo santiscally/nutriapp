@@ -40,9 +40,9 @@ export function Nutricionistas() {
     <section>
       <div className="page-head">
         <div>
-          <h1 className="page-title">Nutricionistas</h1>
+          <h1 className="page-title">Profesionales</h1>
           <p className="muted">
-            Validá las solicitudes y definí el descuento y la comisión de cada una.
+            Validá las solicitudes y definí el descuento y la comisión de cada uno.
           </p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export function Nutricionistas() {
       {data && data.content.length === 0 && (
         <EmptyState
           icon="users"
-          title={tab === "PENDIENTE" ? "No hay solicitudes pendientes" : "No hay nutricionistas acá"}
+          title={tab === "PENDIENTE" ? "No hay solicitudes pendientes" : "No hay profesionales acá"}
           hint={
             tab === "PENDIENTE"
               ? "Cuando alguien se registre, va a aparecer en esta lista para que la valides."

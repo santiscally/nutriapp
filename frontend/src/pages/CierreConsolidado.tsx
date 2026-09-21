@@ -41,7 +41,7 @@ export function CierreConsolidado() {
   function exportar() {
     if (!data || data.filas.length === 0) return;
     const csv = generarCsv(
-      ["Nutricionista", "CUIT", "Email", "Bonos", "Facturado", "Comisión", "Comisión pendiente"],
+      ["Profesional", "CUIT", "Email", "Bonos", "Facturado", "Comisión", "Comisión pendiente"],
       data.filas.map((f) => [
         `${f.nombre ?? ""} ${f.apellido ?? ""}`.trim(),
         f.cuit ?? "",
@@ -70,7 +70,7 @@ export function CierreConsolidado() {
           </p>
         </>
       ),
-      confirmar: "Marcar como liquidadas",
+      confirmar: "Marcar como liquidados",
     });
     if (!ok) return;
     setLiquidando(f.nutricionistaId);
@@ -96,7 +96,7 @@ export function CierreConsolidado() {
         <div>
           <h1 className="page-title">Cierre de comisiones</h1>
           <p className="muted">
-            Lo que cada nutricionista generó en el período, según lo realmente pagado en la tienda.
+            Lo que cada profesional generó en el período, según lo realmente pagado en la tienda.
           </p>
         </div>
         <button className="btn btn--ghost" onClick={exportar} disabled={!hayFilas}>
@@ -159,7 +159,7 @@ export function CierreConsolidado() {
           <table className="table">
             <thead>
               <tr>
-                <th>Nutricionista</th>
+                <th>Profesional</th>
                 <th className="ta-right">Bonos</th>
                 <th className="ta-right">Facturado</th>
                 <th className="ta-right">Comisión</th>
