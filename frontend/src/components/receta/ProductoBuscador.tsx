@@ -346,7 +346,12 @@ export function ProductoBuscador({ onAdd, selectedIds }: Props) {
               const meta = [p.subcategoria ?? p.categoria, p.laboratorio ?? p.marca]
                 .filter(Boolean)
                 .join(" · ");
-              const tieneInfo = Boolean(p.descripcionWeb || p.imagenUrl || p.tags?.length);
+              // "Más info" aparece sólo si hay algo que mostrar. Desde F-13 el detalle también
+              // muestra el % del producto, así que tener descuento ya es motivo suficiente:
+              // es justamente el dato por el que se elige un producto sobre otro.
+              const tieneInfo = Boolean(
+                p.descripcionWeb || p.imagenUrl || p.tags?.length || p.descuentoPct != null,
+              );
               return (
                 <li key={p.id} className="prod-row">
                   {p.imagenUrl ? (

@@ -2201,3 +2201,24 @@ html, body { overflow-x: hidden; }
   cursor: pointer;
 }
 .resumen__combinable input { margin-top: 0.15rem; flex: none; }
+
+/* El aviso ahora se puede cerrar a mano: la ✕ es la parte visible de eso (el click en todo el
+   aviso ya cerraba, pero nada lo anunciaba). */
+.toast__texto { flex: 1; }
+.toast__cerrar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 0.1rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  cursor: pointer;
+}
+.toast__cerrar:hover { opacity: 1; background: rgba(0, 0, 0, 0.07); }
+.toast__cerrar:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; opacity: 1; }
