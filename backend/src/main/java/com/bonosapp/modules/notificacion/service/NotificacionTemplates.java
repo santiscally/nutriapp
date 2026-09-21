@@ -27,20 +27,41 @@ public class NotificacionTemplates {
 
     private final NotificacionProperties props;
     private final IntegrationsProperties integrations;
+    private final BonoContenido bono;
 
+    /**
+     * F-22 — asunto sin gancho comercial: identifica el mail por el código y no trae la palabra
+     * "descuento", que es de las que empujan el mail a la pestaña Promociones.
+     */
     public String asuntoEmail(Receta receta) {
-        return "Tu bono profesional " + receta.getCodigo() + " con descuento en TBC";
+        return "Tu bono profesional " + receta.getCodigo();
     }
 
+    /**
+     * F-18 / F-19 — el cuerpo dice DE QUÉ es el bono y trae el link de cupón, que lo aplica solo.
+     * El código queda igual, por si la paciente prefiere tipearlo en el checkout.
+     */
     public String cuerpoEmail(Receta receta, Paciente paciente) {
+        String descripcion = bono.descripcionProductos(receta);
         return "Hola " + paciente.getNombre() + ",\n\n"
-                + "Tu nutricionista te emitió un bono profesional con un " + pct(receta.getDescuentoPct())
-                + " de descuento.\n\n"
-                + "Código de descuento: " + receta.getCodigo() + "\n"
+                + "Tu bono profesional" + (descripcion == null ? "" : " de " + descripcion)
+                + " con " + pct(receta.getDescuentoPct()) + " de descuento ya está listo.\n\n"
+                + "Código: " + receta.getCodigo() + "\n"
                 + "Válido hasta: " + FECHA.format(receta.getVenceAt()) + "\n\n"
-                + "Usá el código al finalizar tu compra en la tienda online."
-                + tiendaLink()
+                + comoUsarlo(receta)
                 + FIRMA;
+    }
+
+    /**
+     * El link de cupón cuando hay tienda configurada; si no, la instrucción de tipear el código
+     * (el mail tiene que seguir sirviendo con {@code TIENDANUBE_STORE_URL} vacío).
+     */
+    private String comoUsarlo(Receta receta) {
+        String link = bono.linkCupon(receta);
+        if (link == null) {
+            return "Usá el código al finalizar tu compra en la tienda online." + tiendaLink();
+        }
+        return BonoContenido.INSTRUCCION_LINK + ":\n" + link;
     }
 
     public String asuntoRegistroRecibido() {
@@ -94,7 +115,7 @@ public class NotificacionTemplates {
                 + "Matrícula: " + orGuion(n.getMatricula()) + "\n"
                 + "DNI: " + orGuion(n.getDni()) + "\n"
                 + "Teléfono: " + orGuion(n.getTelefono()) + "\n\n"
-                + "Aprobala o rechazala en " + link("/nutricionistas")
+                + "Aprobala o rechazala en " + link("/profesionales")
                 + FIRMA;
     }
 

@@ -1,6 +1,7 @@
 package com.bonosapp.modules.receta.service;
 
 import com.bonosapp.integrations.IntegrationsProperties;
+import com.bonosapp.modules.notificacion.service.BonoContenido;
 import com.bonosapp.modules.paciente.entity.Paciente;
 import com.bonosapp.modules.receta.entity.EstadoReceta;
 import com.bonosapp.modules.receta.entity.Receta;
@@ -29,6 +30,7 @@ public class WaMeLinkBuilder {
     private static final String BASE = "https://wa.me/";
 
     private final IntegrationsProperties props;
+    private final BonoContenido bono;
 
     /**
      * Link listo para abrir, o {@code null} si no corresponde ofrecerlo.
@@ -50,18 +52,27 @@ public class WaMeLinkBuilder {
     }
 
     /**
-     * Mismo texto que usaba el template de la cola, ahora que el envío es manual. Sin emojis:
-     * el mensaje se lee en el cliente de WhatsApp de la paciente, y uno que no esté en su fuente
-     * aparece como caja vacía justo en el saludo.
+     * El mismo texto que el mail al paciente (F-18 / F-19): de qué es el bono, el código, y el
+     * link de cupón que lo aplica solo. Los dos mensajes los lee la misma persona, así que el
+     * contenido vive en {@link BonoContenido} y no duplicado acá.
+     *
+     * <p>Sin emojis: el mensaje se lee en el cliente de WhatsApp de la paciente, y uno que no
+     * esté en su fuente aparece como caja vacía justo en el saludo.
      */
     private String mensaje(Receta receta, Paciente paciente) {
+        String descripcion = bono.descripcionProductos(receta);
+        String link = bono.linkCupon(receta);
         String tienda = props.tiendanube().storeUrlNormalizada();
-        return "Hola " + paciente.getNombre() + "! Tu bono profesional con " + pct(receta.getDescuentoPct())
+        return "Hola " + paciente.getNombre() + "! Tu bono profesional"
+                + (descripcion == null ? "" : " de " + descripcion)
+                + " con " + pct(receta.getDescuentoPct())
                 + " de descuento ya está listo. Código: *" + receta.getCodigo() + "* "
                 + "(válido hasta el " + FECHA.format(receta.getVenceAt()) + "). "
-                + (tienda == null
-                        ? "Usalo al comprar en la tienda online."
-                        : "Usalo al comprar acá: " + tienda);
+                + (link != null
+                        ? BonoContenido.INSTRUCCION_LINK + ": " + link
+                        : tienda == null
+                                ? "Usalo al comprar en la tienda online."
+                                : "Usalo al comprar acá: " + tienda);
     }
 
     /**

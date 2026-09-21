@@ -32,6 +32,81 @@
 
 ## Entradas
 
+## 2026-09-19 (2) — Fran — frontend + vertical mail (modificaciones post 1ª entrega: F-01→F-05, F-08/09/11/12, F-15/17/18/19/21/22/23)
+
+**Qué:** Primera tanda de mi mitad del PLAN de modificaciones. Todo verificado: front `tsc -b` + `vite build` +
+`oxlint` verdes; backend **207 tests, 0 fallos** (compilado y corrido en contenedor `maven:3.9-eclipse-temurin-21`,
+porque no hay Java en el host).
+
+**Front (zona Fran):**
+- **F-01** login: "Bienvenida de nuevo" → "Bienvenida"; "Usuario o email" → "Email".
+- **F-02/03/04** registro: error de teléfono → "Formato incorrecto. Ej: +5491133334444"; matrícula, CUIT y DNI
+  quedan **solo numéricos** (se filtra el tipeo, no solo se valida) y el error del CUIT ya no muestra guiones.
+  El backend acepta el CUIT con o sin guiones (`RegistroRequest` lo normaliza), así que mandar 11 dígitos pelados
+  no rompe nada.
+- **F-05** "Jurisdicción de matrícula" pasó a desplegable (23 provincias + CABA, `JURISDICCIONES` en
+  `types/registro.ts`). Sigue viajando dentro de `matricula` como "<jurisdicción> · N° <número>".
+- **F-08/F-09** renames: texto visible "Nutricionistas" → "Profesionales" y rutas `/nutricionistas` →
+  `/profesionales`, `/recetas` → `/bonos`, `/recetas/nueva` → `/bonos/nuevo`. **Los paths del API no se tocaron**
+  (eso es S-15, opcional, tuyo). Dejé `<Navigate>` desde las rutas viejas porque el cliente ya tiene bookmarks
+  de la 1ª entrega. Identificadores, imports y comentarios internos quedaron como estaban a propósito.
+- **F-11** perfil: "Escribinos a info@bonosapp.com.ar" (sale de `config.contactoEmail`, no hardcodeado).
+- **F-12** estados en masculino **solo display**: `estadoLabel()` en `lib/format.ts` (Aplicado/Vencido/Anulado/
+  Liquidado/Pendiente). El enum `EstadoReceta`, la DB y las clases CSS siguen en femenino.
+- **F-23** integraciones: el `ultimoError` del `IntegrationHealthRegistry` es sticky hasta que reinicia el
+  backend, así que la tarjeta de E-MAIL seguía mostrando el error de cuando estaba en stub. Ahora, si el
+  proveedor está disponible, el error se muestra como **"Último error (resuelto)"** en gris y con fecha, en vez
+  de parecer una falla vigente. No toqué el backend para esto.
+- **F-15** ícono/botón para **re-descargar el PDF** del bono en el listado, en el detalle y en la pantalla de
+  emisión (fetch con Bearer + blob, igual que la matrícula del admin).
+
+**Vertical mail (zona Fran en backend):**
+- **F-19 + F-18(parcial)**: el mail al paciente y el mensaje wa.me ahora dicen **de qué producto es el bono**
+  y traen el **link de cupón de TiendaNube** (`<store>/discount/<codigo>`), que lo aplica solo — es exactamente
+  el link de la captura que mandó el cliente. Texto nuevo compartido por los dos canales:
+  *"Dale click al link y sumá el producto al carrito, y automáticamente estará aplicado tu bono (No combinable
+  con promociones activas)"*. Vive en `BonoContenido` (`modules/notificacion/service/`) para no duplicarlo.
+- **F-17**: la URL de la tienda **ya sale de `TIENDANUBE_STORE_URL`**, no está hardcodeada — cuando cambies el
+  valor en el VPS (S-17) el mail y el WhatsApp pasan solos a `www.thebcompany.com.ar`. No hay nada que tocar
+  en código.
+- **F-22** (contenido): el asunto del mail del bono pasó de "Tu bono profesional RX-XXXX **con descuento en TBC**"
+  a "Tu bono profesional RX-XXXX" — sacar la palabra descuento del asunto es lo que más pesa del lado contenido
+  para no caer en Promociones. El resto (DMARC, reputación) es S-18.
+- **F-21** endpoint nuevo: **`GET /api/v1/recetas/{id}/pdf`** → `application/pdf` + `Content-Disposition:
+  attachment`, permiso `recetas:read`, la pertenencia la valida `RecetaService.get()` (404 si el bono no es
+  suyo). Vive en `modules/bonopdf/controller/BonoPdfController.java`, **no** en `RecetaController`, justamente
+  para no tocar tu archivo.
+- **F-20 (infra, parcial)**: módulo `modules/bonopdf/` con el port `BonoPdfGenerator` + una implementación
+  provisoria `PdfSimpleBonoGenerator` que arma un PDF 1.4 de una carilla **a mano, sin dependencias nuevas**
+  (fuentes base-14 + WinAnsiEncoding). Verificado de verdad: el PDF generado abre y extrae texto con acentos
+  correctos (`pdftotext`/`pdftoppm` en contenedor).
+
+**Problemas:**
+- No hay Java en el host: backend compilado y testeado en contenedor Maven. Dejo el comando en ESTADO.
+- `sed`/heredocs se comían los `\n` de los strings Java; terminé editando esos archivos con el editor, no por shell.
+- Tests que eran míos y cambiaron de firma/conducta: `NotificacionTemplatesTest` y `WaMeLinkBuilderTest`
+  (les sumé cobertura de F-18/F-19) + `PdfSimpleBonoGeneratorTest` nuevo (4 casos, incluye que el `startxref`
+  apunte al byte exacto de la tabla — si eso se corre, el PDF no abre en el lector de la paciente, no falla acá).
+
+**Impacto para el otro (Santi):**
+1. **Hay un endpoint nuevo que no documenté**: `GET /api/v1/recetas/{id}/pdf`. `05-api-endpoints.md` es tu zona,
+   así que no lo toqué — agregalo vos cuando pases por ahí (o decime y lo agrego).
+2. **F-18 quedó a mitad a propósito.** El link que mandamos hoy es el de cupón (aplica el bono, pero cae en la
+   tienda, no en la ficha del producto). Para que vaya **directo al producto** necesito la **URL del producto en
+   el API** (S-02). Cuando la expongas, el cambio es de una línea en `BonoContenido`.
+3. **El PDF todavía no se adjunta al mail (F-20).** Falta la plantilla del cliente (llega la semana que viene) y,
+   sobre todo, `MailSender.send(dest, asunto, cuerpo)` **no sabe adjuntar** — y `integrations/mail/` es tu zona.
+   Cuando toque, hay que sumarle un `send` con adjunto (o un `MimeMessage`); avisame y lo coordinamos. No lo toqué.
+4. Si el mail al admin te llega linkeando a `/profesionales` es correcto: la ruta del front cambió (F-08) y
+   actualicé `NotificacionTemplates` acorde.
+5. `TIENDANUBE_STORE_URL` ahora tiene **más peso que antes**: de ahí sale el link de cupón que ve el paciente.
+   Hoy apunta a `bienestarandsalud.mitiendanube.com` y funciona igual, pero S-17 ya no es sólo cosmético.
+
+**Refs:** `modules/notificacion/service/BonoContenido.java` (nuevo), `NotificacionTemplates.java`,
+`modules/receta/service/WaMeLinkBuilder.java`, `modules/bonopdf/**` (nuevo), `frontend/src/pages/{Login,Registro,
+Recetas,Perfil,Integraciones,Nutricionistas}.tsx`, `frontend/src/lib/format.ts`, `frontend/src/App.tsx`,
+`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`.
+
 ## 2026-09-19 — Fran — planificación (modificaciones post 1ª entrega: plan + división Fran/Santi)
 **Qué:** Llegó el feedback del cliente tras la 1ª entrega (2 mails casi idénticos = un solo set + 4 adjuntos).
 Armé el plan completo con la **división de trabajo Fran/Santi** en

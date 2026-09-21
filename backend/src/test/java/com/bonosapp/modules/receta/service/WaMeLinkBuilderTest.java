@@ -2,14 +2,24 @@ package com.bonosapp.modules.receta.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.bonosapp.integrations.IntegrationsProperties;
+import com.bonosapp.modules.notificacion.service.BonoContenido;
 import com.bonosapp.modules.paciente.entity.Paciente;
+import com.bonosapp.modules.producto.entity.Producto;
+import com.bonosapp.modules.producto.repository.ProductoRepository;
 import com.bonosapp.modules.receta.entity.EstadoReceta;
 import com.bonosapp.modules.receta.entity.Receta;
+import com.bonosapp.modules.receta.entity.RecetaItem;
 import java.math.BigDecimal;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -18,14 +28,16 @@ class WaMeLinkBuilderTest {
 
     private static final String TIENDA = "https://tienda.test";
 
+    private final ProductoRepository productos = mock(ProductoRepository.class);
     private final WaMeLinkBuilder builder = builder(TIENDA);
 
-    private static WaMeLinkBuilder builder(String storeUrl) {
-        return new WaMeLinkBuilder(new IntegrationsProperties(
+    private WaMeLinkBuilder builder(String storeUrl) {
+        IntegrationsProperties props = new IntegrationsProperties(
                 null,
                 new IntegrationsProperties.TiendaNube(
                         "stub", null, null, null, null, null, null, null, storeUrl),
-                null));
+                null);
+        return new WaMeLinkBuilder(props, new BonoContenido(productos, props));
     }
 
     private Receta receta(EstadoReceta estado) {
@@ -34,6 +46,19 @@ class WaMeLinkBuilderTest {
         r.setEstado(estado);
         r.setDescuentoPct(new BigDecimal("15.00"));
         r.setVenceAt(LocalDate.of(2026, 9, 3));
+        return r;
+    }
+
+    /** Receta con un item resuelto a un producto con nombre (F-19). */
+    private Receta recetaConProducto(String nombre) {
+        Receta r = receta(EstadoReceta.PENDIENTE);
+        RecetaItem item = new RecetaItem();
+        item.setProductoId(UUID.randomUUID());
+        r.addItem(item);
+
+        Producto p = new Producto();
+        p.setNombre(nombre);
+        when(productos.findAllById(any())).thenReturn(List.of(p));
         return r;
     }
 
@@ -104,11 +129,23 @@ class WaMeLinkBuilderTest {
         assertThat(texto.codePoints().anyMatch(cp -> cp >= 0x2600)).isFalse();
     }
 
+    /** F-18: el link que se comparte es el de cupón, el que aplica el bono solo al abrirlo. */
     @Test
-    void elMensajeLlevaElLinkDeLaTienda() {
+    void elMensajeLlevaElLinkDeCuponYLaInstruccion() {
         String texto = texto(builder.forReceta(receta(EstadoReceta.PENDIENTE), paciente("+5491144443333")));
 
-        assertThat(texto).endsWith("Usalo al comprar acá: " + TIENDA);
+        assertThat(texto)
+                .contains("sumá el producto al carrito")
+                .contains("No combinable con promociones activas")
+                .endsWith(TIENDA + "/discount/RX-3V737V");
+    }
+
+    /** F-19: el mensaje dice de qué producto es el bono. */
+    @Test
+    void elMensajeNombraElProductoDelBono() {
+        String texto = texto(builder.forReceta(recetaConProducto("Magnesio 300g"), paciente("+5491144443333")));
+
+        assertThat(texto).contains("Tu bono profesional de Magnesio 300g con 15% de descuento");
     }
 
     /** Sin tienda configurada el mensaje sale igual, sin un link cortado. */
@@ -125,7 +162,7 @@ class WaMeLinkBuilderTest {
         String texto = texto(builder("https://tienda.test/").forReceta(
                 receta(EstadoReceta.PENDIENTE), paciente("+5491144443333")));
 
-        assertThat(texto).endsWith("acá: https://tienda.test");
+        assertThat(texto).endsWith("https://tienda.test/discount/RX-3V737V");
     }
 
     private static String texto(String url) {
