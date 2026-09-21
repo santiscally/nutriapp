@@ -73,7 +73,8 @@ public class CuponSyncService {
                     receta.getDescuentoPct(),
                     LocalDate.now(AR),
                     receta.getVenceAt(),
-                    productIds));
+                    productIds,
+                    receta.isCombinable()));
             receta.setCuponTiendanubeId(coupon.id());
             receta.setCuponSyncEstado(CuponSyncEstado.SINCRONIZADO);
             receta.setCuponSyncError(null);

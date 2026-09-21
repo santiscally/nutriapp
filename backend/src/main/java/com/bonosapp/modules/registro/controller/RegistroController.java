@@ -1,5 +1,6 @@
 package com.bonosapp.modules.registro.controller;
 
+import com.bonosapp.modules.registro.dto.RecuperarPasswordRequest;
 import com.bonosapp.modules.registro.dto.RegistroRequest;
 import com.bonosapp.modules.registro.dto.RegistroResponse;
 import com.bonosapp.modules.registro.service.RegistroService;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -34,5 +36,16 @@ public class RegistroController {
             @Valid @RequestPart("datos") RegistroRequest req,
             @RequestPart(value = "matricula", required = false) MultipartFile matricula) {
         return service.registrar(req, matricula);
+    }
+
+    /**
+     * S-10 — reenvía el mail de "validá tu mail" cuando no llegó. <b>204 siempre</b>, exista o no
+     * la cuenta: igual que el recupero de contraseña, no puede servir para averiguar qué mails
+     * están registrados.
+     */
+    @PostMapping("/reenviar-verificacion")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reenviarVerificacion(@Valid @RequestBody RecuperarPasswordRequest req) {
+        service.reenviarVerificacion(req.email());
     }
 }

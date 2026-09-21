@@ -68,6 +68,7 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
               AND (:conStock = FALSE OR (p.stock IS NOT NULL AND p.stock > 0))
               AND (:precioMin IS NULL OR p.precio >= :precioMin)
               AND (:precioMax IS NULL OR p.precio <= :precioMax)
+              AND (:descuentoPct IS NULL OR p.descuentoPct = :descuentoPct)
             ORDER BY
               CASE
                 WHEN :q IS NULL OR :q = '' THEN 0
@@ -92,7 +93,16 @@ public interface ProductoRepository extends JpaRepository<Producto, UUID> {
                           @Param("conStock") boolean conStock,
                           @Param("precioMin") BigDecimal precioMin,
                           @Param("precioMax") BigDecimal precioMax,
+                          @Param("descuentoPct") BigDecimal descuentoPct,
                           Pageable pageable);
+
+    /** Valores de descuento que existen hoy en lo recetable: pueblan el desplegable de F-13. */
+    @Query("""
+            SELECT DISTINCT p.descuentoPct FROM Producto p
+            WHERE p.deletedAt IS NULL AND p.publicado = true AND p.descuentoPct IS NOT NULL
+            ORDER BY p.descuentoPct
+            """)
+    List<BigDecimal> distinctDescuentos();
 
     /**
      * Buscador del <b>admin</b>: a diferencia del de recetas, ve también los despublicados (que es

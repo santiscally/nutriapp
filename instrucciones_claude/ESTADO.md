@@ -14,53 +14,68 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-16** — 🚀 **PRE-LANZAMIENTO APAGADO.** `https://bonosapp.com.ar`
-dejó de mostrar la landing "Próximamente" y muestra el **login**. La propuesta de valor de la landing
-(headline, lead, los 3 pasos y la casilla de contacto) se mudó al **panel izquierdo del login**;
-`Proximamente.tsx` queda en el repo detrás de `config.comingSoon` por si hay que reencenderlo.
+**Última actualización: 2026-09-21 (5)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
+el reparto del `PLAN-modificaciones-post-entrega.md` (era una propuesta de Fran) y escribí los
+**contratos de las 7 features cruzadas** en `05-api-endpoints.md` → **Fran quedó desbloqueado** en
+F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
 
-**Qué se tocó:** `frontend/src/pages/Login.tsx` + `frontend/src/index.css` (variante
-`.auth__steps--icon`) — `frontend/` es de Fran, se tocó **por pedido explícito del usuario** y está
-avisado en el DIARIO. En el `.env` del VPS: `VITE_COMING_SOON=false` y `VITE_CONTACTO_EMAIL` a
-`info@bonosapp.com.ar`. En `.env.example` (raíz): contacto, el comentario de CORS y el de
-`KEYCLOAK_ISSUER_URI` (los dos comentarios que habían inducido bugs reales en prod).
+**Implementado en esta tanda (sin desplegar todavía):**
+- **S-01/S-02 — descuento por producto.** `V015` agrega `descuento_pct`, `estado_bonosapp` y
+  `tiendanube_handle` a `productos`. El parser del maestro lee `DESCUENTO %` (fracción → escala
+  0-100) y `ESTADO BONOSAPP`. `ProductoResponse` suma `descuentoPct` y `urlProducto`; el buscador
+  filtra por `descuentoPct` y `/productos/filtros` devuelve los valores que existen. Al emitir, el %
+  sale del producto y cae al de la profesional si el maestro no lo trae.
+- **S-11 — profesión + jurisdicción.** `V014` agrega las dos columnas y la tabla `profesiones` con
+  las 76 del Excel; `GET /profesiones` es público. Los campos entran **opcionales**: prod recibe
+  registros y exigirlos antes de que Fran despliegue rompería el alta.
+- **S-12 — comisión.** Default de alta 10 % → **1 %**; `/me` ahora expone `comisionPct`.
+- **S-04 — catálogo.** `CATALOGO_TIPOS_ERP` pasa a `Producto` (fuera los Combo).
+- **F-04 (la mitad que era backend):** el error del CUIT ya no muestra guiones.
 
-**Deploy hecho y verificado contra el dominio público:** build en `node:22-alpine` (el VPS no tiene
-node), `tsc -b` verde, bundle `index-D_7wzobQ.js` servido por bind mount sin reload · `/` e
-`/ingresar` 200 · flags horneados OK · CSP/HSTS intactos · **login ROPC con `Origin` → token**, y con
-él `/api/v1/me` y `/api/v1/admin/nutricionistas` **200**. Backups: `frontend/dist-old-20260916-*` y
-`.env.bak-comingsoff-*`.
+- **S-13/S-14 — las dos solapas del admin.** `GET /admin/dashboard/resumen` y `/estadisticas`
+  (consolidado de todas + facturado + padrón) y `GET /admin/recetas` (todos los bonos, con filtro por
+  profesional). De paso quedaron implementados los filtros `q`/`pacienteId`/`desde`/`hasta` que el
+  contrato prometía en `GET /recetas` y el backend nunca había tenido.
 
-**🔴 LO ÚNICO URGENTE — sigue abierto y ahora pesa más.** La credencial **seed de dev**
-`admin@nutriapp.dev` funciona en producción con `ADMIN` + `admin:manage`, y su contraseña está en el
-realm JSON versionado en el repo. Con el login como **home pública**, esto ya no es teórico:
-**rotarla o borrar la cuenta ahora**; ídem `nutri@nutriapp.dev`. No la toqué: son las únicas cuentas
-admin y la decisión es del usuario.
+- **S-07 — el cupón deja de ser combinable.** `combines_with_other_discounts` no viajaba y la API lo
+  asume `true`: **todos los bonos emitidos hasta hoy se combinan con las promos de la tienda.** Ahora
+  viaja explícito, con default `false` y elegible por bono (`combinable` en `POST /recetas`). `V016`.
+- **S-16 — términos de uso.** `static/terminos.html` (generado del .docx del cliente) servido por
+  nginx en `https://bonosapp.com.ar/terminos`. Verificado sirviendo la página en un nginx local.
 
-**CATÁLOGO EN PRODUCCIÓN, LISTO PARA USAR** (2026-09-16). Contabilium y TiendaNube en `live` contra la
-tienda **real** (`bienestarandsalud.mitiendanube.com`, `store_id` 4135704). Sync → **2277 productos**;
-mapeo por SKU → **609 de 614, 0 sin match**; **578 publicados (recetables)**. Webhook `order/paid`
-registrado y verificado. ⚠️ Emitir un bono ahora crea un **cupón real** en la tienda del cliente.
+- **S-08/S-09 — auth.** Bloqueo temporal tras 10 intentos fallidos y
+  `POST /api/v1/password/recuperar` (204 siempre, link de un solo uso emitido por Keycloak). La
+  config del realm la aplica `scripts/keycloak-config.sh`, **paso nuevo y obligatorio del deploy**:
+  el realm JSON sólo se importa la primera vez, así que sin el script prod se queda con el default
+  de 30 intentos y sin SMTP. Verificado sobre el stack: bloqueo real, mail entregado y link abierto.
 
-**✅ El hallazgo de seguridad está CERRADO** (venía abierto desde el 2026-09-07). Contraseña del admin
-rotada (la vieja `test1234` verificada como rechazada), `admin@nutriapp.dev` renombrado a
-`admin@bonosapp.com.ar`, y borradas las dos cuentas basura: `nutri@nutriapp.dev` (huérfana: usuario de
-Keycloak sin fila en `nutricionistas`, por eso tiraba "no tiene perfil de nutricionista") y
-`test-403@example.com`. **Padrón final, 3 usuarios:** `admin@bonosapp.com.ar` ·
-`nutricionista@bonosapp.com.ar` (genérica para el cliente, `APROBADA` y activa) ·
-`franallende2000@gmail.com` (Fran, intacta). Las contraseñas no están en el repo.
+- **S-10 — verificación de mail.** En paralelo a la aprobación del admin: el alta sigue quedando
+  `PENDIENTE`, pero sin validar la casilla no se entra. Reenvío público y `emailVerificado` en la
+  bandeja. El script hace el backfill de `emailVerified` **antes** de exigirla, si no el padrón
+  entero queda afuera en el próximo login.
+- **UI de "olvidé mi contraseña"** (`/recuperar-password` + link en el login). Es **lo único que
+  toqué en `frontend/`**, por pedido explícito, acotado para no pisar a Fran.
 
-**Lo que falta — todo cuelga de una sola cosa, la key de Resend:** 🔴 **`MAIL_MODE` sigue en `stub`** con
-**4 notificaciones encoladas**; aprobar un registro no avisa a nadie. Y cuando se conecte hay que
-arreglar en el mismo movimiento dos cosas del `.env` del VPS: **`ADMIN_NOTIFICATION_EMAIL` no existe**
-(el aviso de registro nuevo no llegaría a nadie igual) y **`MAIL_FROM_ADDRESS` sigue en
-`no-reply@nutriappok.com.ar`** (dominio viejo → Resend rechazaría los envíos; el verificado es
-`bonosapp.com.ar`).
+**🔴 Lo que falta:** **S-03** — el filtro de RUBRO que deja pasar cajas de cartón. Necesita mirar datos
+de prod: hipótesis, `rubro_id` viene null desde `/api/conceptos/search` y `permitido()` deja pasar lo
+ausente. Sin arrancar: S-05, S-06, S-15, S-17, S-18.
 
-**Otros pendientes:** import del maestro de artículos — **lo hace el cliente** desde la UI; hasta
-entonces `sinMaestro=2277` y los filtros de taxonomía quedan vacíos · emisión de un bono e2e contra la
-tienda real, sin correr porque crea un cupón de verdad · verificación **visual** del login nuevo · la
-decisión abierta de si un producto sin mapear sigue siendo recetable.
+**⚠️ Antes de desplegar esto a prod:** correr `bash scripts/keycloak-config.sh`, `V014`/`V015`/`V016`, re-sincronizar el catálogo (cambiar
+`CATALOGO_TIPOS_ERP` no recalcula nada por sí solo) y correr el mapeo de TiendaNube para que se
+pueble el `handle` de cada producto — sin eso `urlProducto` viaja en null y el link del mail no sale.
+El `.env` del VPS necesita además `CATALOGO_TIPOS_ERP=Producto` y `TIENDANUBE_STORE_URL=https://www.thebcompany.com.ar` (S-17).
+
+**⚠️ Dos preguntas abiertas para Gon, antes de importar el maestro nuevo:** `DESCUENTO %` viene como
+`0.2`/`0.55` sin formato de porcentaje (se lee 20 % y 55 %), y `ESTADO` vs `ESTADO BONOSAPP` se
+contradicen — **1497 de 2252 filas están BLOQUEADO** y las 2252 están en `SI`. Detalle en el PLAN,
+sección "Cambios al alcance".
+
+**Estado de producción (no romper):** `bonosapp.com.ar` en vivo sin pre-lanzamiento · **mail live**
+(Resend, `info@bonosapp.com.ar`; el TXT DKIM `resend._domainkey` no se toca) · Contabilium y
+TiendaNube **live** contra la tienda real de TBC — emitir un bono crea un cupón de verdad · padrón
+limpio de 3 usuarios (`admin@bonosapp.com.ar`, `nutricionista@bonosapp.com.ar`, Fran) · el hallazgo
+de seguridad de la seed de dev quedó **cerrado** el 16/09 · el maestro de artículos **lo importa el
+cliente** desde la UI y todavía no lo hizo (`sinMaestro=2277`).
 
 ## Fran / frontend
 

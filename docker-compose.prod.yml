@@ -85,6 +85,8 @@ services:
       - ./nginx/acme:/var/www/acme:ro
       # SPA compilada (frontend/dist). Override con FRONTEND_DIST si se buildea en otro path.
       - ${FRONTEND_DIST:-./frontend/dist}:/usr/share/nginx/html:ro
+      # Páginas estáticas que no son parte de la SPA (términos de uso, S-16).
+      - ./static:/usr/share/nginx/legal:ro
     # Sin `ports`: el único que tiene que alcanzar a nginx es Caddy, y lo hace por nombre
     # de contenedor dentro de la red `web`. Publicar 80/443 acá chocaría con Caddy y
     # rompería el `up`; publicar un puerto alto agregaría superficie sin necesidad.

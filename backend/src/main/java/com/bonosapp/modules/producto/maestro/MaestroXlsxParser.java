@@ -3,6 +3,8 @@ package com.bonosapp.modules.producto.maestro;
 import com.bonosapp.common.error.UnprocessableException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -29,6 +31,8 @@ public class MaestroXlsxParser {
 
     /** Nombre de la hoja de datos. Si no está, se usa la primera (por si la renombran). */
     private static final String HOJA = "Maestro";
+
+    private static final BigDecimal CIEN = new BigDecimal("100");
 
     /**
      * @throws UnprocessableException si el archivo no es un xlsx legible o si falta alguna columna
@@ -76,7 +80,9 @@ public class MaestroXlsxParser {
                     esBloqueado(texto(row, idx.get(MaestroColumna.ESTADO))),
                     texto(row, idx.get(MaestroColumna.IMAGEN_URL)),
                     texto(row, idx.get(MaestroColumna.DESCRIPCION_WEB)),
-                    MaestroFila.parsearTags(texto(row, idx.get(MaestroColumna.TAGS)))));
+                    MaestroFila.parsearTags(texto(row, idx.get(MaestroColumna.TAGS))),
+                    descuento(texto(row, idx.get(MaestroColumna.DESCUENTO))),
+                    siNo(texto(row, idx.get(MaestroColumna.ESTADO_BONOSAPP)))));
         }
         return filas;
     }
@@ -108,6 +114,40 @@ public class MaestroXlsxParser {
     /** "BLOQUEADO" (en cualquier capitalización) bloquea; cualquier otra cosa, no. */
     private static boolean esBloqueado(String estado) {
         return estado != null && "BLOQUEADO".equalsIgnoreCase(estado.trim());
+    }
+
+    /**
+     * DESCUENTO % a escala 0-100. El archivo de TBC lo trae como fracción sin formato de porcentaje
+     * (0,2 = 20 %), pero se aceptan las dos escalas: por debajo de 1 es fracción, de 1 en adelante ya
+     * es un porcentaje. Un "1" tipeado a mano se lee como 1 %, nunca como 100 %.
+     */
+    static BigDecimal descuento(String s) {
+        if (s == null) {
+            return null;
+        }
+        BigDecimal v;
+        try {
+            v = new BigDecimal(s.trim().replace("%", "").replace(',', '.').trim());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+        if (v.signum() < 0) {
+            return null;
+        }
+        BigDecimal pct = v.compareTo(BigDecimal.ONE) < 0 ? v.multiply(CIEN) : v;
+        return pct.compareTo(CIEN) > 0 ? null : pct.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /** SI/NO del maestro. Cualquier otra cosa (o vacío) = null: "no dice nada", no "no". */
+    static Boolean siNo(String s) {
+        if (s == null) {
+            return null;
+        }
+        String v = MaestroColumna.normalizar(s);
+        if (v.equals("SI") || v.equals("S") || v.equals("TRUE") || v.equals("1")) {
+            return Boolean.TRUE;
+        }
+        return v.equals("NO") || v.equals("N") || v.equals("FALSE") || v.equals("0") ? Boolean.FALSE : null;
     }
 
     private static Long entero(String s) {

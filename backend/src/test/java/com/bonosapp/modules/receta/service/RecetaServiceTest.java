@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,15 +16,19 @@ import com.bonosapp.integrations.tiendanube.TiendaNubeClient;
 import com.bonosapp.modules.notificacion.service.NotificacionService;
 import com.bonosapp.modules.nutricionista.entity.Nutricionista;
 import com.bonosapp.modules.nutricionista.service.NutricionistaService;
+import com.bonosapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.bonosapp.modules.paciente.entity.Paciente;
 import com.bonosapp.modules.paciente.mapper.PacienteMapper;
 import com.bonosapp.modules.paciente.repository.PacienteRepository;
+import com.bonosapp.modules.producto.entity.Producto;
 import com.bonosapp.modules.producto.mapper.ProductoMapper;
 import com.bonosapp.modules.producto.repository.ProductoRepository;
 import com.bonosapp.modules.receta.RecetaProperties;
+import com.bonosapp.modules.receta.dto.RecetaCreateRequest;
 import com.bonosapp.modules.receta.entity.EstadoReceta;
 import com.bonosapp.modules.receta.entity.Receta;
 import com.bonosapp.modules.receta.repository.RecetaRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,6 +51,7 @@ class RecetaServiceTest {
     @Mock PacienteMapper pacienteMapper;
     @Mock ProductoMapper productoMapper;
     @Mock NutricionistaService nutricionistaService;
+    @Mock ParametrosNegocioService parametrosNegocioService;
     @Mock NotificacionService notificacionService;
     @Mock CodigoGenerator codigoGenerator;
     @Mock TiendaNubeClient tiendaNubeClient;
@@ -78,6 +84,95 @@ class RecetaServiceTest {
         when(repo.findByIdAndNutricionistaIdAndDeletedAtIsNull(recetaId, nutri.getId()))
                 .thenReturn(Optional.of(r));
         return r;
+    }
+
+    private Producto producto(UUID id, String descuentoPct) {
+        Producto p = new Producto();
+        p.setId(id);
+        p.setPrecio(new BigDecimal("13500.00"));
+        if (descuentoPct != null) {
+            p.setDescuentoPct(new BigDecimal(descuentoPct));
+        }
+        when(productoRepository.findById(id)).thenReturn(Optional.of(p));
+        return p;
+    }
+
+    /** S-07: F-16 pide el checkbox destildado, así que el default del backend tiene que ser el mismo. */
+    @Test
+    void emitir_porDefectoElBonoNoEsCombinableConOtrasPromos() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(productoId);
+        producto(productoId, "20.00");
+
+        service.emitir(req);
+
+        verify(repo).save(argThat(r -> !r.isCombinable()));
+    }
+
+    @Test
+    void emitir_siLaProfesionalLoTilda_elBonoEsCombinable() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest base = emisionDe(productoId);
+        producto(productoId, "20.00");
+
+        service.emitir(new RecetaCreateRequest(base.pacienteId(), base.items(), true));
+
+        verify(repo).save(argThat(Receta::isCombinable));
+    }
+
+    private RecetaCreateRequest emisionDe(UUID... productoIds) {
+        when(nutricionistaService.getCurrentAprobado()).thenReturn(nutri);
+        when(pacienteRepository.findByIdAndNutricionistaIdAndDeletedAtIsNull(pacienteId, nutri.getId()))
+                .thenReturn(Optional.of(new Paciente()));
+        when(props.maxItems()).thenReturn(5);
+        when(props.vigenciaDias()).thenReturn(30);
+        when(codigoGenerator.generar()).thenReturn("RX-TEST01");
+        return new RecetaCreateRequest(pacienteId,
+                java.util.Arrays.stream(productoIds)
+                        .map(id -> new RecetaCreateRequest.Item(id, 1, null))
+                        .toList(),
+                null);
+    }
+
+    /** S-02: el descuento sale del producto, no del % de la profesional. */
+    @Test
+    void emitir_tomaElDescuentoDelProducto() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(productoId);
+        producto(productoId, "20.00");
+        when(parametrosNegocioService.descuentoPctDe(nutri)).thenReturn(new BigDecimal("15.00"));
+
+        service.emitir(req);
+
+        verify(repo).save(argThat(r -> r.getDescuentoPct().compareTo(new BigDecimal("20.00")) == 0));
+    }
+
+    /** Sin maestro importado ningún producto tiene descuento: se emite con el de ella, como antes. */
+    @Test
+    void emitir_sinDescuentoEnElProducto_caeAlDeLaProfesional() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(productoId);
+        producto(productoId, null);
+        when(parametrosNegocioService.descuentoPctDe(nutri)).thenReturn(new BigDecimal("15.00"));
+
+        service.emitir(req);
+
+        verify(repo).save(argThat(r -> r.getDescuentoPct().compareTo(new BigDecimal("15.00")) == 0));
+    }
+
+    /** El cupón de TiendaNube es un solo porcentaje: dos productos con % distintos no se pueden. */
+    @Test
+    void emitir_dosProductosConDescuentosDistintos_esConflicto() {
+        UUID unId = UUID.randomUUID();
+        UUID otroId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(unId, otroId);
+        producto(unId, "20.00");
+        producto(otroId, "55.00");
+
+        assertThatThrownBy(() -> service.emitir(req))
+                .isInstanceOf(ConflictException.class)
+                .hasMessageContaining("distinto % de descuento");
+        verify(repo, never()).save(any(Receta.class));
     }
 
     @Test

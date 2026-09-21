@@ -244,17 +244,264 @@ fiscales, porcentajes) los toca el admin: son los que se validaron al aprobar la
 
 ---
 
+## Modificaciones post 1ª entrega — contratos nuevos (2026-09-21)
+
+Shapes que fija Santi para que Fran construya sin esperar al backend. IDs del
+`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`.
+
+**Cómo leer el estado de cada uno:** `contrato` = shape cerrado, todavía no desplegado (el endpoint
+puede devolver 404 o el campo venir ausente); `vivo` = ya responde en prod. Cuando uno pasa a `vivo`
+va una entrada en el DIARIO.
+
+**Implementado en `main` (falta desplegar): S-02, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
+levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
+el catálogo.
+
+**Los paths siguen diciendo `recetas`, no `bonos`.** El rename del API es S-15 y es opcional: tocar
+todos los paths rompe el front entero por un cambio de palabra. El rename de la **UI** (F-08/F-09) no
+lo necesita. Lo mismo con los nombres de campo: `recetasPendientes`, `descuentoPct`, etc.
+
+### S-02 · Descuento por producto — `contrato` → alimenta F-13, F-18, F-14
+
+El descuento deja de ser de la profesional y pasa a ser **del producto** (columna `DESCUENTO %` del
+maestro nuevo). `ProductoResponse` suma dos campos:
+
+```json
+{ "id": "...", "nombre": "ON-ROLL FLOW X 60G", "precio": 13500.00,
+  "descuentoPct": 20.00,
+  "urlProducto": "https://www.thebcompany.com.ar/productos/on-roll-flow-x-60g/" }
+```
+
+- **`descuentoPct`** (`number|null`) — % en escala humana: el Excel trae `0.2` y el API devuelve
+  `20.00`. `null` = el producto todavía no está en el maestro.
+- **`urlProducto`** (`string|null`) — permalink del producto en la tienda (`canonical_url` de
+  TiendaNube), para el link directo del mail/WhatsApp (F-18). `null` si no está mapeado a la tienda.
+
+Filtro nuevo en `GET /productos`: **`descuentoPct=20`** — valor exacto, no rango. Los valores
+disponibles salen de `GET /productos/filtros` → `"descuentos": [20.00, 55.00]` (el maestro de hoy
+tiene exactamente esos dos: 2212 productos al 20 % y 40 al 55 %). **El front no hardcodea la lista.**
+
+**Fallback mientras el maestro no esté importado en prod:** si el producto no tiene descuento, el bono
+se emite con el % de la profesional, que es el de hoy. `RecetaResponse.descuentoPct` sigue siendo el
+número que manda y se sigue snapshoteando al emitir.
+⚠️ **F-14 (sacar "Descuento de bonos (%)" de la ficha del admin) NO se puede hacer todavía**: hasta que
+el cliente importe el maestro nuevo, ese campo es el único descuento que existe en el sistema.
+
+**Bono con dos productos de distinto %:** `409`. El cupón de TiendaNube es un solo porcentaje y no
+puede honrar dos. Con el MVP en 1 producto por bono no se dispara nunca.
+
+### S-11 · Profesión + jurisdicción de matrícula — `contrato` → alimenta F-06, F-03, F-05
+
+Hoy el front concatena `"{jurisdicción} · N° {matrícula}"` en un solo campo `matricula` porque no hay
+columna propia (flageado en `Registro.tsx:103`). Se parte en tres campos de verdad:
+
+```json
+// POST /registro — campos nuevos, los tres opcionales POR AHORA
+{ "nombre": "Ana", "...": "...",
+  "matricula": "1234",
+  "jurisdiccion": "Buenos Aires",
+  "profesion": "Nutricionista" }
+```
+
+- **`matricula`** — pasa a ser **solo el número** (F-03). El backend NO valida numérico: hay matrículas
+  viejas guardadas como `"CABA · N° 1234"` y una validación estricta rompería el padrón existente. La
+  restricción a dígitos la hace el front en el input.
+- **`jurisdiccion`** (`string`) — provincia + CABA. Columna propia; deja de viajar pegada a la matrícula.
+- **`profesion`** (`string`) — uno de los 76 valores de `Profesiones.xlsx`. Se valida contra la tabla:
+  un valor que no esté en la lista da `422` (`UNPROCESSABLE`), con el nombre adentro del mensaje.
+
+**Los tres son opcionales en el contrato a propósito.** Prod está vivo y recibiendo registros: si el
+backend los exigiera antes de que Fran despliegue, el alta se cae con 400. Pasan a obligatorios en un
+segundo paso, cuando el front ya los mande (queda anotado en el DIARIO al hacerlo).
+
+**`GET /profesiones` — público, sin token.** La lista sale de la DB (seed Flyway), no del front:
+
+```json
+[ { "id": "...", "nombre": "Acompañante terapéutico" }, { "id": "...", "nombre": "Nutricionista" } ]
+```
+
+`jurisdiccion` **no** tiene endpoint: las 24 jurisdicciones argentinas son una constante, no un dato
+del negocio. Esa lista la puede tener el front.
+
+`GET /me` y la ficha del admin (`NutricionistaResponse`) suman `profesion` y `jurisdiccion`, ambos
+nullable (las altas viejas no los tienen).
+
+### S-12 · Comisión 1 % + `comisionPct` en `/me` — `contrato` → alimenta F-10
+
+`GET /me` suma **`comisionPct`** al lado del `descuentoPct` que ya viajaba:
+
+```json
+{ "id": "...", "nombre": "Ana", "estadoValidacion": "APROBADA",
+  "descuentoPct": 15.00, "comisionPct": 1.00 }
+```
+
+`null` para el admin, que no emite bonos. El default de alta pasa de **10 % a 1 %**
+(`NUTRICIONISTA_COMISION_PCT_DEFAULT`). ⚠️ Cambia con qué % **nace** una profesional nueva; a las tres
+cuentas que ya existen en prod no las toca — esas las ajusta el admin desde la ficha.
+
+### S-13 · Solapa PANEL del admin — `contrato` → alimenta F-24
+
+Mismo shape que el dashboard de la profesional, consolidado sobre **todas**. El admin sí ve
+facturación (es con lo que liquida), así que suma los campos de plata que el panel de ella no tiene.
+
+```json
+// GET /admin/dashboard/resumen
+{ "recetasPendientes": 12, "recetasAplicadasMes": 30, "recetasVencidasMes": 5,
+  "comisionMesActual": 41000.00,
+  "facturadoMesActual": 980000.00,
+  "profesionalesActivos": 14, "profesionalesPendientes": 3,
+  "ultimasRecetas": [ "...AdminRecetaResponse (8)" ] }
+
+// GET /admin/dashboard/estadisticas?meses=6 — cronológico ascendente, igual que el de ella
+{ "meses": [ { "year": 2026, "month": 9, "recetasEmitidas": 40, "recetasAplicadas": 28,
+               "comisionTotal": 91935.00, "facturadoTotal": 2100000.00 } ] }
+```
+
+El cierre consolidado por profesional **ya existe** y no se toca:
+`GET /admin/liquidaciones/consolidado?desde=&hasta=`.
+
+### S-14 · Solapa BONOS del admin — `contrato` → alimenta F-25
+
+```
+GET /admin/recetas?estado=&nutricionistaId=&q=&desde=&hasta=&page=&size=
+```
+
+Devuelve `PageResponse<AdminRecetaResponse>` = el `RecetaResponse` de siempre **+ un bloque
+`nutricionista`**, para poder mostrar de quién es cada bono:
+
+```json
+{ "id": "...", "codigo": "RX-7K2M4X", "estado": "APLICADA", "descuentoPct": 20.00,
+  "paciente": { "...": "..." }, "items": [ "..." ],
+  "nutricionista": { "id": "...", "nombre": "Ana", "apellido": "García", "email": "ana@x.com" },
+  "conversion": { "ordenNumero": 306, "comisionPct": 1.00, "comisionMonto": 3150.00,
+                  "ordenTotal": 315000.00 } }
+```
+
+`conversion.ordenTotal` viaja **solo acá**: en los endpoints de la profesional sigue sin existir.
+
+El listado del admin **no** trae `waMeUrl` ni `notificaciones`: el link de WhatsApp lo manda la
+profesional desde su propio teléfono. El resto de los campos tienen los mismos nombres que
+`RecetaResponse`, así que el tipo del front se reusa tal cual.
+
+Los dos listados ahora salen ordenados por `emitidaAt` descendente (antes el de ella no tenía orden
+explícito y quedaba a criterio del motor).
+
+**⚠️ Contract drift que se arregla con esto:** este doc venía documentando
+`GET /recetas?estado=&pacienteId=&desde=&hasta=&q=` pero el backend **solo implementa `estado`**. Los
+otros cuatro filtros no existen todavía. S-14 los implementa **en los dos endpoints a la vez** (el de
+ella y el del admin) para que F-25 pueda "replicar los filtros del user" sobre algo real:
+
+| Filtro | Qué hace |
+|---|---|
+| `estado` | `PENDIENTE\|APLICADA\|VENCIDA\|ANULADA\|LIQUIDADA` (LIQUIDADA = convertida y ya pagada la comisión) |
+| `q` | código del bono o nombre/apellido del paciente (unaccent, contains) |
+| `pacienteId` | solo en `/recetas` |
+| `nutricionistaId` | solo en `/admin/recetas` — es el filtro "Profesional" de F-25 |
+| `desde` / `hasta` | `LocalDate` sobre `emitidaAt`, inclusive |
+
+El dropdown de profesionales de F-25 se puebla con `GET /admin/nutricionistas?estado=APROBADA`, que ya
+existe.
+
+### S-16 · Términos de uso — **hecho, falta desplegar** → alimenta F-07
+
+URL definitiva: **`https://bonosapp.com.ar/terminos`**. Página estática (`static/terminos.html`,
+generada del .docx del cliente) servida por nginx en el mismo dominio: no abre una pestaña a otro
+host ni pega contra el API. Fran linkea eso desde el registro, sin más.
+
+### S-07 · Cupón no combinable — **hecho, falta desplegar** → alimenta F-16
+
+TiendaNube crea los cupones **combinables por defecto** (`combines_with_other_discounts` no viajaba
+en el payload), así que hasta hoy todos los bonos se sumaban a las promos vigentes de la tienda.
+
+`POST /recetas` acepta un campo nuevo, opcional:
+
+```json
+{ "pacienteId": "...", "items": [ "..." ], "combinable": false }
+```
+
+Ausente o `false` → el cupón **no** se combina, que es el default que pide F-16 (checkbox
+destildado). `RecetaResponse` devuelve `combinable` para que el detalle del bono lo muestre.
+⚠️ Los bonos **ya emitidos** quedaron combinables en la tienda: esto sólo aplica a los nuevos.
+
+### S-17 · URL de la tienda — `contrato` → alimenta F-17
+
+`TIENDANUBE_STORE_URL` pasa a **`https://www.thebcompany.com.ar`** en el `.env` del VPS. El valor lo
+consumen los templates del mail y el `WaMeLinkBuilder`; **nadie lo hardcodea**, ni el front ni los
+templates: sale de config.
+
+### S-09 · "Olvidé mi contraseña" — **hecho, con UI** → `/recuperar-password`
+
+```
+POST /api/v1/password/recuperar     (público, sin token)
+{ "email": "ana@x.com" }
+→ 204 SIEMPRE
+```
+
+**Responde 204 exista o no la cuenta, y esté o no activa.** Un 404 acá convierte el endpoint en un
+oráculo para averiguar qué mails están registrados en la plataforma. Rate limit por IP: comparte el
+cupo de `/registro` (10 por minuto).
+
+El link de un solo uso lo emite y lo valida **Keycloak** (`UPDATE_PASSWORD`, 30 minutos de vigencia),
+así que la pantalla donde se tipea la contraseña nueva es la de Keycloak, no la SPA. No hay tokens
+propios que guardar ni invalidar.
+
+Sólo se manda el mail si la cuenta está **APROBADA y activa**: a una pendiente de aprobación,
+cambiarle la contraseña no la deja entrar, y el mail sólo la haría creer que sí.
+
+**La UI la hizo Santi** (2026-09-21, por pedido explícito): link "¿Olvidaste tu contraseña?" en el
+login y la pantalla `/recuperar-password`. Es lo único que Santi tocó en `frontend/`, y se acotó a
+eso a propósito para no pisar F-01..F-25.
+
+### S-10 · Verificación de mail — **hecho, falta desplegar** → ⚠️ toca el registro en vivo
+
+Al registrarse, la persona recibe un mail con un link para validar su casilla. **El alta sigue
+quedando `PENDIENTE` igual**: la verificación va en paralelo a la aprobación del admin, no la
+reemplaza. Lo que cambia es que, verificada o no, **sin validar el mail no puede loguearse** aunque
+el admin la apruebe (el realm rechaza el login con `Account is not fully set up`).
+
+```
+POST /api/v1/registro/reenviar-verificacion     (público, sin token)
+{ "email": "ana@x.com" }
+→ 204 SIEMPRE
+```
+
+Mismo criterio que el recupero: 204 exista o no la cuenta, y comparte el cupo de rate limit de
+`/registro`. El link vale 24 h.
+
+`GET /admin/nutricionistas` suma **`emailVerificado`** (boolean) a cada fila, para que el admin
+entienda por qué alguien aprobado todavía no puede entrar. Se resuelve con **una sola** consulta a
+Keycloak por página.
+
+⚠️ **Detalle de soporte:** el link abre una pantalla de confirmación y hay que **completarla**. Si la
+persona abre el mail y no confirma, queda con la acción pendiente y el login sigue bloqueado. Es a
+propósito (evita que un escáner de mails dé por validada la casilla), pero es la explicación de un
+"ya le di al link y no entro".
+
+⚠️ **Para Fran:** el registro debería avisar en pantalla que hay que validar el mail, y conviene un
+"reenviar" a mano contra este endpoint. No hay tarea `F-xx` para eso tampoco.
+
+### Suelto: el mensaje de error del CUIT (parte de F-04) es del backend
+
+F-04 pide que el error del CUIT no muestre guiones. Ese texto sale del backend
+(`RegistroRequest`: *"El CUIT debe tener 11 dígitos (ej. 27-12345678-4)"*), así que **lo cambia Santi**,
+no Fran. Pasa a *"El CUIT debe tener 11 dígitos, sin puntos ni guiones (ej. 27123456784)"*. El regex
+sigue aceptando guiones: hay CUITs ya guardados que entraron con ese formato.
+
+---
+
 ## Mapa front (para Fran)
 
 | Página | Endpoints |
 |---|---|
 | Login | Keycloak ROPC (`bonosapp-frontend`) + `GET /me` |
-| Registro (pública) | `POST /registro` |
+| Registro (pública) | `POST /registro` + `GET /profesiones` (desplegable, S-11) |
 | Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
 | Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |
 | Pacientes | CRUD `/pacientes` |
 | Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` (trae `precioMin`/`precioMax` para el slider) + el descuento de `GET /me` + `POST /recetas` |
-| Recetas | `GET /recetas` + detalle + anular/reenviar |
+| Recetas | `GET /recetas?estado=&q=&pacienteId=&desde=&hasta=` + detalle + anular/reenviar |
 | Productos (admin) | `GET /admin/productos` + `GET /admin/productos/resumen` |
 | Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar + parámetros + desactivar/reactivar/borrar/password |
 | Admin Integraciones (`/integraciones`) | `GET /admin/integraciones/estado` + `POST /admin/tiendanube/resync-cupones` + `POST /admin/contabilium/sync-productos` (panel de resiliencia, solo admin; página hecha, degrada en stub) |
+| Admin PANEL (solapa nueva, F-24) | `GET /admin/dashboard/resumen` + `GET /admin/dashboard/estadisticas?meses=6` (S-13) |
+| Admin BONOS (solapa nueva, F-25) | `GET /admin/recetas?estado=&nutricionistaId=&q=&desde=&hasta=` (S-14) + `GET /admin/nutricionistas?estado=APROBADA` para el dropdown |

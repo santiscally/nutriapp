@@ -13,7 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Aplica el rate limit por IP a los endpoints públicos POST ({@code /registro}, {@code /webhooks/*}).
+ * Aplica el rate limit por IP a los endpoints públicos POST ({@code /registro},
+ * {@code /registro/reenviar-verificacion}, {@code /password/recuperar}, {@code /webhooks/*}).
  * Los preflight OPTIONS y cualquier GET pasan sin consumir tokens. Al superar el límite responde
  * 429 con el {@link ApiError} uniforme + cabecera {@code Retry-After}, para que el frontend surfacee
  * el mensaje igual que el resto de los errores.
@@ -53,7 +54,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (uri.startsWith("/api/v1/webhooks")) {
             return RateLimitProperties.BUCKET_WEBHOOKS;
         }
-        if (uri.equals("/api/v1/registro")) {
+        // Los tres comparten cupo: son POST públicos que terminan pegándole a Keycloak, y sin
+        // límite alcanzan para inundarle la casilla a cualquiera que esté registrado.
+        if (uri.equals("/api/v1/registro")
+                || uri.equals("/api/v1/registro/reenviar-verificacion")
+                || uri.equals("/api/v1/password/recuperar")) {
             return RateLimitProperties.BUCKET_REGISTRO;
         }
         return null;

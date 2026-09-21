@@ -86,6 +86,7 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
         body.put("type", "percentage");
         body.put("value", request.valuePct().setScale(2, RoundingMode.HALF_UP).toPlainString());
         body.put("max_uses", 1);
+        body.put("combines_with_other_discounts", request.combinesWithOtherDiscounts());
         if (request.startDate() != null) {
             body.put("start_date", request.startDate().toString());
         }
@@ -280,10 +281,10 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
                 variants.add(new Variant(v.id(), v.sku()));
             }
         }
-        return new Product(d.id(), nombreEs(d.name()), variants);
+        return new Product(d.id(), nombreEs(d.name()), nombreEs(d.handle()), variants);
     }
 
-    /** El nombre viene por idioma ({@code {"es": "..."}}); la tienda del cliente es sólo es-AR. */
+    /** Nombre y handle vienen por idioma ({@code {"es": "..."}}); la tienda del cliente es sólo es-AR. */
     private static String nombreEs(Map<String, String> name) {
         if (name == null || name.isEmpty()) {
             return null;
@@ -310,7 +311,8 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
     private record CouponRefDto(Long id, String code) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private record ProductDto(long id, Map<String, String> name, List<VariantDto> variants) {}
+    private record ProductDto(long id, Map<String, String> name, Map<String, String> handle,
+                             List<VariantDto> variants) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record VariantDto(long id, String sku) {}

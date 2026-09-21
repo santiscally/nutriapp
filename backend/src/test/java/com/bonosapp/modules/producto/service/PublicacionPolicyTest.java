@@ -67,6 +67,41 @@ class PublicacionPolicyTest {
         assertThat(policy.motivoNoPublicable(p, MAPEADO)).isEqualTo("Inactivo en Contabilium");
     }
 
+    /**
+     * S-01: en el maestro nuevo las dos columnas se contradicen (1497 filas BLOQUEADO y todas en
+     * ESTADO BONOSAPP = SI). La que decide qué se receta es la nueva.
+     */
+    @Test
+    void estadoBonosappMandaSobreElBloqueoDeTbc() {
+        Producto p = producto();
+        p.setBloqueadoMaestro(true);
+        p.setEstadoBonosapp(true);
+
+        assertThat(policy.esPublicable(p, MAPEADO)).isTrue();
+    }
+
+    @Test
+    void estadoBonosappEnNoSacaElProductoDelBuscador() {
+        Producto p = producto();
+        p.setBloqueadoMaestro(false);
+        p.setEstadoBonosapp(false);
+
+        assertThat(policy.esPublicable(p, MAPEADO)).isFalse();
+        assertThat(policy.motivoNoPublicable(p, MAPEADO))
+                .isEqualTo("Marcado ESTADO BONOSAPP = NO en el maestro");
+    }
+
+    /** Sin la columna nueva (maestro viejo) sigue mandando el ESTADO de TBC. */
+    @Test
+    void sinEstadoBonosappSigueMandandoElBloqueo() {
+        Producto p = producto();
+        p.setBloqueadoMaestro(true);
+
+        assertThat(policy.esPublicable(p, MAPEADO)).isFalse();
+        assertThat(policy.motivoNoPublicable(p, MAPEADO))
+                .isEqualTo("Bloqueado en el maestro de artículos");
+    }
+
     /** El motivo devuelve la PRIMERA regla que bloquea: el precio se corrige antes que la tienda. */
     @Test
     void conVariasReglasRotasElMotivoEsElPrimero() {

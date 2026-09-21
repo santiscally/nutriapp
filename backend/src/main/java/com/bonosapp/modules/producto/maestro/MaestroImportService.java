@@ -158,6 +158,8 @@ public class MaestroImportService {
         cambio |= !Objects.equals(p.getDescripcionWeb(), f.descripcionWeb());
         cambio |= !Objects.equals(p.getImagenUrl(), imagenUrl);
         cambio |= p.isBloqueadoMaestro() != f.bloqueado();
+        cambio |= f.estadoBonosapp() != null && !f.estadoBonosapp().equals(p.getEstadoBonosapp());
+        cambio |= f.descuentoPct() != null && !mismoPct(p.getDescuentoPct(), f.descuentoPct());
         cambio |= !p.getTags().equals(tags);
 
         p.setDepartamento(departamento);
@@ -167,6 +169,13 @@ public class MaestroImportService {
         p.setDescripcionWeb(f.descripcionWeb());
         p.setImagenUrl(imagenUrl);
         p.setBloqueadoMaestro(f.bloqueado());
+        // Sólo si la planilla trae la columna: un maestro viejo no debe borrar lo que ya se cargó.
+        if (f.estadoBonosapp() != null) {
+            p.setEstadoBonosapp(f.estadoBonosapp());
+        }
+        if (f.descuentoPct() != null) {
+            p.setDescuentoPct(f.descuentoPct());
+        }
         // Reemplazo, no merge: la planilla es la fuente de verdad de los tags. Si TBC borra un tag,
         // tiene que desaparecer del buscador; mergeando quedaría para siempre.
         if (!p.getTags().equals(tags)) {
@@ -176,6 +185,11 @@ public class MaestroImportService {
         p.setMaestroSyncedAt(ahora);
         cambio |= publicacionPolicy.aplicar(p, catalogoMapeado);
         return cambio;
+    }
+
+    /** BigDecimal.equals mira la escala: 20 y 20.00 son el mismo descuento y no son "un cambio". */
+    private static boolean mismoPct(java.math.BigDecimal actual, java.math.BigDecimal nuevo) {
+        return actual != null && actual.compareTo(nuevo) == 0;
     }
 
     private Set<ProductoTag> tags(MaestroFila f) {

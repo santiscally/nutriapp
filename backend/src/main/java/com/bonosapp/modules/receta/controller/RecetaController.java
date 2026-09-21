@@ -7,10 +7,12 @@ import com.bonosapp.modules.receta.entity.EstadoReceta;
 import com.bonosapp.modules.receta.service.RecetaService;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.LocalDate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,8 +34,12 @@ public class RecetaController {
     @PreAuthorize("hasAuthority('recetas:read')")
     public PageResponse<RecetaResponse> list(
             @RequestParam(required = false) EstadoReceta estado,
+            @RequestParam(required = false) UUID pacienteId,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @PageableDefault(size = 20) Pageable pageable) {
-        return PageResponse.of(service.search(estado, pageable));
+        return PageResponse.of(service.search(estado, pacienteId, q, desde, hasta, pageable));
     }
 
     @GetMapping("/{id}")

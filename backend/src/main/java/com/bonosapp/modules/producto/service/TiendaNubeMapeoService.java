@@ -73,21 +73,28 @@ public class TiendaNubeMapeoService {
                         porSku.put(v.sku().trim(), v);
                     }
                 }
-                Map<String, Long> productIdPorSku = productIdPorSku(tnPage.items());
+                Map<String, Product> productoPorSku = productoPorSku(tnPage.items());
                 List<Producto> locales = porSku.isEmpty()
                         ? List.of()
                         : repo.findBySkuInAndDeletedAtIsNull(porSku.keySet());
                 List<Producto> modificados = new ArrayList<>();
                 for (Producto local : locales) {
                     Variant v = porSku.remove(local.getSku().trim());
-                    Long productId = productIdPorSku.get(v.sku().trim());
+                    Product tn = productoPorSku.get(v.sku().trim());
+                    Long productId = tn == null ? null : tn.id();
+                    String handle = tn == null ? null : tn.handle();
                     if (Objects.equals(local.getTiendanubeVariantId(), v.id())
-                            && Objects.equals(local.getTiendanubeProductId(), productId)) {
+                            && Objects.equals(local.getTiendanubeProductId(), productId)
+                            && (handle == null || handle.equals(local.getTiendanubeHandle()))) {
                         yaMapeados++;
                         continue;
                     }
                     local.setTiendanubeProductId(productId);
                     local.setTiendanubeVariantId(v.id());
+                    // Null no pisa: la tienda puede no devolverlo y el slug guardado sigue sirviendo.
+                    if (handle != null) {
+                        local.setTiendanubeHandle(handle);
+                    }
                     modificados.add(local);
                 }
                 if (!modificados.isEmpty()) {
@@ -137,15 +144,15 @@ public class TiendaNubeMapeoService {
         return cambiados.size();
     }
 
-    private static Map<String, Long> productIdPorSku(List<Product> items) {
-        Map<String, Long> ids = new LinkedHashMap<>();
+    private static Map<String, Product> productoPorSku(List<Product> items) {
+        Map<String, Product> porSku = new LinkedHashMap<>();
         for (Product p : items) {
             for (Variant v : p.variants()) {
                 if (v.sku() != null && !v.sku().isBlank()) {
-                    ids.put(v.sku().trim(), p.id());
+                    porSku.put(v.sku().trim(), p);
                 }
             }
         }
-        return ids;
+        return porSku;
     }
 }

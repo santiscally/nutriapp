@@ -21,11 +21,12 @@ del override extra `docker-compose.edge.yml`.
 
 Topología (single domain, path-based):
 
-| Ruta      | Destino                          |
-| --------- | -------------------------------- |
-| `/`       | SPA estática (`frontend/dist`)   |
-| `/api/`   | backend Spring Boot (`/api/v1`)  |
-| `/auth/`  | Keycloak (`KC_HTTP_RELATIVE_PATH=/auth`) |
+| Ruta         | Destino                          |
+| ------------ | -------------------------------- |
+| `/`          | SPA estática (`frontend/dist`)   |
+| `/terminos`  | Términos de uso (`static/terminos.html`, fuera del bundle de la SPA) |
+| `/api/`      | backend Spring Boot (`/api/v1`)  |
+| `/auth/`     | Keycloak (`KC_HTTP_RELATIVE_PATH=/auth`) |
 
 > **TLS: lo termina Caddy.** En el VPS actual el paso 1 (certbot / `nginx/certs/`) **no se usa**:
 > Caddy emite y renueva solo por ACME. El material de bring-your-own-cert queda documentado para
@@ -173,6 +174,34 @@ Verificación:
 > `KC_PROXY: edge` (del compose base) queda deprecado en KC 25 y loguea un WARN; funciona igual
 > porque el override agrega `KC_PROXY_HEADERS: xforwarded`. En KC 26 hay que sacarlo.
 
+### 6. Config del realm que el import no puede aplicar
+```
+bash scripts/keycloak-config.sh --dry-run    # ver qué haría
+bash scripts/keycloak-config.sh              # aplicar
+```
+Aplica la **protección de fuerza bruta** (S-08: bloqueo temporal tras 10 intentos fallidos), el
+**SMTP del realm** (S-09: sin esto el mail de "olvidé mi contraseña" no sale) y la **verificación de
+mail obligatoria** (S-10). Es idempotente, así que se corre en cada deploy sin pensarlo.
+
+> **🔴 El orden importa y el script lo respeta.** Las cuentas creadas por la Admin API nacen con
+> `emailVerified=false`. Activar `verifyEmail` sin tocarlas **deja a TODAS afuera en el próximo
+> login**. El script primero las marca como verificadas y recién después exige la verificación; si no
+> puede hacer el backfill (falta python3), aborta antes de tocar el realm. Verificar en la salida que
+> diga *"Marcando como verificadas…"* o *"Todas las cuentas ya figuran con el mail verificado"*, y
+> **probar un login real después de correrlo**.
+
+> **Por qué hace falta un paso aparte:** `--import-realm` corre **sólo la primera vez**. En un
+> entorno que ya arrancó, editar `keycloak/realms/bonosapp-realm.json` no cambia nada — el realm
+> vivo se queda como está. El script habla con la Admin API de Keycloak desde un contenedor
+> enganchado a su namespace de red, así que no necesita que Keycloak publique puerto.
+
+Verificación (la imprime el script solo): `failureFactor: 10`, `bruteForceProtected: true`,
+`permanentLockout: false` y un `smtpServer` con host/from poblados.
+
+> **Ojo con el SMTP:** el script sólo lo toca si `MAIL_MODE=live` y hay `MAIL_SMTP_HOST`. Con el
+> realm sin SMTP, `POST /api/v1/password/recuperar` responde 204 igual y **el mail no sale**: la
+> degradación es silenciosa por diseño (no delatar qué cuentas existen), así que verificar acá.
+
 > **Consola admin de Keycloak NO es pública:** nginx bloquea `/auth/admin` y `/auth/realms/master`
 > (devuelve 404) — la app usa la Admin API server-side por la red interna, no la consola. Para
 > entrar a la consola manualmente: túnel SSH al host y abrir `http://localhost:8081/auth/admin`
@@ -230,9 +259,10 @@ Caddy (emite y renueva solo por ACME).
 
 ```
 internet :443 → edge-caddy-1 (TLS, red `web`) → bonosapp-nginx:80 (red `web` + `bonosapp-net`)
-                                                   ├── /      SPA (frontend/dist)
-                                                   ├── /api/  backend:8080   ┐ sólo en
-                                                   └── /auth/ keycloak:8080  ┘ bonosapp-net
+                                                   ├── /          SPA (frontend/dist)
+                                                   ├── /terminos  static/terminos.html
+                                                   ├── /api/      backend:8080   ┐ sólo en
+                                                   └── /auth/     keycloak:8080  ┘ bonosapp-net
 ```
 
 `db`, `keycloak` y `backend` **no** están en `web`: los otros sitios del VPS no tienen ruta hacia

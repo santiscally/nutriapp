@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,9 @@ public class RecetaService {
 
     private static final ZoneId AR = ZoneId.of("America/Argentina/Buenos_Aires");
 
+    /** Borde superior cuando no hay filtro de fecha. */
+    private static final Instant SIN_TOPE = Instant.parse("9999-12-31T00:00:00Z");
+
     private final RecetaRepository repo;
     private final PacienteRepository pacienteRepository;
     private final ProductoRepository productoRepository;
@@ -58,9 +62,24 @@ public class RecetaService {
     private final WaMeLinkBuilder waMeLinkBuilder;
 
     @Transactional(readOnly = true)
-    public Page<RecetaResponse> search(EstadoReceta estado, Pageable pageable) {
+    public Page<RecetaResponse> search(EstadoReceta estado, UUID pacienteId, String q,
+                                      LocalDate desde, LocalDate hasta, Pageable pageable) {
         UUID nutriId = nutricionistaService.getCurrent().getId();
-        return repo.search(nutriId, estado, pageable).map(this::toResponse);
+        return repo.search(nutriId, estado, pacienteId, q, desdeInclusive(desde), hastaInclusive(hasta),
+                pageable).map(this::toResponse);
+    }
+
+    /**
+     * Ventana [desde, hasta] en horario argentino, con los dos extremos inclusive. Sin filtro
+     * devuelve los bordes del universo y no null: un parámetro temporal en null hace que Postgres
+     * no pueda inferir su tipo y la query se cae.
+     */
+    public static Instant desdeInclusive(LocalDate desde) {
+        return desde == null ? Instant.EPOCH : desde.atStartOfDay(AR).toInstant();
+    }
+
+    public static Instant hastaInclusive(LocalDate hasta) {
+        return hasta == null ? SIN_TOPE : hasta.plusDays(1).atStartOfDay(AR).toInstant();
     }
 
     @Transactional(readOnly = true)
@@ -90,18 +109,17 @@ public class RecetaService {
         receta.setNutricionistaId(nutri.getId());
         receta.setPacienteId(paciente.getId());
         receta.setEstado(EstadoReceta.PENDIENTE);
-        // El descuento lo define el admin, nunca la nutricionista. C-01: usa el % propio de ella
-        // si lo tiene seteado, y si no el global. Se snapshotea acá — cambiar el % después no
-        // reescribe las recetas ya emitidas.
-        receta.setDescuentoPct(parametrosNegocioService.descuentoPctDe(nutri));
+        receta.setCombinable(req.combinableOrDefault());
         Instant now = Instant.now();
         receta.setEmitidaAt(now);
         receta.setVenceAt(LocalDate.now(AR).plusDays(props.vigenciaDias()));
 
+        List<Producto> productos = new ArrayList<>();
         for (RecetaCreateRequest.Item itemReq : req.items()) {
             Producto producto = productoRepository.findById(itemReq.productoId())
                     .filter(p -> !p.isDeleted())
                     .orElseThrow(() -> new NotFoundException("Producto no encontrado: " + itemReq.productoId()));
+            productos.add(producto);
             RecetaItem item = new RecetaItem();
             item.setProductoId(producto.getId());
             item.setCantidad(itemReq.cantidad());
@@ -109,6 +127,8 @@ public class RecetaService {
             item.setIndicaciones(itemReq.indicaciones());
             receta.addItem(item);
         }
+        // Se snapshotea acá: cambiar el % después no reescribe los bonos ya emitidos.
+        receta.setDescuentoPct(descuentoDe(productos, nutri));
 
         cuponSyncService.registrar(receta);
 
@@ -120,6 +140,28 @@ public class RecetaService {
         log.info("Receta {} emitida por nutri {} (cupon: {}) — notificaciones encoladas",
                 saved.getCodigo(), nutri.getEmail(), saved.getCuponSyncEstado());
         return toResponseDetalle(saved);
+    }
+
+    /**
+     * S-02: el descuento es del producto, no de la profesional. Mientras el maestro no esté
+     * importado ningún producto lo tiene cargado y cae al % de ella, que es como venía funcionando.
+     *
+     * <p>Dos productos con % distintos no se pueden emitir juntos: el cupón de TiendaNube es un
+     * solo porcentaje y no hay forma de honrar los dos.
+     */
+    private BigDecimal descuentoDe(List<Producto> productos, Nutricionista nutri) {
+        List<BigDecimal> distintos = new ArrayList<>();
+        for (Producto p : productos) {
+            BigDecimal pct = p.getDescuentoPct();
+            if (pct != null && distintos.stream().noneMatch(d -> d.compareTo(pct) == 0)) {
+                distintos.add(pct);
+            }
+        }
+        if (distintos.size() > 1) {
+            throw new ConflictException(
+                    "Un bono no puede combinar productos con distinto % de descuento");
+        }
+        return distintos.isEmpty() ? parametrosNegocioService.descuentoPctDe(nutri) : distintos.get(0);
     }
 
     /**
@@ -231,6 +273,7 @@ public class RecetaService {
                 paciente != null ? pacienteMapper.toResponse(paciente) : null,
                 items,
                 receta.getDescuentoPct(),
+                receta.isCombinable(),
                 receta.getEmitidaAt(),
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),

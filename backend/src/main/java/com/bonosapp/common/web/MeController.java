@@ -52,6 +52,18 @@ public class MeController {
                 .map(Nutricionista::getDescuentoPct)
                 .orElse(null);
 
+        BigDecimal comisionPct = nutricionistaService.findCurrent()
+                .map(Nutricionista::getComisionPct)
+                .orElse(null);
+
+        String profesion = nutricionistaService.findCurrent()
+                .map(Nutricionista::getProfesion)
+                .orElse(null);
+
+        String jurisdiccion = nutricionistaService.findCurrent()
+                .map(Nutricionista::getJurisdiccionMatricula)
+                .orElse(null);
+
         return new MeResponse(
                 AuthUtils.currentUserId().map(Object::toString).orElse(null),
                 nombre,
@@ -61,7 +73,10 @@ public class MeController {
                 authorities,
                 estadoValidacion,
                 foto,
-                descuentoPct);
+                descuentoPct,
+                comisionPct,
+                profesion,
+                jurisdiccion);
     }
 
     public record MeResponse(
@@ -75,6 +90,11 @@ public class MeController {
             /** C-17: data URI del avatar, o null si no cargó foto. */
             String foto,
             /** % de descuento propio. null para el admin, que no emite recetas (C-07). */
-            BigDecimal descuentoPct
+            BigDecimal descuentoPct,
+            /** % de comisión propio. null para el admin. Lo muestra el perfil (F-10). */
+            BigDecimal comisionPct,
+            /** S-11. null en las altas anteriores a V014 y para el admin. */
+            String profesion,
+            String jurisdiccion
     ) {}
 }

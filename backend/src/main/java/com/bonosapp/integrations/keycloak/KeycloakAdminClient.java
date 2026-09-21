@@ -36,6 +36,9 @@ public class KeycloakAdminClient {
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
+    /** Tope del padrón que se trae de una. Muy por encima de lo que el cliente va a tener. */
+    private static final int MAX_USUARIOS = 1000;
+
     private final KeycloakAdminProperties props;
     private final RestClient http;
 
@@ -126,6 +129,115 @@ public class KeycloakAdminClient {
                     .toBodilessEntity();
         } catch (HttpClientErrorException ex) {
             throw new KeycloakAdminException("No se pudo cambiar la contraseña en Keycloak", ex);
+        }
+    }
+
+    /**
+     * S-09 — manda el mail de "definí tu contraseña" con un link de un solo uso que arma y valida
+     * Keycloak. El correo sale por el SMTP del realm, no por el de la app.
+     *
+     * <p>{@code lifespan} en segundos: el link vence solo. Sin {@code redirect_uri} Keycloak
+     * termina en su propia pantalla de confirmación, que es lo que queremos mientras el login del
+     * front sea ROPC y no haya a dónde volver con un código.
+     *
+     * @throws KeycloakAdminException si Keycloak no lo pudo mandar (típico: realm sin SMTP).
+     */
+    public void enviarMailDeReseteo(String userId, int lifespanSegundos) {
+        enviarAcciones(userId, List.of("UPDATE_PASSWORD"), lifespanSegundos,
+                "No se pudo enviar el mail de recuperación");
+    }
+
+    /** S-10 — mail con el link de "validá tu mail". Misma mecánica que el de recupero. */
+    public void enviarMailDeVerificacion(String userId, int lifespanSegundos) {
+        enviarAcciones(userId, List.of("VERIFY_EMAIL"), lifespanSegundos,
+                "No se pudo enviar el mail de verificación");
+    }
+
+    private void enviarAcciones(String userId, List<String> acciones, int lifespanSegundos, String error) {
+        try {
+            http.put()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users/{id}/execute-actions-email")
+                            .queryParam("lifespan", lifespanSegundos)
+                            .build(props.realm(), userId))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(acciones)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException(error, ex);
+        }
+    }
+
+    /**
+     * S-10 — qué mails del realm están verificados, en <b>una sola</b> llamada: la bandeja del admin
+     * muestra 20 filas por página y una consulta por fila sería una tormenta contra Keycloak.
+     *
+     * <p>Ante cualquier falla devuelve vacío en vez de romper: el estado de verificación es un dato
+     * de color en la bandeja, no puede tumbar el listado.
+     */
+    public java.util.Set<String> emailsVerificados() {
+        try {
+            List<Map<String, Object>> usuarios = http.get()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users")
+                            .queryParam("briefRepresentation", true)
+                            .queryParam("max", MAX_USUARIOS)
+                            .build(props.realm()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .retrieve()
+                    .body(new org.springframework.core.ParameterizedTypeReference<>() {});
+            if (usuarios == null) {
+                return java.util.Set.of();
+            }
+            java.util.Set<String> verificados = new java.util.HashSet<>();
+            for (Map<String, Object> u : usuarios) {
+                if (Boolean.TRUE.equals(u.get("emailVerified")) && u.get("email") instanceof String email) {
+                    verificados.add(email.toLowerCase(java.util.Locale.ROOT));
+                }
+            }
+            return verificados;
+        } catch (Exception ex) {
+            log.warn("No se pudo leer el estado de verificación de los mails: {}", ex.getMessage());
+            return java.util.Set.of();
+        }
+    }
+
+    /** ¿Ese mail está verificado? Para una fila sola; para una página entera, {@link #emailsVerificados()}. */
+    public boolean estaVerificado(String email) {
+        try {
+            List<Map<String, Object>> encontrados = http.get()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users")
+                            .queryParam("email", email)
+                            .queryParam("exact", true)
+                            .build(props.realm()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .retrieve()
+                    .body(new org.springframework.core.ParameterizedTypeReference<>() {});
+            return encontrados != null && !encontrados.isEmpty()
+                    && Boolean.TRUE.equals(encontrados.get(0).get("emailVerified"));
+        } catch (Exception ex) {
+            log.warn("No se pudo leer si {} verificó su mail: {}", email, ex.getMessage());
+            return false;
+        }
+    }
+
+    /** Id del usuario del realm por email exacto, o vacío si no existe. */
+    public java.util.Optional<String> buscarUserIdPorEmail(String email) {
+        try {
+            List<Map<String, Object>> encontrados = http.get()
+                    .uri(uri -> uri.path("/admin/realms/{realm}/users")
+                            .queryParam("email", email)
+                            .queryParam("exact", true)
+                            .build(props.realm()))
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken())
+                    .retrieve()
+                    .body(new org.springframework.core.ParameterizedTypeReference<>() {});
+            if (encontrados == null || encontrados.isEmpty()) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.ofNullable((String) encontrados.get(0).get("id"));
+        } catch (HttpClientErrorException ex) {
+            throw new KeycloakAdminException("No se pudo buscar el usuario en Keycloak", ex);
         }
     }
 

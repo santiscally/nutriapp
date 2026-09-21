@@ -32,6 +32,241 @@
 
 ## Entradas
 
+## 2026-09-21 (5) — Santi — auth/frontend (S-10 verificación de mail + la UI de recupero, verificadas sobre el stack)
+**Qué:**
+- **S-10** · al registrarse sale un mail de "validá tu mail" (24 h). La verificación va **en paralelo**
+  a la aprobación del admin, no la reemplaza: el alta sigue quedando `PENDIENTE`, pero sin validar la
+  casilla no se puede entrar aunque el admin apruebe. `POST /api/v1/registro/reenviar-verificacion`
+  (público, 204 siempre) para cuando el mail no llegó, y `GET /admin/nutricionistas` suma
+  `emailVerificado` para que el admin entienda por qué alguien aprobado no entra.
+- **UI de recupero** (S-09): link "¿Olvidaste tu contraseña?" en el login + pantalla
+  `/recuperar-password`. **Es lo único que toqué en `frontend/`**, por pedido explícito del usuario, y
+  lo acoté a eso a propósito para no pisar F-01..F-25.
+
+**Por qué en paralelo y no antes del admin:** si el registro no apareciera en la bandeja hasta
+verificar, un mail que cae en Promociones deja la solicitud invisible para todos — ni la persona ni el
+admin se enteran de que existe. Así el admin la ve igual, marcada, y puede actuar.
+
+**El riesgo que había que desactivar antes de tocar nada:** las cuentas creadas por la Admin API nacen
+con `emailVerified=false`. Activar `verifyEmail` sin tocarlas **deja afuera a todo el padrón en el
+próximo login** — incluido el admin. `keycloak-config.sh` ahora hace el backfill **primero** y recién
+después exige la verificación; si no puede hacerlo (falta python3), aborta antes de tocar el realm.
+Lo probé poniendo las tres cuentas de dev en `false` a mano, corriendo el script y confirmando que
+quedaron verificadas y que **siguen pudiendo loguearse**.
+
+**Verificado sobre el stack, el ciclo entero:** cuenta sin verificar → login rechazado con
+`Account is not fully set up` · reenvío → 204 y el mail llega a mailpit (y 204 también para un mail
+que no existe, sin mandar nada) · abrir el link → pantalla de confirmación → confirmar → `emailVerified`
+en true, `requiredActions` vacío → **login OK**. Bandeja del admin devolviendo `emailVerificado` con
+una sola consulta a Keycloak por página. 228 tests + el IT en verde, y `npm run build` del front.
+
+**Detalle de soporte que conviene tener a mano:** el link del mail abre una pantalla de confirmación
+y **hay que completarla**. Si la persona lo abre y no confirma, queda con la acción pendiente y el
+login sigue bloqueado aunque `emailVerified` figure en true. Es deliberado de Keycloak (evita que un
+escáner de mails dé por validada la casilla), pero es la explicación del futuro "ya le di al link y
+no entro".
+
+**Corrección de una entrada anterior:** en el commit de S-09 dije que `/password/recuperar` quedaba
+con rate limit y **no era cierto**: al editar el filtro, un segundo write con el texto viejo pisó al
+primero y sólo quedó el comentario del javadoc. O sea que el endpoint se desplegaba sin límite por IP
+— suficiente para inundarle la casilla a cualquiera que esté registrado. Corregido junto con esto:
+los tres endpoints públicos que pegan contra Keycloak comparten el cupo de `/registro`.
+
+**Impacto para el otro (Fran):** la pantalla de registro debería avisar que hay que validar el mail, y
+conviene un botón de "reenviar" contra el endpoint nuevo. **Tampoco hay tarea `F-xx` para eso.** En el
+login ya está el link de recupero, así que esa parte no la toques. Ojo con el asunto de los dos mails
+que manda Keycloak: dicen *"Actualiza tu cuenta"*, genérico; si se quiere marca hay que hacer un theme
+de mail, y conviene mirarlo junto con S-18.
+
+**Refs:** `RegistroService.enviarVerificacion`, `RegistroController.reenviarVerificacion`,
+`KeycloakAdminClient` (`enviarMailDeVerificacion`, `emailsVerificados`, `estaVerificado`),
+`scripts/keycloak-config.sh`, `bonosapp-realm.json`, `frontend/src/pages/RecuperarPassword.tsx`,
+`DEPLOY.md` (paso 6).
+
+## 2026-09-21 (4) — Santi — auth/infra (S-08 fuerza bruta + S-09 recupero de contraseña, verificados sobre el stack)
+**Qué:** Cerré el bloque de auth que no depende de nadie.
+- **S-08** · bloqueo temporal tras 10 intentos fallidos (`failureFactor=10`), con espera creciente y
+  **sin bloqueo permanente**.
+- **S-09** · `POST /api/v1/password/recuperar` (público, 204 siempre, rate-limited con el cupo de
+  `/registro`). El link de un solo uso lo emite y valida Keycloak (`UPDATE_PASSWORD`, 30 min), así que
+  no hay tokens propios que guardar ni invalidar.
+- **`scripts/keycloak-config.sh`** (nuevo): aplica al realm vivo la config de fuerza bruta y el SMTP.
+
+**Por qué hace falta un script y no alcanza el realm JSON:** `--import-realm` corre **sólo la primera
+vez**. En un entorno que ya arrancó, editar `bonosapp-realm.json` no cambia nada — lo confirmé en los
+logs de dev: *"Realm 'bonosapp' already exists. Import skipped"*. Sin este paso, prod se quedaba con
+el default de Keycloak (30 intentos) y sin SMTP, o sea sin mail de recupero.
+
+**Decisiones:**
+- `permanentLockout=false`: con bloqueo permanente, cualquiera que sepa el mail de una profesional le
+  deja la cuenta muerta hasta que un admin la desbloquee a mano. La espera creciente frena el ataque
+  sin regalar ese poder.
+- El mail sale por el **SMTP del realm** (mismas credenciales `MAIL_*` que la app) y no por nuestra
+  cola de notificaciones: esa es zona de Fran, y hacerlo por Keycloak evita escribir el ciclo de vida
+  de un token de reseteo, que es justo el código que conviene no escribir.
+- Sólo se manda si la cuenta está **APROBADA y activa**: a una pendiente, cambiarle la contraseña no
+  la deja entrar y el mail sólo la haría creer que sí.
+
+**Problemas (cuatro, todos con su moraleja):**
+1. **`could not determine data type of parameter $7`** — `/admin/recetas` daba **500** con los filtros
+   vacíos. Postgres no puede inferir el tipo de un parámetro temporal que sólo aparece en
+   `:desde IS NULL`. Ahora la ventana viaja con extremos concretos (`Instant.EPOCH` .. 9999). **Los
+   224 tests unitarios pasaban igual**: esto sólo aparece pegándole a un Postgres real, y lo encontré
+   por correr un smoke contra el stack levantado. Vale como recordatorio de que la suite verde no
+   alcanza para una `@Query` nueva.
+2. **`source .env` está roto** y se llevaba puesto también a `backup-db.sh`: `TIENDANUBE_USER_AGENT`
+   tiene paréntesis y bash falla con *syntax error* antes de intentar nada. O sea que **el script de
+   backup fallaba de entrada con el `.env` actual**. Nuevo `scripts/lib-env.sh` que parsea sin
+   ejecutar (además evita que un `$(...)` en el .env se ejecute solo), usado por los dos scripts.
+3. **kcadm no sirve para esto:** ignora en silencio `-s smtpServer={...}` (lo manda como string) y con
+   `-f` tira `unknown_error`. Se hace con la REST API, que mergea el PUT parcial y devuelve un código
+   verificable. El curl va en un contenedor enganchado al namespace de red de Keycloak, porque la
+   imagen de KC no trae curl ni python y **en prod Keycloak no publica puerto**.
+4. `docker run` **sin `-i`** no conecta stdin: el PUT viajaba con body vacío y Keycloak respondía 500.
+
+**Verificado sobre el stack de dev (no sólo unit tests):** 11 logins con contraseña incorrecta →
+`disabled: true` en attack-detection, y **con la contraseña correcta el login igual se rechaza**;
+tras limpiar el bloqueo, entra. `POST /password/recuperar` → 204 para una cuenta que existe, para una
+que no y para una inactiva, con el log mostrando cada rama; con la cuenta activa **el mail llega a
+mailpit y el link abre la pantalla de contraseña nueva de Keycloak (200)**. Smoke de todo lo nuevo:
+`/profesiones` (76), `/admin/dashboard/*`, `/admin/recetas` con y sin filtros, `/productos?descuentoPct=20`,
+`/productos/filtros`, `/me` con `comisionPct` y `profesion`. 224 tests + el IT en verde.
+
+**Cambio en el compose de dev:** `KC_HOSTNAME` pasa de `localhost` a `http://localhost:8081`. Con el
+host sin puerto, los links que Keycloak manda por mail fallan al abrirse con *"Invalid token issuer"*.
+En prod el valor ya es el correcto (`https://bonosapp.com.ar/auth`), pero **hay que abrir un link real
+después del deploy** para confirmarlo: es el mismo tipo de bug que el del `issuer` sin `/auth` que ya
+nos comimos en agosto.
+
+**Impacto para el otro (Fran):** ⚠️ **S-09 no tiene tarea `F-xx`.** El PLAN me asignó el backend pero
+a nadie la UI: falta el link "¿Olvidaste tu contraseña?" en el login y el formulario que haga el POST
+(un input + un cartel de "revisá tu casilla"). **Hoy el endpoint no lo llama nadie.** Hay que decidir
+quién la toma. Ojo también con el asunto del mail: lo pone Keycloak y dice *"Actualiza tu cuenta"*,
+genérico; si se quiere algo con la marca hay que hacer un theme de mail, y eso conviene mirarlo junto
+con S-18 (deliverability).
+
+**Refs:** `scripts/keycloak-config.sh`, `scripts/lib-env.sh`, `KeycloakAdminClient.enviarMailDeReseteo`,
+`RecuperoPasswordService`, `RecetaRepository.search`, `bonosapp-realm.json`, `DEPLOY.md` (paso 6).
+
+## 2026-09-21 (3) — Santi — backend/infra (S-07 cupón no combinable + S-16 términos de uso hosteados)
+**Qué:** Las dos que le faltaban a Fran para destrabar F-16 y F-07.
+
+**S-07 — el cupón no se combina.** `combines_with_other_discounts` **no viajaba en el payload**, y la
+API de TiendaNube lo asume `true`: o sea que **todos los bonos emitidos hasta hoy se suman a las promos
+vigentes de la tienda**, que es justo lo que el cliente no quiere. Ahora el flag viaja siempre explícito
+y sale de un campo nuevo del request (`combinable`, opcional, default `false`), porque F-16 lo expone
+como checkbox destildado. `V016` agrega la columna y **marca en `true` los bonos ya emitidos**: en la
+tienda se crearon combinables y la fila tiene que reflejar lo que pasó, no lo que nos gustaría.
+
+**S-16 — términos de uso.** `static/terminos.html` generado del .docx del cliente (203 párrafos, 4
+partes, 51 secciones), servido por nginx en **`https://bonosapp.com.ar/terminos`**. Va en `static/` y no
+en `frontend/dist` por dos razones: `frontend/` es de Fran, y así la página no depende del build de la
+SPA. En nginx es un `location =` que gana sobre el prefijo `/`; si fuera un prefijo común se lo comería
+el `try_files` de la SPA.
+
+**Por qué el flag del cupón es por bono y no una constante:** el cliente pidió "destildado por default",
+no "prohibido". Dejarlo elegible cuesta lo mismo y evita tener que tocar código si mañana quiere
+habilitar una combinación puntual.
+
+**Problemas:** verificando el nginx, el primer `docker run` dio 404 en `/terminos` — no era la config
+sino los `-v` con paths estilo MSYS (`/c/Users/...`), que Docker Desktop en Windows no monta. Con paths
+`C:/...` y `MSYS_NO_PATHCONV=1` sirve `200 text/html; charset=utf-8`, 55 KB, y `/ingresar` sigue cayendo
+en la SPA. Queda anotado porque va a volver a pasar.
+
+**Impacto para el otro (Fran):** **F-07 y F-16 desbloqueadas.** El link de los términos es
+`https://bonosapp.com.ar/terminos` (mismo dominio, no hace falta target ni proxy). El checkbox de F-16
+manda `combinable` en el body de `POST /recetas`; si no lo mandás, el backend asume `false`.
+
+**Refs:** `V016__bono_combinable.sql`, `HttpTiendaNubeClient.createCoupon`, `RecetaCreateRequest`,
+`static/terminos.html`, `nginx/conf.d/bonosapp.conf` + `conf.d-proxied`, `docker-compose.prod.yml`,
+`DEPLOY.md`.
+
+## 2026-09-21 (2) — Santi — backend (S-13 y S-14: las dos solapas nuevas del admin, con los filtros que faltaban)
+**Qué:** Implementé los dos endpoints agregados del admin y, de paso, **los filtros de `GET /recetas` que
+este doc venía prometiendo y el backend nunca tuvo**.
+- **S-13** · `GET /admin/dashboard/resumen` y `/admin/dashboard/estadisticas?meses=` — el panel de la
+  profesional consolidado sobre todas, más `facturadoMesActual`/`facturadoTotal` y el estado del padrón
+  (activas / pendientes de aprobar).
+- **S-14** · `GET /admin/recetas?estado=&nutricionistaId=&q=&desde=&hasta=` → `AdminRecetaResponse`, que es
+  el `RecetaResponse` de siempre más el bloque `nutricionista` y `conversion.ordenTotal`.
+- **Filtros nuevos en los dos listados a la vez:** `q` (código del bono o nombre del paciente),
+  `pacienteId`, `desde`, `hasta`. Antes sólo existía `estado`.
+
+**Por qué:** F-25 pide "replicar los filtros del user", y los filtros del user no existían: estaban
+documentados en `05-api-endpoints.md` desde Fase 0 y nunca se implementaron. Hacerlos en los dos endpoints
+con la misma query evita que el listado de ella y el del admin se comporten distinto.
+
+**Decisiones:**
+- Las métricas del panel son **las mismas queries** del dashboard de la profesional con el id de
+  profesional en null, no una definición paralela. Si mañana cambia la regla de qué cuenta como
+  convertida (C-04/C-05), cambia en un solo lugar y los dos paneles siguen coincidiendo.
+- `AdminRecetaResponse` es **plano y con los nombres de `RecetaResponse`**: el front reusa su tipo tal
+  cual en vez de mantener una forma paralela. No incluye `waMeUrl` ni las notificaciones.
+- Un bono cuya profesional fue borrada sigue listándose con `nutricionista: null` — no se cae la página.
+- Los dos listados ahora ordenan por `emitidaAt` descendente (antes el de ella no tenía orden explícito).
+
+**Problemas:** ninguno de fondo, pero vale registrar cómo se verificó: los tests unitarios **no levantan el
+contexto de Spring**, así que una `@Query` mal escrita pasa la suite y recién revienta al arrancar el
+backend. Se corrió `mvnw verify` con Docker arriba: el IT levanta Postgres real, **Flyway aplicó V014 y
+V015 sin errores** y el contexto booteó, que es lo que valida el JPQL nuevo (incluida la subconsulta a
+`Paciente` del filtro `q`). 216 tests verdes.
+
+**Impacto para el otro (Fran):** **F-24 y F-25 quedan desbloqueadas de verdad** — los endpoints responden
+contra un backend local levantado desde `main`. El dropdown de profesionales de F-25 se puebla con
+`GET /admin/nutricionistas?estado=APROBADA`, que ya existía. Ojo con el filtro de estado: los valores son
+`PENDIENTE|APLICADA|VENCIDA|ANULADA|LIQUIDADA` — LIQUIDADA es una convertida a la que ya se le pagó la
+comisión, y si la dejás afuera del filtro el admin no ve bonos viejos.
+
+**Refs:** `AdminDashboardController`/`AdminDashboardService`, `AdminRecetaController`/`AdminRecetaService`,
+`ProfesionalesLookup`, `RecetaRepository.search`, `05-api-endpoints.md`.
+
+## 2026-09-21 — Santi — backend/db (plan confirmado + contratos de las 7 features cruzadas + S-01/02/04/11/12)
+**Qué:** Confirmé el reparto del PLAN y escribí en `05-api-endpoints.md` (sección "Modificaciones post 1ª
+entrega") los **contratos de las 7 features que Fran tiene bloqueadas**: S-02 descuento por producto, S-11
+profesión, S-12 comisión en `/me`, S-13/S-14 endpoints admin, S-16 URL de términos, S-17 URL de tienda.
+Después implementé la primera tanda: **S-01/S-02** (maestro nuevo + descuento por producto + link directo al
+producto), **S-11** (profesión y jurisdicción como campos propios + `GET /profesiones`), **S-12** (default
+1 %, `/me` expone `comisionPct`), **S-04** (fuera los Combo del catálogo) y el mensaje del CUIT de F-04.
+**Por qué:** contract-first: Fran arranca 8 tareas de front contra un shape cerrado sin esperar al backend.
+
+**Migraciones nuevas:** `V014__profesion_y_jurisdiccion.sql` (dos columnas + tabla `profesiones` con las 76
+del Excel del cliente) y `V015__descuento_por_producto.sql` (`descuento_pct`, `estado_bonosapp`,
+`tiendanube_handle`).
+
+**Decisiones que quedaron tomadas en el código:**
+- El **descuento del producto manda**; si el producto no lo tiene (maestro sin importar), cae al % de la
+  profesional. Dos productos con % distintos en un mismo bono → `409`: el cupón de TiendaNube es un solo
+  porcentaje.
+- El link al producto se arma con `TIENDANUBE_STORE_URL` + el `handle` de la tienda, **no** con
+  `canonical_url` (no existe en la API de TiendaNube, verificado en la doc). Así el dominio sigue saliendo de
+  config y la mudanza a thebcompany.com.ar no toca código.
+- `ESTADO BONOSAPP` manda sobre el `ESTADO` de TBC cuando la planilla lo trae.
+- `profesion` y `jurisdiccion` entran **opcionales**: prod está recibiendo registros y exigirlos antes de que
+  Fran despliegue rompería el alta con 400.
+
+**Problemas:** la función del trigger es `update_updated_at()`, no `set_updated_at()` — con el nombre
+equivocado la V014 hubiera reventado el arranque del backend. `ProductoMapper` pasó de interfaz a clase
+abstracta para poder inyectarle la config del dominio de la tienda.
+
+**⚠️ Dos cosas que hay que preguntarle a Gon antes de importar el maestro nuevo en prod** (están en el PLAN,
+sección "Cambios al alcance"): (1) `DESCUENTO %` viene como `0.2`/`0.55` sin formato de porcentaje — se lee
+como 20 % y 55 %; (2) `ESTADO` y `ESTADO BONOSAPP` se contradicen: **1497 de 2252 filas están BLOQUEADO** y a
+la vez las 2252 están en `SI`. Importar sin aclarar esto cambia de golpe qué se puede recetar.
+
+**Impacto para el otro (Fran):** ya podés construir F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25 contra el
+contrato. **F-14 todavía NO**: hasta que el cliente importe el maestro, el % de la ficha del admin es el único
+descuento que existe. Los paths del API siguen diciendo `recetas`, no `bonos`. Parte de F-04 (el mensaje de
+error del CUIT) la hice yo: sale del backend.
+
+**Pendiente de esta tanda:** S-13 y S-14 (los endpoints admin) están **contratados pero no implementados**;
+S-03 (filtro de RUBRO) necesita mirar datos de prod — la hipótesis es que `rubro_id` viene null desde
+`/api/conceptos/search` y por eso el filtro no bloquea nada (`permitido()` deja pasar los valores ausentes).
+Query para confirmarlo: `SELECT rubro_id, rubro, count(*) FROM productos WHERE deleted_at IS NULL GROUP BY 1,2
+ORDER BY 3 DESC;`.
+
+**Refs:** `instrucciones_claude/05-api-endpoints.md`, `modificaciones post primera entrega/PLAN-...md`,
+`V014`/`V015`, `MaestroXlsxParser`, `PublicacionPolicy`, `RecetaService.descuentoDe`, `ProductoMapper`,
+`IntegrationsProperties.TiendaNube.urlDeProducto`.
 ## 2026-09-19 (2) — Fran — frontend + vertical mail (modificaciones post 1ª entrega: F-01→F-05, F-08/09/11/12, F-15/17/18/19/21/22/23)
 
 **Qué:** Primera tanda de mi mitad del PLAN de modificaciones. Todo verificado: front `tsc -b` + `vite build` +

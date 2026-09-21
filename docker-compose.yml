@@ -40,7 +40,10 @@ services:
       KC_DB_PASSWORD: ${POSTGRES_PASSWORD:-bonosapp_dev}
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-localhost}
+      # Con `localhost` pelado, los links que Keycloak manda por mail (recupero de contraseña)
+      # apuntan a un host sin puerto y al abrirlos falla la validación del issuer. Con el puerto
+      # publicado el flujo de S-09 se puede probar en dev tal cual sale a prod.
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME:-http://localhost:8081}
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_PROXY: edge

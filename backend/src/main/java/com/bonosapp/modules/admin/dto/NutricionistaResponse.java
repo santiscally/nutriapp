@@ -12,6 +12,9 @@ public record NutricionistaResponse(
         String email,
         String telefono,
         String matricula,
+        /** S-11. Null en las altas viejas: ahí la jurisdicción va adentro de `matricula`. */
+        String jurisdiccion,
+        String profesion,
         // C-08 — datos fiscales del registro.
         String dni,
         String cuit,
@@ -29,5 +32,7 @@ public record NutricionistaResponse(
         BigDecimal descuentoPct,
         BigDecimal comisionPct,
         /** ¿Puede loguearse hoy? Refleja el `enabled` del usuario en Keycloak. */
-        boolean activo
+        boolean activo,
+        /** S-10: ¿validó su mail? Sin eso no puede entrar aunque el admin la apruebe. */
+        boolean emailVerificado
 ) {}

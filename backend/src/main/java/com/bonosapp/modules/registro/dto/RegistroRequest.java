@@ -20,13 +20,17 @@ public record RegistroRequest(
         String telefono,
         @NotBlank String matricula,
 
+        @Size(max = 80) String jurisdiccion,
+
+        @Size(max = 120) String profesion,
+
         @NotBlank(message = "El DNI es obligatorio")
         @Pattern(regexp = "^[0-9]{7,9}$", message = "El DNI debe tener entre 7 y 9 dígitos, sin puntos")
         String dni,
 
         @NotBlank(message = "El CUIT es obligatorio")
         @Pattern(regexp = "^[0-9]{2}-?[0-9]{8}-?[0-9]$",
-                message = "El CUIT debe tener 11 dígitos (ej. 27-12345678-4)")
+                message = "El CUIT debe tener 11 dígitos, sin puntos ni guiones (ej. 27123456784)")
         String cuit,
 
         @NotBlank(message = "Elegí tu condición fiscal")

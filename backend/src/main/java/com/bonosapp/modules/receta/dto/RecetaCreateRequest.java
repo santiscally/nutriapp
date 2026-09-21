@@ -14,8 +14,14 @@ import java.util.UUID;
  */
 public record RecetaCreateRequest(
         @NotNull UUID pacienteId,
-        @NotEmpty @Valid List<Item> items
+        @NotEmpty @Valid List<Item> items,
+        /** S-07: sumarse a las promos vigentes de la tienda. Ausente = no (F-16 lo pide destildado). */
+        Boolean combinable
 ) {
+    public boolean combinableOrDefault() {
+        return Boolean.TRUE.equals(combinable);
+    }
+
     /**
      * El bono aplica a productos, no a cantidades: el cupón de TiendaNube restringe por producto y
      * no tiene forma de limitar unidades, así que una cantidad mayor a 1 no sería respetada en la

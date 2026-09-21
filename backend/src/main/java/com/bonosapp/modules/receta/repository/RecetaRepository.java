@@ -22,7 +22,30 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Matcheo del cupón de una orden pagada → receta (global, sin scope de nutricionista). */
     Optional<Receta> findByCodigoAndDeletedAtIsNull(String codigo);
 
-    long countByNutricionistaIdAndEstadoAndDeletedAtIsNull(UUID nutricionistaId, EstadoReceta estado);
+    /** Bonos en un estado. {@code nutricionistaId} null = todas (panel del admin). */
+    @Query("""
+            SELECT COUNT(r) FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
+              AND r.estado = :estado
+            """)
+    long countPorEstado(@Param("nutricionistaId") UUID nutricionistaId,
+                        @Param("estado") EstadoReceta estado);
+
+    /**
+     * Facturado de las convertidas en la ventana: la suma de lo que se pagó en TiendaNube.
+     * <b>Sólo para el admin</b> — ningún endpoint de la profesional devuelve este número.
+     */
+    @Query("""
+            SELECT COALESCE(SUM(r.ordenTotal), 0) FROM Receta r
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
+              AND r.estado IN ('APLICADA','LIQUIDADA')
+              AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
+            """)
+    BigDecimal sumFacturadoEntre(@Param("nutricionistaId") UUID nutricionistaId,
+                                 @Param("desde") Instant desde,
+                                 @Param("hasta") Instant hasta);
 
     /**
      * Todas las recetas de una nutricionista, incluidas las soft-deleted: se usa como guard antes
@@ -62,18 +85,45 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
             """)
     long countResyncables();
 
-    /** Listado del nutricionista con filtro opcional por estado. */
+    /**
+     * Listado de bonos. Todos los filtros son opcionales; {@code nutricionistaId} en null trae los
+     * de todas y es lo que usa la solapa BONOS del admin (S-14).
+     *
+     * <p>{@code q} busca por código del bono o por nombre/apellido del paciente. El paciente entra
+     * por subconsulta y no por join: {@code Receta} guarda el id suelto, no la relación.
+     *
+     * <p>La ventana de fechas viaja con extremos concretos, nunca en null: con {@code :desde IS NULL}
+     * Postgres no puede inferir el tipo del parámetro y la query falla con "could not determine data
+     * type". Los bordes por defecto los pone {@link RecetaService}.
+     */
     @Query("""
             SELECT r FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND (:estado IS NULL OR r.estado = :estado)
+              AND (:pacienteId IS NULL OR r.pacienteId = :pacienteId)
+              AND r.emitidaAt >= :desde
+              AND r.emitidaAt < :hasta
+              AND (:q IS NULL OR :q = ''
+                   OR LOWER(FUNCTION('unaccent', r.codigo))
+                      LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%')))
+                   OR EXISTS (SELECT 1 FROM Paciente p
+                              WHERE p.id = r.pacienteId
+                                AND LOWER(FUNCTION('unaccent', CONCAT(p.nombre, ' ', p.apellido)))
+                                    LIKE LOWER(FUNCTION('unaccent', CONCAT('%', :q, '%')))))
+            ORDER BY r.emitidaAt DESC
             """)
     Page<Receta> search(@Param("nutricionistaId") UUID nutricionistaId,
                         @Param("estado") EstadoReceta estado,
+                        @Param("pacienteId") UUID pacienteId,
+                        @Param("q") String q,
+                        @Param("desde") Instant desde,
+                        @Param("hasta") Instant hasta,
                         Pageable pageable);
 
     List<Receta> findTop8ByNutricionistaIdAndDeletedAtIsNullOrderByEmitidaAtDesc(UUID nutricionistaId);
+
+    List<Receta> findTop8ByDeletedAtIsNullOrderByEmitidaAtDesc();
 
     /**
      * Recetas convertidas del nutricionista en una ventana.
@@ -87,8 +137,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
      */
     @Query("""
             SELECT COUNT(r) FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND r.estado IN (com.bonosapp.modules.receta.entity.EstadoReceta.APLICADA,
                                com.bonosapp.modules.receta.entity.EstadoReceta.LIQUIDADA)
               AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
@@ -99,8 +149,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
 
     @Query("""
             SELECT COUNT(r) FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND r.estado = 'VENCIDA'
               AND r.venceAt >= :desde AND r.venceAt < :hasta
             """)
@@ -111,8 +161,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Comisión de las convertidas en la ventana (mismas reglas C-04/C-05 que arriba). */
     @Query("""
             SELECT COALESCE(SUM(r.comisionMonto), 0) FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND r.estado IN ('APLICADA','LIQUIDADA')
               AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
             """)
@@ -123,8 +173,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Cierre mensual: recetas emitidas en la ventana (por emitidaAt). */
     @Query("""
             SELECT COUNT(r) FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND r.emitidaAt >= :desde AND r.emitidaAt < :hasta
             """)
     long countEmitidasEntre(@Param("nutricionistaId") UUID nutricionistaId,
@@ -134,8 +184,8 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Cierre mensual: detalle de las convertidas en la ventana. */
     @Query("""
             SELECT r FROM Receta r
-            WHERE r.nutricionistaId = :nutricionistaId
-              AND r.deletedAt IS NULL
+            WHERE r.deletedAt IS NULL
+              AND (:nutricionistaId IS NULL OR r.nutricionistaId = :nutricionistaId)
               AND r.estado IN ('APLICADA','LIQUIDADA')
               AND r.ordenPaidAt >= :desde AND r.ordenPaidAt < :hasta
             ORDER BY r.ordenPaidAt DESC

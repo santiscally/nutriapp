@@ -44,7 +44,11 @@ public class AdminNutricionistaService {
 
     @Transactional(readOnly = true)
     public Page<NutricionistaResponse> listar(EstadoValidacion estado, String q, Pageable pageable) {
-        return repository.search(estado, q, pageable).map(this::toResponse);
+        // Una sola consulta a Keycloak por página, no una por fila (S-10).
+        java.util.Set<String> verificados = keycloak.emailsVerificados();
+        return repository.search(estado, q, pageable)
+                .map(n -> toResponse(n, verificados.contains(
+                        n.getEmail() == null ? "" : n.getEmail().toLowerCase(java.util.Locale.ROOT))));
     }
 
     @Transactional
@@ -197,6 +201,10 @@ public class AdminNutricionistaService {
     }
 
     private NutricionistaResponse toResponse(Nutricionista n) {
+        return toResponse(n, keycloak.estaVerificado(n.getEmail()));
+    }
+
+    private NutricionistaResponse toResponse(Nutricionista n, boolean emailVerificado) {
         return new NutricionistaResponse(
                 n.getId(),
                 n.getNombre(),
@@ -204,6 +212,8 @@ public class AdminNutricionistaService {
                 n.getEmail(),
                 n.getTelefono(),
                 n.getMatricula(),
+                n.getJurisdiccionMatricula(),
+                n.getProfesion(),
                 n.getDni(),
                 n.getCuit(),
                 n.getCondicionFiscal(),
@@ -214,6 +224,7 @@ public class AdminNutricionistaService {
                 n.getCreatedAt(),
                 parametros.descuentoPctDe(n),
                 parametros.comisionPctDe(n),
-                n.isActivo());
+                n.isActivo(),
+                emailVerificado);
     }
 }

@@ -32,6 +32,9 @@ public class Producto extends BaseEntity {
     /** Variante TiendaNube — necesaria para restringir cupones por producto (Fase 2). */
     private Long tiendanubeVariantId;
 
+    /** Slug del producto en la tienda; la URL pública se arma con el dominio de config (S-02). */
+    private String tiendanubeHandle;
+
     private Long contabiliumId;
 
     /** Clave natural de conciliación TiendaNube ↔ Contabilium. */
@@ -91,6 +94,12 @@ public class Producto extends BaseEntity {
 
     /** ESTADO = BLOQUEADO en el maestro: no se muestra en bonosapp. */
     private boolean bloqueadoMaestro;
+
+    /** ESTADO BONOSAPP del maestro. Null = la planilla no trae la columna; ahí manda el ESTADO. */
+    private Boolean estadoBonosapp;
+
+    /** DESCUENTO % del maestro, escala 0-100. Null = sin dato: cae al % de la profesional. */
+    private BigDecimal descuentoPct;
 
     /**
      * TAGS TIENDANUBE del maestro. Reemplazo completo en cada import (no merge).

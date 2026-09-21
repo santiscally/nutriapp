@@ -106,6 +106,59 @@ class MaestroXlsxParserTest {
                 .hasMessageContaining("TAGS TIENDANUBE");
     }
 
+    /** Las 11 columnas del maestro nuevo (S-01), que ya no trae ID CONTABILIUM. */
+    @Test
+    void maestroNuevo_leeDescuentoYEstadoBonosapp() throws IOException {
+        String[] headers = {"SKU", "DEPARTAMENTO", "CATEGORIA", "SUBCATEGORIA",
+                "ELABORADOR / FABRICANTE", "ESTADO", "LINK IMAGEN TIENDA NUBE", "DESCRIPCION WEB",
+                "TAGS TIENDANUBE", "DESCUENTO %", "ESTADO BONOSAPP"};
+        byte[] archivo = buildCon(headers,
+                new String[]{"3", "DEP", "CAT", "SUB", "LAB", "BLOQUEADO", "http://x/y.jpg", "desc",
+                        "magnesio", "0.55", "SI"});
+
+        MaestroFila f = parsear(archivo).get(0);
+
+        assertThat(f.descuentoPct()).isEqualByComparingTo("55.00");
+        assertThat(f.estadoBonosapp()).isTrue();
+        assertThat(f.bloqueado()).isTrue();
+        assertThat(f.idContabilium()).isNull();
+    }
+
+    /** Sin las columnas nuevas no se inventa nada: null es "el maestro no dijo", no "0" ni "NO". */
+    @Test
+    void maestroViejo_dejaDescuentoYEstadoBonosappEnNull() throws IOException {
+        MaestroFila f = parsear(build(fila("3", "9418829", "ACTIVO", null))).get(0);
+
+        assertThat(f.descuentoPct()).isNull();
+        assertThat(f.estadoBonosapp()).isNull();
+    }
+
+    /**
+     * El archivo de TBC trae el descuento como fracción sin formato de porcentaje. Un "1" tipeado a
+     * mano tiene que valer 1 %, nunca 100 %: equivocarse para el otro lado regala el producto.
+     */
+    @Test
+    void descuento_aceptaFraccionYPorcentaje() {
+        assertThat(MaestroXlsxParser.descuento("0.2")).isEqualByComparingTo("20.00");
+        assertThat(MaestroXlsxParser.descuento("0,55")).isEqualByComparingTo("55.00");
+        assertThat(MaestroXlsxParser.descuento("1")).isEqualByComparingTo("1.00");
+        assertThat(MaestroXlsxParser.descuento("20")).isEqualByComparingTo("20.00");
+        assertThat(MaestroXlsxParser.descuento("20%")).isEqualByComparingTo("20.00");
+        assertThat(MaestroXlsxParser.descuento("101")).isNull();
+        assertThat(MaestroXlsxParser.descuento("-3")).isNull();
+        assertThat(MaestroXlsxParser.descuento("ninguno")).isNull();
+        assertThat(MaestroXlsxParser.descuento(null)).isNull();
+    }
+
+    @Test
+    void estadoBonosapp_soloSiYNoDecidenAlgo() {
+        assertThat(MaestroXlsxParser.siNo("SI")).isTrue();
+        assertThat(MaestroXlsxParser.siNo("Sí")).isTrue();
+        assertThat(MaestroXlsxParser.siNo("no")).isFalse();
+        assertThat(MaestroXlsxParser.siNo("tal vez")).isNull();
+        assertThat(MaestroXlsxParser.siNo(null)).isNull();
+    }
+
     @Test
     void archivoQueNoEsXlsx_daError() {
         assertThatThrownBy(() -> parsear("no soy un excel".getBytes()))
