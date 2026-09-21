@@ -28,14 +28,15 @@ class PdfSimpleBonoGeneratorTest {
         ProductoResponse producto = new ProductoResponse(
                 UUID.randomUUID(), "SKU-1", null, "Magnesio 300g", null, null,
                 new BigDecimal("1000"), 5, null, null, null, null, null, null,
-                List.of(), null, null, true, "CONTABILIUM");
+                List.of(), new BigDecimal("15.00"), "https://tienda.test/productos/magnesio",
+                null, null, true, "CONTABILIUM");
         PacienteResponse paciente = new PacienteResponse(
                 UUID.randomUUID(), "Ana", "Gómez", "ana@example.com", "+5491144443333",
                 null, null, Instant.now());
         return new RecetaResponse(
                 UUID.randomUUID(), "RX-3V737V", "PENDIENTE", paciente,
                 List.of(new RecetaResponse.Item(producto, 1, null)),
-                new BigDecimal("15.00"), Instant.parse("2026-08-04T12:00:00Z"),
+                new BigDecimal("15.00"), false, Instant.parse("2026-08-04T12:00:00Z"),
                 LocalDate.of(2026, 9, 3), "OK", null, null, null, null);
     }
 
