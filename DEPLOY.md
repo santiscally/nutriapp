@@ -21,11 +21,12 @@ del override extra `docker-compose.edge.yml`.
 
 Topología (single domain, path-based):
 
-| Ruta      | Destino                          |
-| --------- | -------------------------------- |
-| `/`       | SPA estática (`frontend/dist`)   |
-| `/api/`   | backend Spring Boot (`/api/v1`)  |
-| `/auth/`  | Keycloak (`KC_HTTP_RELATIVE_PATH=/auth`) |
+| Ruta         | Destino                          |
+| ------------ | -------------------------------- |
+| `/`          | SPA estática (`frontend/dist`)   |
+| `/terminos`  | Términos de uso (`static/terminos.html`, fuera del bundle de la SPA) |
+| `/api/`      | backend Spring Boot (`/api/v1`)  |
+| `/auth/`     | Keycloak (`KC_HTTP_RELATIVE_PATH=/auth`) |
 
 > **TLS: lo termina Caddy.** En el VPS actual el paso 1 (certbot / `nginx/certs/`) **no se usa**:
 > Caddy emite y renueva solo por ACME. El material de bring-your-own-cert queda documentado para
@@ -230,9 +231,10 @@ Caddy (emite y renueva solo por ACME).
 
 ```
 internet :443 → edge-caddy-1 (TLS, red `web`) → bonosapp-nginx:80 (red `web` + `bonosapp-net`)
-                                                   ├── /      SPA (frontend/dist)
-                                                   ├── /api/  backend:8080   ┐ sólo en
-                                                   └── /auth/ keycloak:8080  ┘ bonosapp-net
+                                                   ├── /          SPA (frontend/dist)
+                                                   ├── /terminos  static/terminos.html
+                                                   ├── /api/      backend:8080   ┐ sólo en
+                                                   └── /auth/     keycloak:8080  ┘ bonosapp-net
 ```
 
 `db`, `keycloak` y `backend` **no** están en `web`: los otros sitios del VPS no tienen ruta hacia

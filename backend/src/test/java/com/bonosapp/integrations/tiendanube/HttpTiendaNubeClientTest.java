@@ -66,7 +66,7 @@ class HttpTiendaNubeClientTest {
 
         Coupon c = client().createCoupon(new CouponRequest(
                 "RX-ABC", new BigDecimal("30"), LocalDate.of(2026, 7, 17), LocalDate.of(2026, 8, 16),
-                List.of(1234L, 5678L)));
+                List.of(1234L, 5678L), false));
 
         assertThat(c.id()).isEqualTo(999);
         assertThat(c.code()).isEqualTo("RX-ABC");
@@ -77,6 +77,7 @@ class HttpTiendaNubeClientTest {
                 .withRequestBody(matchingJsonPath("$.type", equalTo("percentage")))
                 .withRequestBody(matchingJsonPath("$.value", equalTo("30.00")))
                 .withRequestBody(matchingJsonPath("$.max_uses", equalTo("1")))
+                .withRequestBody(matchingJsonPath("$.combines_with_other_discounts", equalTo("false")))
                 .withRequestBody(matchingJsonPath("$.code", equalTo("RX-ABC")))
                 .withRequestBody(matchingJsonPath("$.products")));
     }
@@ -233,7 +234,7 @@ class HttpTiendaNubeClientTest {
         wm.stubFor(post(urlPathEqualTo("/STORE1/coupons")).willReturn(aResponse().withStatus(403)));
 
         assertThatThrownBy(() -> client().createCoupon(new CouponRequest(
-                "RX-1", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of(1L))))
+                "RX-1", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of(1L), false)))
                 .isInstanceOf(IntegrationUnavailableException.class);
     }
 
@@ -248,7 +249,7 @@ class HttpTiendaNubeClientTest {
     @Test
     void createCoupon_sinProductosSeNiegaAEmitirUnCuponParaTodaLaTienda() {
         assertThatThrownBy(() -> client().createCoupon(new CouponRequest(
-                "RX-VACIO", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of())))
+                "RX-VACIO", new BigDecimal("30"), LocalDate.now(), LocalDate.now().plusDays(30), List.of(), false)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("toda la tienda");
     }

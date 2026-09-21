@@ -32,6 +32,39 @@
 
 ## Entradas
 
+## 2026-09-21 (3) — Santi — backend/infra (S-07 cupón no combinable + S-16 términos de uso hosteados)
+**Qué:** Las dos que le faltaban a Fran para destrabar F-16 y F-07.
+
+**S-07 — el cupón no se combina.** `combines_with_other_discounts` **no viajaba en el payload**, y la
+API de TiendaNube lo asume `true`: o sea que **todos los bonos emitidos hasta hoy se suman a las promos
+vigentes de la tienda**, que es justo lo que el cliente no quiere. Ahora el flag viaja siempre explícito
+y sale de un campo nuevo del request (`combinable`, opcional, default `false`), porque F-16 lo expone
+como checkbox destildado. `V016` agrega la columna y **marca en `true` los bonos ya emitidos**: en la
+tienda se crearon combinables y la fila tiene que reflejar lo que pasó, no lo que nos gustaría.
+
+**S-16 — términos de uso.** `static/terminos.html` generado del .docx del cliente (203 párrafos, 4
+partes, 51 secciones), servido por nginx en **`https://bonosapp.com.ar/terminos`**. Va en `static/` y no
+en `frontend/dist` por dos razones: `frontend/` es de Fran, y así la página no depende del build de la
+SPA. En nginx es un `location =` que gana sobre el prefijo `/`; si fuera un prefijo común se lo comería
+el `try_files` de la SPA.
+
+**Por qué el flag del cupón es por bono y no una constante:** el cliente pidió "destildado por default",
+no "prohibido". Dejarlo elegible cuesta lo mismo y evita tener que tocar código si mañana quiere
+habilitar una combinación puntual.
+
+**Problemas:** verificando el nginx, el primer `docker run` dio 404 en `/terminos` — no era la config
+sino los `-v` con paths estilo MSYS (`/c/Users/...`), que Docker Desktop en Windows no monta. Con paths
+`C:/...` y `MSYS_NO_PATHCONV=1` sirve `200 text/html; charset=utf-8`, 55 KB, y `/ingresar` sigue cayendo
+en la SPA. Queda anotado porque va a volver a pasar.
+
+**Impacto para el otro (Fran):** **F-07 y F-16 desbloqueadas.** El link de los términos es
+`https://bonosapp.com.ar/terminos` (mismo dominio, no hace falta target ni proxy). El checkbox de F-16
+manda `combinable` en el body de `POST /recetas`; si no lo mandás, el backend asume `false`.
+
+**Refs:** `V016__bono_combinable.sql`, `HttpTiendaNubeClient.createCoupon`, `RecetaCreateRequest`,
+`static/terminos.html`, `nginx/conf.d/bonosapp.conf` + `conf.d-proxied`, `docker-compose.prod.yml`,
+`DEPLOY.md`.
+
 ## 2026-09-21 (2) — Santi — backend (S-13 y S-14: las dos solapas nuevas del admin, con los filtros que faltaban)
 **Qué:** Implementé los dos endpoints agregados del admin y, de paso, **los filtros de `GET /recetas` que
 este doc venía prometiendo y el backend nunca tuvo**.

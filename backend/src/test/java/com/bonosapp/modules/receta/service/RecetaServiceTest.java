@@ -97,6 +97,29 @@ class RecetaServiceTest {
         return p;
     }
 
+    /** S-07: F-16 pide el checkbox destildado, así que el default del backend tiene que ser el mismo. */
+    @Test
+    void emitir_porDefectoElBonoNoEsCombinableConOtrasPromos() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(productoId);
+        producto(productoId, "20.00");
+
+        service.emitir(req);
+
+        verify(repo).save(argThat(r -> !r.isCombinable()));
+    }
+
+    @Test
+    void emitir_siLaProfesionalLoTilda_elBonoEsCombinable() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest base = emisionDe(productoId);
+        producto(productoId, "20.00");
+
+        service.emitir(new RecetaCreateRequest(base.pacienteId(), base.items(), true));
+
+        verify(repo).save(argThat(Receta::isCombinable));
+    }
+
     private RecetaCreateRequest emisionDe(UUID... productoIds) {
         when(nutricionistaService.getCurrentAprobado()).thenReturn(nutri);
         when(pacienteRepository.findByIdAndNutricionistaIdAndDeletedAtIsNull(pacienteId, nutri.getId()))
@@ -107,7 +130,8 @@ class RecetaServiceTest {
         return new RecetaCreateRequest(pacienteId,
                 java.util.Arrays.stream(productoIds)
                         .map(id -> new RecetaCreateRequest.Item(id, 1, null))
-                        .toList());
+                        .toList(),
+                null);
     }
 
     /** S-02: el descuento sale del producto, no del % de la profesional. */

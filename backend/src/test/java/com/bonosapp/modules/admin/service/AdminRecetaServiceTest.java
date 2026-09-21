@@ -54,7 +54,7 @@ class AdminRecetaServiceTest {
 
     private static RecetaResponse response(Receta r) {
         return new RecetaResponse(r.getId(), r.getCodigo(), r.getEstado().name(), null, List.of(),
-                new BigDecimal("20.00"), Instant.now(), LocalDate.now(), "OK", null, null, null,
+                new BigDecimal("20.00"), false, Instant.now(), LocalDate.now(), "OK", null, null, null,
                 new RecetaResponse.Conversion(306, Instant.now(), new BigDecimal("1.00"),
                         new BigDecimal("3150.00"), null));
     }

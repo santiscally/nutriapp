@@ -253,7 +253,7 @@ Shapes que fija Santi para que Fran construya sin esperar al backend. IDs del
 puede devolver 404 o el campo venir ausente); `vivo` = ya responde en prod. Cuando uno pasa a `vivo`
 va una entrada en el DIARIO.
 
-**Implementado en `main` (falta desplegar): S-02, S-11, S-12, S-13 y S-14.** Contra un backend local
+**Implementado en `main` (falta desplegar): S-02, S-07, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
 levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
 el catálogo.
 
@@ -402,10 +402,26 @@ ella y el del admin) para que F-25 pueda "replicar los filtros del user" sobre a
 El dropdown de profesionales de F-25 se puebla con `GET /admin/nutricionistas?estado=APROBADA`, que ya
 existe.
 
-### S-16 · Términos de uso — `contrato` → alimenta F-07
+### S-16 · Términos de uso — **hecho, falta desplegar** → alimenta F-07
 
-URL definitiva: **`https://bonosapp.com.ar/terminos`**. Página estática servida por nginx, mismo
-dominio (no abre una pestaña a otro host ni pega contra el API). Fran linkea eso desde el registro.
+URL definitiva: **`https://bonosapp.com.ar/terminos`**. Página estática (`static/terminos.html`,
+generada del .docx del cliente) servida por nginx en el mismo dominio: no abre una pestaña a otro
+host ni pega contra el API. Fran linkea eso desde el registro, sin más.
+
+### S-07 · Cupón no combinable — **hecho, falta desplegar** → alimenta F-16
+
+TiendaNube crea los cupones **combinables por defecto** (`combines_with_other_discounts` no viajaba
+en el payload), así que hasta hoy todos los bonos se sumaban a las promos vigentes de la tienda.
+
+`POST /recetas` acepta un campo nuevo, opcional:
+
+```json
+{ "pacienteId": "...", "items": [ "..." ], "combinable": false }
+```
+
+Ausente o `false` → el cupón **no** se combina, que es el default que pide F-16 (checkbox
+destildado). `RecetaResponse` devuelve `combinable` para que el detalle del bono lo muestre.
+⚠️ Los bonos **ya emitidos** quedaron combinables en la tienda: esto sólo aplica a los nuevos.
 
 ### S-17 · URL de la tienda — `contrato` → alimenta F-17
 

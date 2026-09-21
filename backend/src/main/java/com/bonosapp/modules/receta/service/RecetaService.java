@@ -102,6 +102,7 @@ public class RecetaService {
         receta.setNutricionistaId(nutri.getId());
         receta.setPacienteId(paciente.getId());
         receta.setEstado(EstadoReceta.PENDIENTE);
+        receta.setCombinable(req.combinableOrDefault());
         Instant now = Instant.now();
         receta.setEmitidaAt(now);
         receta.setVenceAt(LocalDate.now(AR).plusDays(props.vigenciaDias()));
@@ -265,6 +266,7 @@ public class RecetaService {
                 paciente != null ? pacienteMapper.toResponse(paciente) : null,
                 items,
                 receta.getDescuentoPct(),
+                receta.isCombinable(),
                 receta.getEmitidaAt(),
                 receta.getVenceAt(),
                 receta.getCuponSyncEstado().name(),

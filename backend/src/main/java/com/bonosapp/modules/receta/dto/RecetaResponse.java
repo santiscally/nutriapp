@@ -16,6 +16,8 @@ public record RecetaResponse(
         PacienteResponse paciente,
         List<Item> items,
         BigDecimal descuentoPct,
+        /** S-07: si el cupón se suma o no a las promos vigentes de la tienda. */
+        boolean combinable,
         Instant emitidaAt,
         LocalDate venceAt,
         String cuponSyncEstado,

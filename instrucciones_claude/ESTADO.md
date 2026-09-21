@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-21 (2)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
+**Última actualización: 2026-09-21 (3)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
 el reparto del `PLAN-modificaciones-post-entrega.md` (era una propuesta de Fran) y escribí los
 **contratos de las 7 features cruzadas** en `05-api-endpoints.md` → **Fran quedó desbloqueado** en
 F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
@@ -37,11 +37,17 @@ F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
   profesional). De paso quedaron implementados los filtros `q`/`pacienteId`/`desde`/`hasta` que el
   contrato prometía en `GET /recetas` y el backend nunca había tenido.
 
+- **S-07 — el cupón deja de ser combinable.** `combines_with_other_discounts` no viajaba y la API lo
+  asume `true`: **todos los bonos emitidos hasta hoy se combinan con las promos de la tienda.** Ahora
+  viaja explícito, con default `false` y elegible por bono (`combinable` en `POST /recetas`). `V016`.
+- **S-16 — términos de uso.** `static/terminos.html` (generado del .docx del cliente) servido por
+  nginx en `https://bonosapp.com.ar/terminos`. Verificado sirviendo la página en un nginx local.
+
 **🔴 Lo que falta:** **S-03** — el filtro de RUBRO que deja pasar cajas de cartón. Necesita mirar datos
 de prod: hipótesis, `rubro_id` viene null desde `/api/conceptos/search` y `permitido()` deja pasar lo
-ausente. Sin arrancar: S-05, S-06, S-07, S-08, S-09, S-10, S-15, S-16, S-17, S-18.
+ausente. Sin arrancar: S-05, S-06, S-08, S-09, S-10, S-15, S-17, S-18.
 
-**⚠️ Antes de desplegar esto a prod:** correr `V014`/`V015`, re-sincronizar el catálogo (cambiar
+**⚠️ Antes de desplegar esto a prod:** correr `V014`/`V015`/`V016`, re-sincronizar el catálogo (cambiar
 `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo) y correr el mapeo de TiendaNube para que se
 pueble el `handle` de cada producto — sin eso `urlProducto` viaja en null y el link del mail no sale.
 El `.env` del VPS necesita además `CATALOGO_TIPOS_ERP=Producto` y `TIENDANUBE_STORE_URL=https://www.thebcompany.com.ar` (S-17).

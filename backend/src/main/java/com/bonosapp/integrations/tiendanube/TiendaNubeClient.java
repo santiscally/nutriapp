@@ -42,7 +42,9 @@ public interface TiendaNubeClient {
             BigDecimal valuePct,
             LocalDate startDate,
             LocalDate endDate,
-            List<Long> productIds
+            List<Long> productIds,
+            /** La API lo asume true si no se manda: siempre viaja explícito. */
+            boolean combinesWithOtherDiscounts
     ) {}
 
     record Coupon(long id, String code, boolean valid) {}

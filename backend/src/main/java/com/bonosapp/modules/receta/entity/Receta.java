@@ -34,6 +34,9 @@ public class Receta extends BaseEntity {
 
     private BigDecimal descuentoPct;
 
+    /** S-07: TiendaNube crea los cupones combinables por defecto; acá el default es que no. */
+    private boolean combinable;
+
     private Instant emitidaAt;
 
     private LocalDate venceAt;

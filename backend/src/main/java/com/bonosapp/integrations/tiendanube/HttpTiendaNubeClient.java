@@ -86,6 +86,7 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
         body.put("type", "percentage");
         body.put("value", request.valuePct().setScale(2, RoundingMode.HALF_UP).toPlainString());
         body.put("max_uses", 1);
+        body.put("combines_with_other_discounts", request.combinesWithOtherDiscounts());
         if (request.startDate() != null) {
             body.put("start_date", request.startDate().toString());
         }
