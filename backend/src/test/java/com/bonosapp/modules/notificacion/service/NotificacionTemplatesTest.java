@@ -69,6 +69,7 @@ class NotificacionTemplatesTest {
 
         Producto p = new Producto();
         p.setNombre(nombre);
+        p.setTiendanubeHandle("magnesio-300g");
         when(productos.findAllById(any())).thenReturn(List.of(p));
         return r;
     }
@@ -145,6 +146,16 @@ class NotificacionTemplatesTest {
                 .contains("Usá el código al finalizar tu compra")
                 .doesNotContain("/discount/")
                 .doesNotContain("null");
+    }
+
+    /** F-18: primero el link que aplica el bono, después la ficha del producto. */
+    @Test
+    void mailDelBono_linkeaElCuponYDespuesElProducto() {
+        String cuerpo = templates("https://bonosapp.com.ar", "https://tienda.test")
+                .cuerpoEmail(recetaConProducto("Magnesio 300g"), paciente());
+
+        assertThat(cuerpo.indexOf("https://tienda.test/discount/RX-3V737V"))
+                .isLessThan(cuerpo.indexOf("https://tienda.test/productos/magnesio-300g"));
     }
 
     /** F-22: el asunto identifica el mail sin palabras de promoción. */

@@ -88,11 +88,29 @@ public class PdfSimpleBonoGenerator implements BonoPdfGenerator {
             t.linea(MARGEN, y, "F1", 11, "(No combinable con promociones activas):");
             y -= 20;
             t.linea(MARGEN, y, "F2", 11, linkCupon);
+
+            // F-18 — segundo paso, mismo orden que el mail: el link de arriba activa el bono pero
+            // deja a la paciente en la home de la tienda, no en el producto.
+            String urlProducto = urlDelProducto(receta);
+            if (urlProducto != null) {
+                y -= 28;
+                t.linea(MARGEN, y, "F1", 11, "Después entrá al producto y sumalo al carrito:");
+                y -= 20;
+                t.linea(MARGEN, y, "F2", 11, urlProducto);
+            }
         }
 
         t.linea(MARGEN, MARGEN, "F1", 9,
                 "Este bono es personal e intransferible y se puede usar una sola vez.");
         return t.build();
+    }
+
+    /** Sólo con un producto: con dos no hay "el" producto al que mandarla (igual que en el mail). */
+    private String urlDelProducto(RecetaResponse receta) {
+        if (receta.items().size() != 1 || receta.items().get(0).producto() == null) {
+            return null;
+        }
+        return receta.items().get(0).producto().urlProducto();
     }
 
     private String nombrePaciente(RecetaResponse receta) {

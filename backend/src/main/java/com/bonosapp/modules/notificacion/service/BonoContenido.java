@@ -7,6 +7,7 @@ import com.bonosapp.modules.receta.entity.Receta;
 import com.bonosapp.modules.receta.entity.RecetaItem;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -37,22 +38,46 @@ public class BonoContenido {
      * frase sin descripción en vez de decir "de null".
      */
     public String descripcionProductos(Receta receta) {
-        if (receta == null || receta.getItems().isEmpty()) {
-            return null;
-        }
-        List<UUID> ids = receta.getItems().stream().map(RecetaItem::getProductoId).filter(java.util.Objects::nonNull).toList();
-        if (ids.isEmpty()) {
-            return null;
-        }
-        // Set: dos items del mismo producto no repiten el nombre en el mensaje.
         Set<String> nombres = new LinkedHashSet<>();
-        for (Producto p : productos.findAllById(ids)) {
+        // Set: dos items del mismo producto no repiten el nombre en el mensaje.
+        for (Producto p : productosDe(receta)) {
             String nombre = p.getNombre() == null || p.getNombre().isBlank() ? p.getDescripcion() : p.getNombre();
             if (nombre != null && !nombre.isBlank()) {
                 nombres.add(nombre.trim());
             }
         }
         return nombres.isEmpty() ? null : String.join(" y ", nombres);
+    }
+
+    /**
+     * Link a la ficha del producto en la tienda (S-02), para el "andá directo al producto" de F-18.
+     *
+     * <p>Sólo cuando el bono tiene <b>un</b> producto y está mapeado a la tienda: con dos, no hay
+     * "el" producto al que mandarla, y el link de cupón sigue funcionando igual.
+     *
+     * <p><b>Ojo, no reemplaza a {@link #linkCupon(Receta)}:</b> abrir la ficha del producto no
+     * aplica el bono. Verificado contra la tienda real (2026-09-21): TiendaNube ignora los
+     * parámetros de redirect en {@code /discount/<codigo>} y siempre cae en la home, así que
+     * <b>no existe</b> un único link que aplique el cupón y aterrice en el producto. Por eso el
+     * mensaje manda primero a activar el bono y después al producto.
+     */
+    public String linkProducto(Receta receta) {
+        List<Producto> items = productosDe(receta);
+        if (items.size() != 1) {
+            return null;
+        }
+        return integrations.tiendanube().urlDeProducto(items.get(0).getTiendanubeHandle());
+    }
+
+    private List<Producto> productosDe(Receta receta) {
+        if (receta == null || receta.getItems().isEmpty()) {
+            return List.of();
+        }
+        List<UUID> ids = receta.getItems().stream()
+                .map(RecetaItem::getProductoId)
+                .filter(Objects::nonNull)
+                .toList();
+        return ids.isEmpty() ? List.of() : productos.findAllById(ids);
     }
 
     /**

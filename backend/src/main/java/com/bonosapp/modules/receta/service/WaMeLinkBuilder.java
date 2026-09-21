@@ -62,17 +62,26 @@ public class WaMeLinkBuilder {
     private String mensaje(Receta receta, Paciente paciente) {
         String descripcion = bono.descripcionProductos(receta);
         String link = bono.linkCupon(receta);
+        String producto = bono.linkProducto(receta);
         String tienda = props.tiendanube().storeUrlNormalizada();
+        String cierre;
+        if (link == null) {
+            cierre = tienda == null
+                    ? "Usalo al comprar en la tienda online."
+                    : "Usalo al comprar acá: " + tienda;
+        } else {
+            // F-18 — dos pasos y en este orden: el link de cupón activa el bono pero cae en la
+            // home (TiendaNube ignora los redirects), así que el producto va después. Al revés,
+            // llegaría al producto sin el bono activado.
+            cierre = BonoContenido.INSTRUCCION_LINK + ": " + link
+                    + (producto == null ? "" : " Después entrá al producto y sumalo al carrito: " + producto);
+        }
         return "Hola " + paciente.getNombre() + "! Tu bono profesional"
                 + (descripcion == null ? "" : " de " + descripcion)
                 + " con " + pct(receta.getDescuentoPct())
                 + " de descuento ya está listo. Código: *" + receta.getCodigo() + "* "
                 + "(válido hasta el " + FECHA.format(receta.getVenceAt()) + "). "
-                + (link != null
-                        ? BonoContenido.INSTRUCCION_LINK + ": " + link
-                        : tienda == null
-                                ? "Usalo al comprar en la tienda online."
-                                : "Usalo al comprar acá: " + tienda);
+                + cierre;
     }
 
     /**

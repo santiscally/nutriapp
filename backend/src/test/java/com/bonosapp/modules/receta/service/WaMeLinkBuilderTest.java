@@ -58,6 +58,7 @@ class WaMeLinkBuilderTest {
 
         Producto p = new Producto();
         p.setNombre(nombre);
+        p.setTiendanubeHandle("magnesio-300g");
         when(productos.findAllById(any())).thenReturn(List.of(p));
         return r;
     }
@@ -146,6 +147,33 @@ class WaMeLinkBuilderTest {
         String texto = texto(builder.forReceta(recetaConProducto("Magnesio 300g"), paciente("+5491144443333")));
 
         assertThat(texto).contains("Tu bono profesional de Magnesio 300g con 15% de descuento");
+    }
+
+    /**
+     * F-18: los dos links, y en este orden. El de cupón activa el bono pero cae en la home de la
+     * tienda (TiendaNube ignora los redirects), así que el del producto va DESPUÉS: al revés, la
+     * paciente llegaría al producto sin el bono aplicado.
+     */
+    @Test
+    void elMensajeLinkeaPrimeroElCuponYDespuesElProducto() {
+        String texto = texto(builder.forReceta(recetaConProducto("Magnesio 300g"), paciente("+5491144443333")));
+
+        assertThat(texto.indexOf(TIENDA + "/discount/RX-3V737V"))
+                .isLessThan(texto.indexOf(TIENDA + "/productos/magnesio-300g"));
+        assertThat(texto).contains("Después entrá al producto y sumalo al carrito");
+    }
+
+    /** Sin producto mapeado a la tienda, el mensaje queda con el link de cupón solo. */
+    @Test
+    void sinHandleNoInventaUnLinkDeProducto() {
+        Receta r = recetaConProducto("Magnesio 300g");
+        Producto sinHandle = new Producto();
+        sinHandle.setNombre("Magnesio 300g");
+        when(productos.findAllById(any())).thenReturn(List.of(sinHandle));
+
+        String texto = texto(builder.forReceta(r, paciente("+5491144443333")));
+
+        assertThat(texto).doesNotContain("/productos/").endsWith(TIENDA + "/discount/RX-3V737V");
     }
 
     /** Sin tienda configurada el mensaje sale igual, sin un link cortado. */

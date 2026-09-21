@@ -61,7 +61,16 @@ public class NotificacionTemplates {
         if (link == null) {
             return "Usá el código al finalizar tu compra en la tienda online." + tiendaLink();
         }
-        return BonoContenido.INSTRUCCION_LINK + ":\n" + link;
+        String texto = BonoContenido.INSTRUCCION_LINK + ":\n" + link;
+
+        // F-18 — el link de cupón aplica el bono pero aterriza en la home de la tienda (TiendaNube
+        // ignora los parámetros de redirect), así que el producto va como segundo paso y no en
+        // lugar del primero: al revés, la paciente llegaría al producto sin el bono activado.
+        String producto = bono.linkProducto(receta);
+        if (producto != null) {
+            texto += "\n\nDespués entrá al producto y sumalo al carrito:\n" + producto;
+        }
+        return texto;
     }
 
     public String asuntoRegistroRecibido() {
