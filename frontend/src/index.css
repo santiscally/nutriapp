@@ -1351,6 +1351,10 @@ select {
 .auth__submit:disabled { opacity: 0.6; cursor: default; }
 .auth__foot { margin: 24px 0 0; text-align: center; font-size: 0.9rem; color: var(--muted); }
 .auth__foot a { color: var(--primary); font-weight: 700; }
+/* Va pegado al campo de contraseña, alineado a la derecha, como en cualquier login. */
+.auth__olvide { margin: -6px 0 2px; text-align: right; font-size: 0.85rem; }
+.auth__olvide a { color: var(--muted); }
+.auth__olvide a:hover { color: var(--primary); }
 .auth__terms {
   display: flex;
   gap: 10px;

@@ -18,6 +18,7 @@ import { Perfil } from "./pages/Perfil";
 import { Proximamente } from "./pages/Proximamente";
 import { Recetas } from "./pages/Recetas";
 import { Registro } from "./pages/Registro";
+import { RecuperarPassword } from "./pages/RecuperarPassword";
 import { config } from "./config";
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/" element={config.comingSoon ? <Proximamente /> : <Login />} />
           <Route path="/ingresar" element={<Login />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/recuperar-password" element={<RecuperarPassword />} />
 
           {/* Protegidas (layout con sidebar/topbar) */}
           <Route

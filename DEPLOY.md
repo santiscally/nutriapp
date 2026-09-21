@@ -179,9 +179,16 @@ Verificación:
 bash scripts/keycloak-config.sh --dry-run    # ver qué haría
 bash scripts/keycloak-config.sh              # aplicar
 ```
-Aplica la **protección de fuerza bruta** (S-08: bloqueo temporal tras 10 intentos fallidos) y el
-**SMTP del realm** (S-09: sin esto el mail de "olvidé mi contraseña" no sale). Es idempotente, así
-que se corre en cada deploy sin pensarlo.
+Aplica la **protección de fuerza bruta** (S-08: bloqueo temporal tras 10 intentos fallidos), el
+**SMTP del realm** (S-09: sin esto el mail de "olvidé mi contraseña" no sale) y la **verificación de
+mail obligatoria** (S-10). Es idempotente, así que se corre en cada deploy sin pensarlo.
+
+> **🔴 El orden importa y el script lo respeta.** Las cuentas creadas por la Admin API nacen con
+> `emailVerified=false`. Activar `verifyEmail` sin tocarlas **deja a TODAS afuera en el próximo
+> login**. El script primero las marca como verificadas y recién después exige la verificación; si no
+> puede hacer el backfill (falta python3), aborta antes de tocar el realm. Verificar en la salida que
+> diga *"Marcando como verificadas…"* o *"Todas las cuentas ya figuran con el mail verificado"*, y
+> **probar un login real después de correrlo**.
 
 > **Por qué hace falta un paso aparte:** `--import-realm` corre **sólo la primera vez**. En un
 > entorno que ya arrancó, editar `keycloak/realms/bonosapp-realm.json` no cambia nada — el realm

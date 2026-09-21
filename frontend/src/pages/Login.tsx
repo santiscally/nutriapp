@@ -130,6 +130,10 @@ export function Login() {
             />
           </label>
 
+          <p className="auth__olvide">
+            <Link to="/recuperar-password">¿Olvidaste tu contraseña?</Link>
+          </p>
+
           {error && <div className="alert alert--error">{error}</div>}
 
           <button className="auth__submit" type="submit" disabled={submitting}>

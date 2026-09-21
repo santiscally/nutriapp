@@ -6,6 +6,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
+  "verifyEmail": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
   "failureFactor": 10,
@@ -416,7 +417,8 @@
           "view-users",
           "view-realm"
         ]
-      }
+      },
+      "emailVerified": true
     }
   ]
 }

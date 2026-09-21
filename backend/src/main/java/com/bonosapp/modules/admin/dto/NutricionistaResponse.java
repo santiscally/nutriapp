@@ -32,5 +32,7 @@ public record NutricionistaResponse(
         BigDecimal descuentoPct,
         BigDecimal comisionPct,
         /** ¿Puede loguearse hoy? Refleja el `enabled` del usuario en Keycloak. */
-        boolean activo
+        boolean activo,
+        /** S-10: ¿validó su mail? Sin eso no puede entrar aunque el admin la apruebe. */
+        boolean emailVerificado
 ) {}

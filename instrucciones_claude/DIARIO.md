@@ -32,6 +32,57 @@
 
 ## Entradas
 
+## 2026-09-21 (5) — Santi — auth/frontend (S-10 verificación de mail + la UI de recupero, verificadas sobre el stack)
+**Qué:**
+- **S-10** · al registrarse sale un mail de "validá tu mail" (24 h). La verificación va **en paralelo**
+  a la aprobación del admin, no la reemplaza: el alta sigue quedando `PENDIENTE`, pero sin validar la
+  casilla no se puede entrar aunque el admin apruebe. `POST /api/v1/registro/reenviar-verificacion`
+  (público, 204 siempre) para cuando el mail no llegó, y `GET /admin/nutricionistas` suma
+  `emailVerificado` para que el admin entienda por qué alguien aprobado no entra.
+- **UI de recupero** (S-09): link "¿Olvidaste tu contraseña?" en el login + pantalla
+  `/recuperar-password`. **Es lo único que toqué en `frontend/`**, por pedido explícito del usuario, y
+  lo acoté a eso a propósito para no pisar F-01..F-25.
+
+**Por qué en paralelo y no antes del admin:** si el registro no apareciera en la bandeja hasta
+verificar, un mail que cae en Promociones deja la solicitud invisible para todos — ni la persona ni el
+admin se enteran de que existe. Así el admin la ve igual, marcada, y puede actuar.
+
+**El riesgo que había que desactivar antes de tocar nada:** las cuentas creadas por la Admin API nacen
+con `emailVerified=false`. Activar `verifyEmail` sin tocarlas **deja afuera a todo el padrón en el
+próximo login** — incluido el admin. `keycloak-config.sh` ahora hace el backfill **primero** y recién
+después exige la verificación; si no puede hacerlo (falta python3), aborta antes de tocar el realm.
+Lo probé poniendo las tres cuentas de dev en `false` a mano, corriendo el script y confirmando que
+quedaron verificadas y que **siguen pudiendo loguearse**.
+
+**Verificado sobre el stack, el ciclo entero:** cuenta sin verificar → login rechazado con
+`Account is not fully set up` · reenvío → 204 y el mail llega a mailpit (y 204 también para un mail
+que no existe, sin mandar nada) · abrir el link → pantalla de confirmación → confirmar → `emailVerified`
+en true, `requiredActions` vacío → **login OK**. Bandeja del admin devolviendo `emailVerificado` con
+una sola consulta a Keycloak por página. 228 tests + el IT en verde, y `npm run build` del front.
+
+**Detalle de soporte que conviene tener a mano:** el link del mail abre una pantalla de confirmación
+y **hay que completarla**. Si la persona lo abre y no confirma, queda con la acción pendiente y el
+login sigue bloqueado aunque `emailVerified` figure en true. Es deliberado de Keycloak (evita que un
+escáner de mails dé por validada la casilla), pero es la explicación del futuro "ya le di al link y
+no entro".
+
+**Corrección de una entrada anterior:** en el commit de S-09 dije que `/password/recuperar` quedaba
+con rate limit y **no era cierto**: al editar el filtro, un segundo write con el texto viejo pisó al
+primero y sólo quedó el comentario del javadoc. O sea que el endpoint se desplegaba sin límite por IP
+— suficiente para inundarle la casilla a cualquiera que esté registrado. Corregido junto con esto:
+los tres endpoints públicos que pegan contra Keycloak comparten el cupo de `/registro`.
+
+**Impacto para el otro (Fran):** la pantalla de registro debería avisar que hay que validar el mail, y
+conviene un botón de "reenviar" contra el endpoint nuevo. **Tampoco hay tarea `F-xx` para eso.** En el
+login ya está el link de recupero, así que esa parte no la toques. Ojo con el asunto de los dos mails
+que manda Keycloak: dicen *"Actualiza tu cuenta"*, genérico; si se quiere marca hay que hacer un theme
+de mail, y conviene mirarlo junto con S-18.
+
+**Refs:** `RegistroService.enviarVerificacion`, `RegistroController.reenviarVerificacion`,
+`KeycloakAdminClient` (`enviarMailDeVerificacion`, `emailsVerificados`, `estaVerificado`),
+`scripts/keycloak-config.sh`, `bonosapp-realm.json`, `frontend/src/pages/RecuperarPassword.tsx`,
+`DEPLOY.md` (paso 6).
+
 ## 2026-09-21 (4) — Santi — auth/infra (S-08 fuerza bruta + S-09 recupero de contraseña, verificados sobre el stack)
 **Qué:** Cerré el bloque de auth que no depende de nadie.
 - **S-08** · bloqueo temporal tras 10 intentos fallidos (`failureFactor=10`), con espera creciente y

@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-21 (4)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
+**Última actualización: 2026-09-21 (5)** — arrancó la tanda de **modificaciones post 1ª entrega**. Confirmé
 el reparto del `PLAN-modificaciones-post-entrega.md` (era una propuesta de Fran) y escribí los
 **contratos de las 7 features cruzadas** en `05-api-endpoints.md` → **Fran quedó desbloqueado** en
 F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
@@ -49,10 +49,16 @@ F-06, F-07, F-10, F-13, F-17, F-18, F-24 y F-25.
   el realm JSON sólo se importa la primera vez, así que sin el script prod se queda con el default
   de 30 intentos y sin SMTP. Verificado sobre el stack: bloqueo real, mail entregado y link abierto.
 
+- **S-10 — verificación de mail.** En paralelo a la aprobación del admin: el alta sigue quedando
+  `PENDIENTE`, pero sin validar la casilla no se entra. Reenvío público y `emailVerificado` en la
+  bandeja. El script hace el backfill de `emailVerified` **antes** de exigirla, si no el padrón
+  entero queda afuera en el próximo login.
+- **UI de "olvidé mi contraseña"** (`/recuperar-password` + link en el login). Es **lo único que
+  toqué en `frontend/`**, por pedido explícito, acotado para no pisar a Fran.
+
 **🔴 Lo que falta:** **S-03** — el filtro de RUBRO que deja pasar cajas de cartón. Necesita mirar datos
 de prod: hipótesis, `rubro_id` viene null desde `/api/conceptos/search` y `permitido()` deja pasar lo
-ausente. **S-10** (verificación de mail en el registro) quedó sin arrancar a propósito: cambia el alta que
-está viva y necesita UI y copy de Fran. Sin arrancar también: S-05, S-06, S-15, S-17, S-18.
+ausente. Sin arrancar: S-05, S-06, S-15, S-17, S-18.
 
 **⚠️ Antes de desplegar esto a prod:** correr `bash scripts/keycloak-config.sh`, `V014`/`V015`/`V016`, re-sincronizar el catálogo (cambiar
 `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo) y correr el mapeo de TiendaNube para que se

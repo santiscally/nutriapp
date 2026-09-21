@@ -8,6 +8,8 @@
 # Qué aplica:
 #   S-08 — protección de fuerza bruta: bloqueo temporal tras 10 intentos fallidos.
 #   S-09 — SMTP del realm, sin el cual el mail de "olvidé mi contraseña" no sale.
+#   S-10 — verificación de mail obligatoria, con backfill previo para no dejar afuera a las
+#          cuentas que ya existen (nacen con emailVerified=false).
 #
 # Por qué la REST API y no kcadm: kcadm ignora en silencio `-s smtpServer={...}` (lo manda como
 # string) y con `-f` falla con unknown_error. Un PUT parcial al endpoint del realm mergea bien y
@@ -93,7 +95,7 @@ fi
 # failureFactor=10 es el pedido del cliente. permanentLockout=false a propósito: con bloqueo
 # permanente, cualquiera que sepa el mail de una profesional le deja la cuenta muerta hasta que
 # un admin la desbloquee a mano. La espera creciente frena el ataque sin regalar ese poder.
-PAYLOAD="$(printf '{"realm":"%s","bruteForceProtected":true,"failureFactor":10,"permanentLockout":false,"waitIncrementSeconds":60,"maxFailureWaitSeconds":900,"maxDeltaTimeSeconds":43200,"quickLoginCheckMilliSeconds":1000,"minimumQuickLoginWaitSeconds":60,"resetPasswordAllowed":true' "$(json_esc "${REALM}")")"
+PAYLOAD="$(printf '{"realm":"%s","bruteForceProtected":true,"failureFactor":10,"permanentLockout":false,"waitIncrementSeconds":60,"maxFailureWaitSeconds":900,"maxDeltaTimeSeconds":43200,"quickLoginCheckMilliSeconds":1000,"minimumQuickLoginWaitSeconds":60,"resetPasswordAllowed":true,"verifyEmail":true' "$(json_esc "${REALM}")")"
 
 # --- S-09: SMTP del realm -------------------------------------------------------------
 # Mismas credenciales que usa la app (MAIL_*): una sola cuenta de envío y un solo dominio
@@ -121,6 +123,41 @@ if [ "${DRY_RUN}" = "1" ]; then
   echo "==> DRY RUN — PUT ${KC_URL}/admin/realms/${REALM} con:"
   printf '%s\n' "${PAYLOAD}" | oculta_pass
   exit 0
+fi
+
+# --- S-10: nadie queda afuera cuando se empieza a exigir la verificación -------------
+# Las cuentas creadas por la Admin API nacen con emailVerified=false. Si se activa verifyEmail
+# sin tocarlas, el próximo login de TODAS falla. Esto se corre antes de exigir nada.
+PY=""
+for candidato_py in python3 python; do
+  if command -v "${candidato_py}" >/dev/null 2>&1; then PY="${candidato_py}"; break; fi
+done
+if [ -z "${PY}" ]; then
+  echo "ERROR: hace falta python3 para el backfill de emailVerified; sin eso, activar verifyEmail" >&2
+  echo "       dejaría afuera a todas las cuentas que ya existen. Abortando." >&2
+  exit 1
+fi
+
+USUARIOS="$(kccurl "${KC_URL}/admin/realms/${REALM}/users?briefRepresentation=true&max=1000" -H "Authorization: Bearer ${TOKEN}")"
+
+# Los ids salen separados por espacio y escritos por `buffer`: el print de python en Windows mete
+# un CR que se colaba adentro de la URL y curl la rechazaba.
+SIN_VERIFICAR="$(printf '%s' "${USUARIOS}" | "${PY}" -c 'import sys, json
+faltan = [u["id"] for u in json.load(sys.stdin) if not u.get("emailVerified")]
+sys.stdout.buffer.write(" ".join(faltan).encode())')"
+
+if [ -n "${SIN_VERIFICAR}" ]; then
+  echo "==> Marcando como verificadas las cuentas que ya existían:"
+  for uid in ${SIN_VERIFICAR}; do
+    UCODE="$(printf '{"emailVerified":true}' | kccurl -o /dev/null -w '%{http_code}' -X PUT "${KC_URL}/admin/realms/${REALM}/users/${uid}" -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" --data-binary @-)"
+    if [ "${UCODE}" != "204" ]; then
+      echo "ERROR: no se pudo marcar ${uid} como verificado (HTTP ${UCODE}). Abortando antes de exigir verificación." >&2
+      exit 1
+    fi
+    echo "    ${uid} ok"
+  done
+else
+  echo "==> Todas las cuentas ya figuran con el mail verificado"
 fi
 
 echo "==> PUT /admin/realms/${REALM}"

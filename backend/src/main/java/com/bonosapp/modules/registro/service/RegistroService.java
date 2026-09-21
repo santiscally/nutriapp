@@ -35,6 +35,9 @@ public class RegistroService {
     private final NotificacionService notificaciones;
     private final ProfesionService profesiones;
 
+    /** S-10: 24 h para validar el mail. El alta ya quedó hecha; esto no puede voltearla. */
+    private static final int VERIFICACION_VIGENCIA_SEGUNDOS = 86400;
+
     @Transactional
     public RegistroResponse registrar(RegistroRequest req, MultipartFile matricula) {
         // Mensaje idéntico al del backstop de Keycloak: no diferenciar filtra existencia (enumeración).
@@ -83,6 +86,7 @@ public class RegistroService {
             // Misma tx que el alta: o queda la solicitud con sus avisos encolados, o no queda nada.
             // El envío es asíncrono (dispatcher), así que un proveedor caído no frena el registro.
             notificaciones.encolarRegistro(saved);
+            enviarVerificacion(keycloakUserId, saved.getEmail());
             log.info("Registro de nutricionista {} (keycloak {}) — PENDIENTE de aprobación",
                     saved.getEmail(), keycloakUserId);
             return new RegistroResponse(saved.getId(), saved.getEstadoValidacion().name());
@@ -94,5 +98,33 @@ public class RegistroService {
             keycloak.deleteUser(keycloakUserId);
             throw ex;
         }
+    }
+
+    /**
+     * S-10 — el mail de "validá tu mail". Si falla (realm sin SMTP, proveedor caído) el registro
+     * igual queda hecho: la solicitud tiene que llegarle al admin aunque el mail no salga, y para
+     * eso está el reenvío.
+     */
+    private void enviarVerificacion(String keycloakUserId, String email) {
+        try {
+            keycloak.enviarMailDeVerificacion(keycloakUserId, VERIFICACION_VIGENCIA_SEGUNDOS);
+        } catch (RuntimeException ex) {
+            log.error("No se pudo enviar el mail de verificación a {}: {}", email, ex.getMessage());
+        }
+    }
+
+    /**
+     * Reenvía la verificación. Como el recupero de contraseña, no dice si la cuenta existe: el
+     * controller responde 204 siempre.
+     */
+    @Transactional(readOnly = true)
+    public void reenviarVerificacion(String email) {
+        repository.findByEmailIgnoreCaseAndDeletedAtIsNull(email).ifPresentOrElse(n -> {
+            if (n.getKeycloakUserId() == null) {
+                log.warn("Reenvío de verificación de {}: no tiene usuario en Keycloak", n.getEmail());
+                return;
+            }
+            enviarVerificacion(n.getKeycloakUserId(), n.getEmail());
+        }, () -> log.info("Reenvío de verificación pedido para un email que no está registrado"));
     }
 }

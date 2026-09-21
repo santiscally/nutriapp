@@ -253,7 +253,7 @@ Shapes que fija Santi para que Fran construya sin esperar al backend. IDs del
 puede devolver 404 o el campo venir ausente); `vivo` = ya responde en prod. Cuando uno pasa a `vivo`
 va una entrada en el DIARIO.
 
-**Implementado en `main` (falta desplegar): S-02, S-07, S-08, S-09, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
+**Implementado en `main` (falta desplegar): S-02, S-07, S-08, S-09, S-10, S-11, S-12, S-13, S-14 y S-16.** Contra un backend local
 levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
 el catálogo.
 
@@ -429,7 +429,7 @@ destildado). `RecetaResponse` devuelve `combinable` para que el detalle del bono
 consumen los templates del mail y el `WaMeLinkBuilder`; **nadie lo hardcodea**, ni el front ni los
 templates: sale de config.
 
-### S-09 · "Olvidé mi contraseña" — **hecho, falta desplegar** → ⚠️ NO tiene tarea F asignada
+### S-09 · "Olvidé mi contraseña" — **hecho, con UI** → `/recuperar-password`
 
 ```
 POST /api/v1/password/recuperar     (público, sin token)
@@ -448,10 +448,37 @@ propios que guardar ni invalidar.
 Sólo se manda el mail si la cuenta está **APROBADA y activa**: a una pendiente de aprobación,
 cambiarle la contraseña no la deja entrar, y el mail sólo la haría creer que sí.
 
-⚠️ **Falta la UI, y no está en el reparto:** el PLAN asignó S-09 a Santi pero no le dio a Fran una
-tarea `F-xx` para el link "¿Olvidaste tu contraseña?" en el login ni para el formulario del mail.
-Son unas pocas líneas (un input + POST + un cartel de "revisá tu casilla"), pero **hoy el endpoint no
-lo llama nadie**. Hay que decidir quién la hace.
+**La UI la hizo Santi** (2026-09-21, por pedido explícito): link "¿Olvidaste tu contraseña?" en el
+login y la pantalla `/recuperar-password`. Es lo único que Santi tocó en `frontend/`, y se acotó a
+eso a propósito para no pisar F-01..F-25.
+
+### S-10 · Verificación de mail — **hecho, falta desplegar** → ⚠️ toca el registro en vivo
+
+Al registrarse, la persona recibe un mail con un link para validar su casilla. **El alta sigue
+quedando `PENDIENTE` igual**: la verificación va en paralelo a la aprobación del admin, no la
+reemplaza. Lo que cambia es que, verificada o no, **sin validar el mail no puede loguearse** aunque
+el admin la apruebe (el realm rechaza el login con `Account is not fully set up`).
+
+```
+POST /api/v1/registro/reenviar-verificacion     (público, sin token)
+{ "email": "ana@x.com" }
+→ 204 SIEMPRE
+```
+
+Mismo criterio que el recupero: 204 exista o no la cuenta, y comparte el cupo de rate limit de
+`/registro`. El link vale 24 h.
+
+`GET /admin/nutricionistas` suma **`emailVerificado`** (boolean) a cada fila, para que el admin
+entienda por qué alguien aprobado todavía no puede entrar. Se resuelve con **una sola** consulta a
+Keycloak por página.
+
+⚠️ **Detalle de soporte:** el link abre una pantalla de confirmación y hay que **completarla**. Si la
+persona abre el mail y no confirma, queda con la acción pendiente y el login sigue bloqueado. Es a
+propósito (evita que un escáner de mails dé por validada la casilla), pero es la explicación de un
+"ya le di al link y no entro".
+
+⚠️ **Para Fran:** el registro debería avisar en pantalla que hay que validar el mail, y conviene un
+"reenviar" a mano contra este endpoint. No hay tarea `F-xx` para eso tampoco.
 
 ### Suelto: el mensaje de error del CUIT (parte de F-04) es del backend
 
