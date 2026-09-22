@@ -32,7 +32,7 @@
 
 ## Entradas
 
-## 2026-09-22 — Fran — frontend (prueba a mano de las dos tandas: 25/28 pasos limpios + 3 hallazgos)
+## 2026-09-22 (5) — Fran — frontend (prueba a mano de las dos tandas: 25/28 pasos limpios + 3 hallazgos)
 
 **Qué:** Recorrido manual completo de los cambios post-entrega, con el stack local (mail y las dos
 integraciones en stub). **25 de 28 pasos pasaron sin observaciones.** Los otros tres:
@@ -56,6 +56,202 @@ integraciones en stub). **25 de 28 pasos pasaron sin observaciones.** Los otros 
 
 **Refs:** `frontend/src/components/ui/Toast.tsx`, `Icon.tsx`, `ProductoBuscador.tsx`, `index.css`,
 commit `f6e2fed`; `nginx/conf.d/bonosapp.conf:149`, `docker-compose.prod.yml:89`.
+## 2026-09-22 (4) — Santi — webhooks (corrección: RX-R7H85N no era un bug, y se saca la reconciliación)
+**Qué:** Corrige la entrada de hoy (3). El cliente verificó la orden en el admin de TiendaNube: **el pago
+estaba en `pending`**, así que el evento `order/paid` nunca se disparó y el bono no tenía que aplicarse.
+**El sistema hizo exactamente lo correcto.** No hubo webhook perdido, no hubo bug.
+
+**Qué se saca:** por decisión del usuario, se quitan el endpoint `POST /admin/tiendanube/reconciliar`, su
+servicio y el barrido nocturno. Se habían hecho para rescatar un bono que resultó no necesitar rescate, y
+sin un caso real que los justifique son superficie de más: un endpoint de admin y un job que le pega a
+TiendaNube todas las noches.
+
+**Lo que queda del episodio, porque no depende de él:**
+- **`ultimoWebhookAt`** en `GET /admin/integraciones/estado`. `null` = nunca llegó ningún webhook, que
+  sigue siendo distinto de "no hubo ventas". Si mañana pasa algo parecido, es el primer lugar a mirar.
+- **El fix de `fields` en `listProducts`** (ese sí era un bug de verdad, y grave): pedía
+  `id,name,variants`, y como ese parámetro recorta la respuesta, `handle` e `images` llegaban siempre en
+  null contra la API real. El link directo al producto del mail y la foto no se iban a armar nunca.
+- **El pool del scheduler** en 4 (entrada del 22/09 (2)).
+
+**Lo que queda anotado por si reaparece:** el polling de respaldo sigue mirando **sólo 24 h**. Si algún
+día un webhook se pierde de verdad y nadie lo nota en el día, ese bono queda PENDIENTE para siempre y la
+comisión no se liquida — no hay nada automático que lo recupere. Hoy no tenemos evidencia de que pase,
+así que no se arregla algo que no está roto; pero si vuelve a aparecer un "compré y sigue pendiente" **con
+el pago confirmado**, el primer sospechoso es ese, y el rescate está en el historial de git
+(commit `a75dfec`) para recuperarlo sin volver a escribirlo.
+
+**Refs:** `AdminIntegracionesController`, `RecetaRepository`, `05-api-endpoints.md`, `ESTADO.md`.
+
+## 2026-09-22 (3) — Santi — webhooks/integraciones (⚑ RX-R7H85N: comprado el viernes, seguía PENDIENTE el martes)
+**Qué pasó:** Gon avisó que el viernes hicieron una compra real usando el cupón **RX-R7H85N** y que el
+bono sigue **PENDIENTE** en la plataforma. O sea que en prod **sí se están emitiendo y usando bonos** —
+lo que yo había dado por "todavía no se emiten" cuando cerré S-07. Hay que releer esa entrada con eso
+en mente.
+
+**Lo que ya se puede afirmar sin mirar prod:** aunque el webhook llegara tarde, **el bono no se iba a
+aplicar nunca**. El polling de respaldo barre **sólo las últimas 24 h**; la compra fue el viernes y el
+reclamo llegó el martes. Cuando una orden sale de esa ventana, no hay nada que la vuelva a mirar. Y un
+webhook que no llega es **silencioso**: no hay error, no hay log, no hay fila en `webhook_events`. El
+costo no es cosmético — es la comisión de una profesional que no se liquida.
+
+**Lo que hice:**
+1. **`POST /admin/tiendanube/reconciliar?horas=720`** — barre las órdenes pagadas de la ventana que se
+   le pida (default 30 días, tope 90) y aplica los bonos que hayan quedado colgados. Devuelve **qué
+   códigos movió**, no un "ok" pelado. Es el botón para "compré y sigue pendiente". Idempotente.
+2. **Barrido nocturno (4 AM)** sobre 30 días, la vigencia de un bono: cierra el agujero de las 24 h
+   para siempre. Si encuentra algo loguea **WARN**, porque que el barrido tenga que rescatar un bono
+   significa que un webhook se perdió.
+3. **`ultimoWebhookAt` en `GET /admin/integraciones/estado`** — `null` significa **nunca llegó ningún
+   webhook**, que es un dato completamente distinto de "no hubo ventas". Sin esto no había forma de
+   distinguir "TiendaNube no nos avisa" de "no compró nadie".
+
+**⚑ Y de paso apareció un bug que habría roto dos cosas de esta misma tanda:** `listProducts` pedía
+`fields=id,name,variants`. Ese parámetro **recorta la respuesta: lo que no se pide, no viene**. Así que
+`handle` e `images` iban a llegar **siempre en null** contra la API real, y con eso: el **link directo al
+producto** del mail (S-02 → F-18) nunca se iba a armar, y la **foto del producto** (S-05) tampoco. Los dos
+pasaban los tests, porque los tests fabrican el DTO en vez de pedirlo. Ahora pide
+`id,name,handle,images,variants`.
+
+**Lo que NO pude determinar desde acá, y por qué:** intenté mirar las órdenes reales con el endpoint
+nuevo y me dio **0 órdenes pagadas en 30 días**. Antes de sacar conclusiones chequeé el `store_id`: mi
+`.env` local apunta a la tienda **8145981**, y prod usa la **4135704**. O sea que esa consulta no dice
+absolutamente nada sobre la tienda del cliente. **La causa raíz hay que verla contra prod.**
+
+**Cómo diagnosticarlo en prod, en orden (lo más probable primero):**
+1. **¿La orden figura como pagada?** En el admin de TiendaNube, buscar la orden de RX-R7H85N y mirar su
+   `payment_status`. Si está en `pending` o `authorized` —típico de transferencia o "coordinar con el
+   vendedor"— **el sistema está haciendo lo correcto**: sólo convertimos con `paid`, y el webhook
+   `order/paid` ni siquiera se dispara. Sería un tema de operación del cliente, no un bug.
+2. **¿Llegó algún webhook alguna vez?** `GET /admin/integraciones/estado` → `ultimoWebhookAt`. Si está
+   en null con ventas hechas, TiendaNube no nos está avisando: revisar que el webhook siga registrado
+   (`POST /admin/tiendanube/registrar-webhooks` es idempotente) y que el `TIENDANUBE_WEBHOOK_SECRET` del
+   VPS sea el `client_secret` de la app — si no coincide, **cada webhook se rechaza con 401 y no queda
+   rastro en la base**.
+3. `SELECT * FROM webhook_events ORDER BY created_at DESC LIMIT 20;` — si hay filas con
+   `procesado = false`, el problema es el processor, no la recepción.
+4. Con cualquiera de esos resultados, **correr la reconciliación**: aplica el bono al toque si la orden
+   figura como pagada.
+
+**Decisión que hay que tomar con el cliente:** si la orden quedó en `authorized` y no en `paid`,
+¿convertimos igual? Hoy no, a propósito: `authorized` es pago aprobado pero no capturado, y un bono
+aplicado sobre una venta que después se cae deja una comisión a pagar sobre plata que no entró.
+
+**Impacto para el otro (Fran):** el panel de Integraciones puede mostrar `ultimoWebhookAt` (null =
+"nunca llegó ninguno", que conviene que se lea distinto de una fecha vieja), y el botón de reconciliar
+quedaría bien al lado del de resync de cupones. Los dos son de tu panel; cuando quieras los sumás.
+
+**Refs:** `ReconciliacionService`, `AdminIntegracionesController` (`/tiendanube/reconciliar`),
+`WebhookEventRepository.ultimoRecibido`, `IntegracionEstadoResponse.ultimoWebhookAt`,
+`HttpTiendaNubeClient.listProducts` (el `fields`). 249 tests + el IT en verde.
+
+## 2026-09-22 (2) — Santi — catálogo/infra (S-03: el filtro no era el problema · S-06: el scheduler corría con un solo hilo)
+**Qué:** Las dos que creía que necesitaban producción. Las resolví contra la **DB local**, que tiene el
+catálogo sincronizado del Contabilium real (2277 productos, los mismos que prod), sin tocar nada del cliente.
+
+### S-03 — "trae hasta cajas de cartón": el filtro de RUBRO está bien, no hay bug
+Mi hipótesis anterior (`rubro_id` llegaba null y `permitido()` dejaba pasar lo ausente) era **incorrecta**:
+los 2277 productos tienen `rubro_id` poblado. El embudo real:
+
+| Regla | Quedan |
+|---|---|
+| catálogo sincronizado | 2277 |
+| rubro = Producto terminado (144331) | 2173 |
+| + tipo = Producto (S-04, saca 211 Combos) | 1962 |
+| + activo en el ERP | 1962 |
+| + precio ≥ 100 | **1015** |
+
+Los 104 que quedan fuera del rubro —Servicios, Insumos para producción, Suministros, Materias primas,
+Material PoP— están **todos despublicados**. Y las cajas de cartón de verdad están justamente en
+`Insumos para producción - JEIANELL`, así que ya estaban afuera.
+
+Lo que sí hay adentro de "Producto terminado" y **parece** packaging leyendo la lista: `CAJA X24 ON-POUCH`
+(precio 0 → lo bloquea la regla de precio), `EXHIBIDOR X 6 BOLSAS` (que es un pack vendible de verdad) y
+los `PACK X3/X6` y `COMBO`, que **S-04 ya saca**.
+
+**Conclusión: no hay nada que arreglar en el código.** Lo que falta es que prod se **re-sincronice** con las
+reglas actuales — el cambio de `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo, ya está en la checklist
+de deploy. Y para cualquier cosa que el cliente igual quiera afuera, la palanca es `ESTADO BONOSAPP` del
+maestro, que es exactamente para lo que la pidió. Ojo con el número: después del re-sync el catálogo
+recetable ronda los **1015**, no los 2277; la regla de precio se lleva 947 (los ~1000 artículos cargados a $1
+que mencionó Gon en la call).
+
+### S-06 — el estado APLICADO tardaba: el scheduler tenía un solo hilo
+El pipeline estaba bien: el webhook se persiste y responde 200 al toque, un processor drena la cola **cada
+20 s** y hay polling de respaldo cada 5 min. Lo que estaba mal es que la app declara `@EnableScheduling`
+**sin configurar el pool**, y el default de Spring es **UN hilo para todos los `@Scheduled`**. Son seis:
+evict del rate limit, dispatcher de mails, sync de cupones, vencimiento, processor de webhooks y polling de
+TiendaNube.
+
+Con un solo hilo, el processor de webhooks —el que pasa el bono a APLICADO— **hace cola detrás** del
+polling, que recorre por HTTP todas las órdenes pagadas de las últimas 24 h, y detrás del dispatcher de
+mails, que habla SMTP con reintentos. De ahí el "no viaja rápido": el bono no se aplica hasta que el hilo se
+libera, y **no queda rastro en ningún log**, que es lo que lo hacía difícil de ver.
+
+`spring.task.scheduling.pool.size` pasa a 4 (`SCHEDULER_POOL_SIZE`). `fixedDelay` sigue garantizando que un
+job no se solape consigo mismo; lo que se arregla es que no se bloqueen **entre sí**.
+
+**El test que lo cuida** (`SchedulerPoolConfigTest`) ata el `application.yml` real contra la clase de Spring
+que lee la propiedad, así que detecta que alguien mueva la clave o la anide mal — un test que mirara el YAML
+como texto no lo haría. **Verifiqué que falla** poniendo el pool en 1 a propósito antes de dejarlo en 4: un
+test que no puede fallar no sirve de nada.
+
+**Impacto para el otro (Fran):** el dashboard debería reflejar la conversión en ~20 s desde que llega el
+webhook, en vez de quedar esperando. Si después del deploy seguís viendo demora, ya no es el scheduler.
+
+**Refs:** `application.yml` (`spring.task.scheduling.pool.size`), `WebhookProcessor`,
+`TiendaNubePollingJob`, `SchedulerPoolConfigTest`, consultas sobre `productos` en la DB local.
+
+## 2026-09-22 — Santi — catálogo/infra/mail (S-05 la foto rota: tres causas, no una; + adjuntos en el mail y el PDF documentado)
+**Qué:** Traje tu tanda (7 commits, fast-forward limpio) y agarré las tres cosas que me dejaste pedidas,
+más S-05.
+
+**S-05 — la foto de producto no se ve, y no era un solo problema.** Lo diagnostiqué leyendo el repo y el
+Excel del cliente, sin tocar prod. Son **tres capas apiladas**, y arreglar una sola no habría movido nada:
+1. **`imagen_url` sólo lo puebla el import del maestro** — el sync de Contabilium no lo toca. Como el
+   cliente todavía no importó el maestro (`sinMaestro=2277`), en prod la columna está **en null para todo
+   el catálogo**. No hay foto que mostrar.
+2. **Aunque lo importe, el maestro casi no trae fotos:** de 2252 filas, **2078 tienen la columna
+   `LINK IMAGEN TIENDA NUBE` vacía**. Sólo 174 traen link. O sea que el 92 % del catálogo iba a seguir sin
+   imagen igual.
+3. **Y esas 174 tampoco se verían:** el CSP de nginx dice `img-src 'self' data:`, y las URLs son de
+   `dcdn-us.mitiendanube.com`. El navegador las bloquea sin decir nada en la UI.
+
+**Cómo quedó:** el CSP ahora nombra `https://*.mitiendanube.com` (el dominio de la plataforma, no un CDN
+suelto que haya adivinado), y **la foto sale de la tienda**: el mapeo de TiendaNube guarda la imagen
+principal del producto (`images[]`, la de menor `position`). Si el maestro trajo una, gana la del maestro —
+esa la eligió el cliente a mano. Y el import **dejó de pisar con null**: antes, importar el maestro borraba
+la foto que había traído la tienda, que es el bug que nos habríamos comido justo después de arreglar lo demás.
+
+**Lo tuyo que destrabé:**
+- **Adjuntos en el mail (F-20).** `MailSender` suma `send(to, asunto, cuerpo, adjuntos)` con un record
+  `Adjunto` (con `Adjunto.pdf(nombre, bytes)`). La sobrecarga de tres argumentos delega en la de cuatro, no
+  al revés: un default que ignorara la lista dejaría que un sender mande el mail **sin** el PDF sin que nadie
+  se entere. `SmtpMailSender` arma multipart **sólo si hay adjuntos** (sin ellos el mail viaja igual que
+  antes). Ya podés adjuntar cuando llegue la plantilla.
+- **`GET /recetas/{id}/pdf` documentado** en `05-api-endpoints.md`. Perdón por las dos vueltas.
+
+**Sobre lo que marcaste:**
+- **`profesionalesActivos` = 0**: confirmado que no es bug. Las filas locales tienen `activo=false`, y el
+  count mira justamente eso.
+- **Pasar `profesion`/`jurisdiccion`/`matricula` a obligatorios:** todavía **no**. El front ya los manda,
+  pero nada de esto está desplegado; si los exijo ahora y en el deploy alguien tiene el front viejo
+  cacheado, el alta le tira 400. Los paso a obligatorios **después** del deploy, cuando confirmemos que el
+  front nuevo está sirviéndose.
+- **El hallazgo del link de cupón** (TiendaNube siempre aterriza en la home) queda anotado: no necesita nada
+  del backend, y los dos links en orden es la solución correcta.
+- **F-14** sigue bloqueada por lo mismo de siempre, y **S-15** sigue sin hacerse por opcional.
+
+**Problemas:** `mvnw verify` falló una vez por Docker abajo (la máquina se reinició), no por código.
+Los 244 unit tests pasaron igual; el IT quedó verde al levantar Docker.
+
+**Impacto para el otro (Fran):** cuando el mapeo corra en prod, los productos van a empezar a tener foto
+**sin depender de que el cliente llene el Excel** — si el front ya la muestra, se va a ver sola. Y el
+`MailSender` con adjuntos está listo para F-20.
+
+**Refs:** `nginx/conf.d*/bonosapp.conf` (CSP), `TiendaNubeClient.Product.imagenUrl`,
+`HttpTiendaNubeClient.primeraImagen`, `TiendaNubeMapeoService`, `MaestroImportService`,
+`integrations/mail/{MailSender,SmtpMailSender,StubMailSender}.java`, `05-api-endpoints.md`.
 
 ## 2026-09-21 (6) — Fran — frontend + vertical mail (las 8 tareas que destrabó S-01..S-16, y F-18 completo)
 

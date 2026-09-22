@@ -6,6 +6,13 @@ spring:
   jackson:
     time-zone: ${TZ:America/Argentina/Buenos_Aires}
     default-property-inclusion: non_null
+  task:
+    scheduling:
+      # S-06: el default de Spring es UN hilo para todos los @Scheduled. Con uno solo, el processor
+      # de webhooks (cada 20s, el que pasa un bono a APLICADO) espera detrás del polling de
+      # TiendaNube y del dispatcher de mails, que hacen I/O de red y pueden tardar.
+      pool:
+        size: ${SCHEDULER_POOL_SIZE:4}
   servlet:
     multipart:
       # El default de Spring Boot es 1 MB y el maestro de artículos pesa ~1,5 MB: con el default,

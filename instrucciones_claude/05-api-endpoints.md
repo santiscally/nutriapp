@@ -110,6 +110,7 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 | GET | `/recetas/{id}` | detalle con items + notificaciones + datos de conversión |
 | POST | `/recetas/{id}/anular` | solo PENDIENTE; intenta borrar el cupón en TiendaNube |
 | POST | `/recetas/{id}/reenviar` | re-encola el mail (solo PENDIENTE). No manda WhatsApp: eso es el link `waMeUrl` |
+| GET | `/recetas/{id}/pdf` | **F-21** — el bono en PDF. Devuelve `application/pdf` con `Content-Disposition: attachment` y nombre propio, no JSON. `404` si el bono no es de quien pide (misma regla de pertenencia que el detalle). Permiso `recetas:read`: es el mismo bono que ya puede ver, en otro formato |
 
 ```json
 // RecetaCreateRequest — el % de descuento NO viaja: es el de la nutricionista, lo define el admin (viene en /me).
@@ -208,7 +209,7 @@ fiscales, porcentajes) los toca el admin: son los que se validaron al aprobar la
 
 | Método | Path | Notas |
 |---|---|---|
-| GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (3 proveedores: contabilium/tiendanube/mail — whatsapp salió en 2.4, es un link manual). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail) / 0 (contabilium) |
+| GET | `/admin/integraciones/estado` | `{ "integraciones": [ { "proveedor":"tiendanube", "modo":"stub\|live", "disponible":bool\|null, "pendientes":n, "ultimoError":str\|null, "ultimoErrorAt":ts\|null, "ultimaSync":ts\|null } ... ] }` (3 proveedores: contabilium/tiendanube/mail — whatsapp salió en 2.4, es un link manual). `disponible` es `false` en stub, `null` en live sin interacción aún. `pendientes` = cupones sin sync (tiendanube) / notifs QUEUED (mail) / 0 (contabilium). **`ultimoWebhookAt`** (sólo tiendanube): cuándo llegó el último webhook — **`null` = nunca llegó ninguno**, que es un dato distinto de "no hubo ventas" |
 | POST | `/admin/tiendanube/resync-cupones` | reintenta el registro de cupones de recetas PENDIENTES sin sync → `{ "intentados":n, "sincronizados":n, "pendientes":n }`. En stub siguen pendientes |
 | POST | `/admin/contabilium/sync-productos` | fuerza la sync del catálogo por SKU → `{ "revisados":n, "creados":n, "actualizados":n, "sinCambios":n, "syncedAt":ts }`. **En stub → 503 "Contabilium no conectada"** |
 

@@ -1,6 +1,7 @@
 package com.bonosapp.modules.admin.service;
 
 import com.bonosapp.integrations.IntegrationsProperties;
+import com.bonosapp.modules.webhook.entity.OrigenWebhook;
 import com.bonosapp.integrations.health.IntegrationHealthRegistry;
 import com.bonosapp.integrations.health.IntegrationHealthRegistry.Health;
 import com.bonosapp.integrations.health.IntegrationHealthRegistry.Proveedor;
@@ -35,6 +36,7 @@ public class IntegracionesEstadoService {
     private final IntegrationsProperties props;
     private final IntegrationHealthRegistry health;
     private final RecetaRepository recetaRepository;
+    private final com.bonosapp.modules.webhook.repository.WebhookEventRepository webhookEventRepository;
     private final NotificacionRepository notificacionRepository;
     private final ProductoRepository productoRepository;
     private final ProductoSyncService productoSyncService;
@@ -53,14 +55,15 @@ public class IntegracionesEstadoService {
         // Contabilium es pull (el catálogo se lee bajo demanda), no encola trabajo: pendientes = 0.
         // Su "última sync" durable es la del catálogo, que sobrevive reinicios.
         return build("contabilium", modo, h, 0, productoRepository.maxLastSyncedAt(),
-                productoSyncService.isSincronizando(), productoSyncService.getUltimoResultado());
+                productoSyncService.isSincronizando(), productoSyncService.getUltimoResultado(), null);
     }
 
     private IntegracionEstadoResponse tiendanube() {
         String modo = props.tiendanube().mode();
         Health h = health.get(Proveedor.TIENDANUBE);
         long pendientes = recetaRepository.countResyncables();
-        return build("tiendanube", modo, h, pendientes, h.ultimoExitoAt(), null, null);
+        return build("tiendanube", modo, h, pendientes, h.ultimoExitoAt(), null, null,
+                webhookEventRepository.ultimoRecibido(OrigenWebhook.TIENDANUBE));
     }
 
     private IntegracionEstadoResponse mail() {
@@ -68,12 +71,13 @@ public class IntegracionesEstadoService {
         Health h = health.get(Proveedor.MAIL);
         long pendientes = notificacionRepository.countByEstadoAndCanalAndDeletedAtIsNull(
                 EstadoNotificacion.QUEUED, CanalNotificacion.EMAIL);
-        return build("mail", modo, h, pendientes, h.ultimoExitoAt(), null, null);
+        return build("mail", modo, h, pendientes, h.ultimoExitoAt(), null, null, null);
     }
 
     private IntegracionEstadoResponse build(String proveedor, String modo, Health h,
                                             long pendientes, java.time.Instant ultimaSync,
-                                            Boolean sincronizando, String ultimoResultado) {
+                                            Boolean sincronizando, String ultimoResultado,
+                                            java.time.Instant ultimoWebhookAt) {
         boolean live = IntegrationsProperties.isLive(modo);
         // En stub no hay conexión por diseño → disponible=false. En live lo inferimos del último resultado.
         Boolean disponible = live ? h.disponible() : Boolean.FALSE;
@@ -86,6 +90,7 @@ public class IntegracionesEstadoService {
                 h.ultimoErrorAt(),
                 ultimaSync,
                 sincronizando,
-                ultimoResultado);
+                ultimoResultado,
+                ultimoWebhookAt);
     }
 }
