@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-22** — mi mitad de las modificaciones post 1ª entrega está **cerrada
+**Última actualización: 2026-09-22 (2)** — mi mitad de las modificaciones post 1ª entrega está **cerrada
 salvo lo que necesita producción**. Todo en `main`, **nada desplegado todavía**.
 
 **Hecho y verificado:** S-01/S-02 (maestro nuevo + descuento por producto + link al producto) ·
@@ -24,12 +24,19 @@ S-04 (fuera los Combo) · **S-05** (la foto de producto) · S-07 (cupón no comb
 S-16 (términos de uso en `/terminos`). Más: adjuntos en `MailSender` (destraba F-20 de Fran) y el
 endpoint del PDF documentado.
 
+**S-03 cerrado sin tocar código:** el filtro de rubro **funciona** (los 104 productos fuera de
+"Producto terminado" están despublicados, y las cajas de cartón están en `Insumos para producción`,
+ya excluidas). Lo que falta es **re-sincronizar prod**, que ya está en la checklist. Ojo con el
+número: después del re-sync el catálogo recetable ronda los **1015**, no los 2277 — la regla de
+precio se lleva 947 (los ~1000 artículos a $1). Para lo que el cliente igual quiera afuera, la
+palanca es `ESTADO BONOSAPP`.
+
+**S-06 cerrado:** el pipeline estaba bien; lo que fallaba era que `@EnableScheduling` corría con
+**un solo hilo** (default de Spring) para los seis jobs, así que el processor de webhooks hacía cola
+detrás del polling de TiendaNube y del dispatcher de mails. `spring.task.scheduling.pool.size` = 4,
+con un test que lo cuida.
+
 **🔴 Lo que falta, todo del lado de producción:**
-- **S-03** — el filtro de RUBRO deja pasar cajas de cartón. Hipótesis: `rubro_id` viene null desde
-  `/api/conceptos/search` y `permitido()` deja pasar lo ausente. Confirmar con:
-  `SELECT rubro_id, rubro, count(*) FROM productos WHERE deleted_at IS NULL GROUP BY 1,2 ORDER BY 3 DESC;`
-- **S-06** — el estado APLICADO tarda en llegar al dashboard. Hay que mirar el webhook `order/paid`
-  y el polling de respaldo con datos reales.
 - **S-17** — `TIENDANUBE_STORE_URL` en el `.env` del VPS. (Fran verificó que la tienda ya redirige
   `bienestarandsalud.mitiendanube.com` → `www.thebcompany.com.ar` con un 301, así que no es urgente.)
 - **S-18** — deliverability: DMARC está en `p=none` y los mails caen en Promociones.

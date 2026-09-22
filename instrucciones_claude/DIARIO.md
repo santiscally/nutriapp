@@ -32,6 +32,63 @@
 
 ## Entradas
 
+## 2026-09-22 (2) — Santi — catálogo/infra (S-03: el filtro no era el problema · S-06: el scheduler corría con un solo hilo)
+**Qué:** Las dos que creía que necesitaban producción. Las resolví contra la **DB local**, que tiene el
+catálogo sincronizado del Contabilium real (2277 productos, los mismos que prod), sin tocar nada del cliente.
+
+### S-03 — "trae hasta cajas de cartón": el filtro de RUBRO está bien, no hay bug
+Mi hipótesis anterior (`rubro_id` llegaba null y `permitido()` dejaba pasar lo ausente) era **incorrecta**:
+los 2277 productos tienen `rubro_id` poblado. El embudo real:
+
+| Regla | Quedan |
+|---|---|
+| catálogo sincronizado | 2277 |
+| rubro = Producto terminado (144331) | 2173 |
+| + tipo = Producto (S-04, saca 211 Combos) | 1962 |
+| + activo en el ERP | 1962 |
+| + precio ≥ 100 | **1015** |
+
+Los 104 que quedan fuera del rubro —Servicios, Insumos para producción, Suministros, Materias primas,
+Material PoP— están **todos despublicados**. Y las cajas de cartón de verdad están justamente en
+`Insumos para producción - JEIANELL`, así que ya estaban afuera.
+
+Lo que sí hay adentro de "Producto terminado" y **parece** packaging leyendo la lista: `CAJA X24 ON-POUCH`
+(precio 0 → lo bloquea la regla de precio), `EXHIBIDOR X 6 BOLSAS` (que es un pack vendible de verdad) y
+los `PACK X3/X6` y `COMBO`, que **S-04 ya saca**.
+
+**Conclusión: no hay nada que arreglar en el código.** Lo que falta es que prod se **re-sincronice** con las
+reglas actuales — el cambio de `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo, ya está en la checklist
+de deploy. Y para cualquier cosa que el cliente igual quiera afuera, la palanca es `ESTADO BONOSAPP` del
+maestro, que es exactamente para lo que la pidió. Ojo con el número: después del re-sync el catálogo
+recetable ronda los **1015**, no los 2277; la regla de precio se lleva 947 (los ~1000 artículos cargados a $1
+que mencionó Gon en la call).
+
+### S-06 — el estado APLICADO tardaba: el scheduler tenía un solo hilo
+El pipeline estaba bien: el webhook se persiste y responde 200 al toque, un processor drena la cola **cada
+20 s** y hay polling de respaldo cada 5 min. Lo que estaba mal es que la app declara `@EnableScheduling`
+**sin configurar el pool**, y el default de Spring es **UN hilo para todos los `@Scheduled`**. Son seis:
+evict del rate limit, dispatcher de mails, sync de cupones, vencimiento, processor de webhooks y polling de
+TiendaNube.
+
+Con un solo hilo, el processor de webhooks —el que pasa el bono a APLICADO— **hace cola detrás** del
+polling, que recorre por HTTP todas las órdenes pagadas de las últimas 24 h, y detrás del dispatcher de
+mails, que habla SMTP con reintentos. De ahí el "no viaja rápido": el bono no se aplica hasta que el hilo se
+libera, y **no queda rastro en ningún log**, que es lo que lo hacía difícil de ver.
+
+`spring.task.scheduling.pool.size` pasa a 4 (`SCHEDULER_POOL_SIZE`). `fixedDelay` sigue garantizando que un
+job no se solape consigo mismo; lo que se arregla es que no se bloqueen **entre sí**.
+
+**El test que lo cuida** (`SchedulerPoolConfigTest`) ata el `application.yml` real contra la clase de Spring
+que lee la propiedad, así que detecta que alguien mueva la clave o la anide mal — un test que mirara el YAML
+como texto no lo haría. **Verifiqué que falla** poniendo el pool en 1 a propósito antes de dejarlo en 4: un
+test que no puede fallar no sirve de nada.
+
+**Impacto para el otro (Fran):** el dashboard debería reflejar la conversión en ~20 s desde que llega el
+webhook, en vez de quedar esperando. Si después del deploy seguís viendo demora, ya no es el scheduler.
+
+**Refs:** `application.yml` (`spring.task.scheduling.pool.size`), `WebhookProcessor`,
+`TiendaNubePollingJob`, `SchedulerPoolConfigTest`, consultas sobre `productos` en la DB local.
+
 ## 2026-09-22 — Santi — catálogo/infra/mail (S-05 la foto rota: tres causas, no una; + adjuntos en el mail y el PDF documentado)
 **Qué:** Traje tu tanda (7 commits, fast-forward limpio) y agarré las tres cosas que me dejaste pedidas,
 más S-05.
