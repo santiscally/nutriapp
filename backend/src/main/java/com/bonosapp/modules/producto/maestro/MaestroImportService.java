@@ -156,7 +156,7 @@ public class MaestroImportService {
         cambio |= !Objects.equals(p.getSubcategoria(), subcategoria);
         cambio |= !Objects.equals(p.getLaboratorio(), laboratorio);
         cambio |= !Objects.equals(p.getDescripcionWeb(), f.descripcionWeb());
-        cambio |= !Objects.equals(p.getImagenUrl(), imagenUrl);
+        cambio |= imagenUrl != null && !Objects.equals(p.getImagenUrl(), imagenUrl);
         cambio |= p.isBloqueadoMaestro() != f.bloqueado();
         cambio |= f.estadoBonosapp() != null && !f.estadoBonosapp().equals(p.getEstadoBonosapp());
         cambio |= f.descuentoPct() != null && !mismoPct(p.getDescuentoPct(), f.descuentoPct());
@@ -167,7 +167,11 @@ public class MaestroImportService {
         p.setSubcategoria(subcategoria);
         p.setLaboratorio(laboratorio);
         p.setDescripcionWeb(f.descripcionWeb());
-        p.setImagenUrl(imagenUrl);
+        // Null no pisa (S-05): la columna del maestro viene vacía en la mayoría de las filas, y si
+        // borrara la foto que trajo la tienda, importar dejaría el catálogo sin imágenes.
+        if (imagenUrl != null) {
+            p.setImagenUrl(imagenUrl);
+        }
         p.setBloqueadoMaestro(f.bloqueado());
         // Sólo si la planilla trae la columna: un maestro viejo no debe borrar lo que ya se cargó.
         if (f.estadoBonosapp() != null) {

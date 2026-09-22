@@ -110,6 +110,7 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 | GET | `/recetas/{id}` | detalle con items + notificaciones + datos de conversión |
 | POST | `/recetas/{id}/anular` | solo PENDIENTE; intenta borrar el cupón en TiendaNube |
 | POST | `/recetas/{id}/reenviar` | re-encola el mail (solo PENDIENTE). No manda WhatsApp: eso es el link `waMeUrl` |
+| GET | `/recetas/{id}/pdf` | **F-21** — el bono en PDF. Devuelve `application/pdf` con `Content-Disposition: attachment` y nombre propio, no JSON. `404` si el bono no es de quien pide (misma regla de pertenencia que el detalle). Permiso `recetas:read`: es el mismo bono que ya puede ver, en otro formato |
 
 ```json
 // RecetaCreateRequest — el % de descuento NO viaja: es el de la nutricionista, lo define el admin (viene en /me).

@@ -32,6 +32,57 @@
 
 ## Entradas
 
+## 2026-09-22 — Santi — catálogo/infra/mail (S-05 la foto rota: tres causas, no una; + adjuntos en el mail y el PDF documentado)
+**Qué:** Traje tu tanda (7 commits, fast-forward limpio) y agarré las tres cosas que me dejaste pedidas,
+más S-05.
+
+**S-05 — la foto de producto no se ve, y no era un solo problema.** Lo diagnostiqué leyendo el repo y el
+Excel del cliente, sin tocar prod. Son **tres capas apiladas**, y arreglar una sola no habría movido nada:
+1. **`imagen_url` sólo lo puebla el import del maestro** — el sync de Contabilium no lo toca. Como el
+   cliente todavía no importó el maestro (`sinMaestro=2277`), en prod la columna está **en null para todo
+   el catálogo**. No hay foto que mostrar.
+2. **Aunque lo importe, el maestro casi no trae fotos:** de 2252 filas, **2078 tienen la columna
+   `LINK IMAGEN TIENDA NUBE` vacía**. Sólo 174 traen link. O sea que el 92 % del catálogo iba a seguir sin
+   imagen igual.
+3. **Y esas 174 tampoco se verían:** el CSP de nginx dice `img-src 'self' data:`, y las URLs son de
+   `dcdn-us.mitiendanube.com`. El navegador las bloquea sin decir nada en la UI.
+
+**Cómo quedó:** el CSP ahora nombra `https://*.mitiendanube.com` (el dominio de la plataforma, no un CDN
+suelto que haya adivinado), y **la foto sale de la tienda**: el mapeo de TiendaNube guarda la imagen
+principal del producto (`images[]`, la de menor `position`). Si el maestro trajo una, gana la del maestro —
+esa la eligió el cliente a mano. Y el import **dejó de pisar con null**: antes, importar el maestro borraba
+la foto que había traído la tienda, que es el bug que nos habríamos comido justo después de arreglar lo demás.
+
+**Lo tuyo que destrabé:**
+- **Adjuntos en el mail (F-20).** `MailSender` suma `send(to, asunto, cuerpo, adjuntos)` con un record
+  `Adjunto` (con `Adjunto.pdf(nombre, bytes)`). La sobrecarga de tres argumentos delega en la de cuatro, no
+  al revés: un default que ignorara la lista dejaría que un sender mande el mail **sin** el PDF sin que nadie
+  se entere. `SmtpMailSender` arma multipart **sólo si hay adjuntos** (sin ellos el mail viaja igual que
+  antes). Ya podés adjuntar cuando llegue la plantilla.
+- **`GET /recetas/{id}/pdf` documentado** en `05-api-endpoints.md`. Perdón por las dos vueltas.
+
+**Sobre lo que marcaste:**
+- **`profesionalesActivos` = 0**: confirmado que no es bug. Las filas locales tienen `activo=false`, y el
+  count mira justamente eso.
+- **Pasar `profesion`/`jurisdiccion`/`matricula` a obligatorios:** todavía **no**. El front ya los manda,
+  pero nada de esto está desplegado; si los exijo ahora y en el deploy alguien tiene el front viejo
+  cacheado, el alta le tira 400. Los paso a obligatorios **después** del deploy, cuando confirmemos que el
+  front nuevo está sirviéndose.
+- **El hallazgo del link de cupón** (TiendaNube siempre aterriza en la home) queda anotado: no necesita nada
+  del backend, y los dos links en orden es la solución correcta.
+- **F-14** sigue bloqueada por lo mismo de siempre, y **S-15** sigue sin hacerse por opcional.
+
+**Problemas:** `mvnw verify` falló una vez por Docker abajo (la máquina se reinició), no por código.
+Los 244 unit tests pasaron igual; el IT quedó verde al levantar Docker.
+
+**Impacto para el otro (Fran):** cuando el mapeo corra en prod, los productos van a empezar a tener foto
+**sin depender de que el cliente llene el Excel** — si el front ya la muestra, se va a ver sola. Y el
+`MailSender` con adjuntos está listo para F-20.
+
+**Refs:** `nginx/conf.d*/bonosapp.conf` (CSP), `TiendaNubeClient.Product.imagenUrl`,
+`HttpTiendaNubeClient.primeraImagen`, `TiendaNubeMapeoService`, `MaestroImportService`,
+`integrations/mail/{MailSender,SmtpMailSender,StubMailSender}.java`, `05-api-endpoints.md`.
+
 ## 2026-09-21 (6) — Fran — frontend + vertical mail (las 8 tareas que destrabó S-01..S-16, y F-18 completo)
 
 **Qué:** Merge de tus 5 commits + las 8 que dejaste destrabadas: **F-06, F-07, F-10, F-13, F-16, F-17, F-18,

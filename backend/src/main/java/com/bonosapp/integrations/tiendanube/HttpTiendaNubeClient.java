@@ -281,7 +281,20 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
                 variants.add(new Variant(v.id(), v.sku()));
             }
         }
-        return new Product(d.id(), nombreEs(d.name()), nombreEs(d.handle()), variants);
+        return new Product(d.id(), nombreEs(d.name()), nombreEs(d.handle()), primeraImagen(d.images()), variants);
+    }
+
+    /** La de menor {@code position} es la que la tienda muestra como principal. */
+    private static String primeraImagen(List<ImageDto> images) {
+        if (images == null || images.isEmpty()) {
+            return null;
+        }
+        return images.stream()
+                .filter(i -> i != null && i.src() != null && !i.src().isBlank())
+                .min(java.util.Comparator.comparing(
+                        i -> i.position() == null ? Integer.MAX_VALUE : i.position()))
+                .map(ImageDto::src)
+                .orElse(null);
     }
 
     /** Nombre y handle vienen por idioma ({@code {"es": "..."}}); la tienda del cliente es sólo es-AR. */
@@ -312,7 +325,10 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record ProductDto(long id, Map<String, String> name, Map<String, String> handle,
-                             List<VariantDto> variants) {}
+                             List<ImageDto> images, List<VariantDto> variants) {}
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    private record ImageDto(String src, Integer position) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record VariantDto(long id, String sku) {}

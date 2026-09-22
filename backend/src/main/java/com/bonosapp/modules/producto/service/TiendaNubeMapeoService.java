@@ -83,7 +83,9 @@ public class TiendaNubeMapeoService {
                     Product tn = productoPorSku.get(v.sku().trim());
                     Long productId = tn == null ? null : tn.id();
                     String handle = tn == null ? null : tn.handle();
-                    if (Objects.equals(local.getTiendanubeVariantId(), v.id())
+                    boolean faltaLaFoto = sinImagen(local) && tn != null && tn.imagenUrl() != null;
+                    if (!faltaLaFoto
+                            && Objects.equals(local.getTiendanubeVariantId(), v.id())
                             && Objects.equals(local.getTiendanubeProductId(), productId)
                             && (handle == null || handle.equals(local.getTiendanubeHandle()))) {
                         yaMapeados++;
@@ -94,6 +96,12 @@ public class TiendaNubeMapeoService {
                     // Null no pisa: la tienda puede no devolverlo y el slug guardado sigue sirviendo.
                     if (handle != null) {
                         local.setTiendanubeHandle(handle);
+                    }
+                    // S-05: el maestro trae el link de imagen en 174 de 2252 filas, así que la foto
+                    // sale de la tienda. Sólo rellena lo que está vacío: si el maestro puso una, gana
+                    // la del maestro, que es la que el cliente eligió a mano.
+                    if (sinImagen(local) && tn != null && tn.imagenUrl() != null) {
+                        local.setImagenUrl(tn.imagenUrl());
                     }
                     modificados.add(local);
                 }
@@ -142,6 +150,10 @@ public class TiendaNubeMapeoService {
             repo.saveAll(cambiados);
         }
         return cambiados.size();
+    }
+
+    private static boolean sinImagen(Producto p) {
+        return p.getImagenUrl() == null || p.getImagenUrl().isBlank();
     }
 
     private static Map<String, Product> productoPorSku(List<Product> items) {

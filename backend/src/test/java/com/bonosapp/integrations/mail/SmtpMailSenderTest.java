@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.bonosapp.integrations.IntegrationsProperties;
 import jakarta.mail.Session;
 import jakarta.mail.internet.MimeMessage;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -33,6 +34,47 @@ class SmtpMailSenderTest {
         assertThat(mime.getSubject()).isEqualTo("Tu receta RX-1");
         assertThat(mime.getFrom()[0].toString()).contains("no-reply@bonosapp.local");
         assertThat(mime.getFrom()[0].toString()).contains("BonosApp");
+    }
+
+    /** F-20: el PDF del bono viaja pegado al mail, con su nombre y su content-type. */
+    @Test
+    void conAdjunto_mandaMultipartConElArchivo() throws Exception {
+        JavaMailSender java = mock(JavaMailSender.class);
+        MimeMessage mime = new MimeMessage((Session) null);
+        when(java.createMimeMessage()).thenReturn(mime);
+
+        new SmtpMailSender(java, props).send("paciente@x.com", "Tu bono RX-1", "Cuerpo",
+                List.of(MailSender.Adjunto.pdf("bono-RX-1.pdf", "%PDF-1.4 falso".getBytes())));
+
+        verify(java).send(mime);
+        assertThat(mime.getContent()).isInstanceOf(jakarta.mail.Multipart.class);
+        jakarta.mail.Multipart partes = (jakarta.mail.Multipart) mime.getContent();
+        boolean tieneElPdf = false;
+        for (int i = 0; i < partes.getCount(); i++) {
+            if ("bono-RX-1.pdf".equals(partes.getBodyPart(i).getFileName())) {
+                tieneElPdf = true;
+            }
+        }
+        assertThat(tieneElPdf).isTrue();
+    }
+
+    /** Sin adjuntos el mail sigue siendo simple: no se vuelve multipart porque sí. */
+    @Test
+    void sinAdjuntos_noSeVuelveMultipart() throws Exception {
+        JavaMailSender java = mock(JavaMailSender.class);
+        MimeMessage mime = new MimeMessage((Session) null);
+        when(java.createMimeMessage()).thenReturn(mime);
+
+        new SmtpMailSender(java, props).send("a@b.com", "s", "cuerpo");
+
+        assertThat(mime.getContent()).isInstanceOf(String.class);
+    }
+
+    @Test
+    void adjuntoVacio_seRechazaAlConstruirlo() {
+        assertThatThrownBy(() -> MailSender.Adjunto.pdf("vacio.pdf", new byte[0]))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("vacio.pdf");
     }
 
     @Test
