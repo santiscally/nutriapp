@@ -149,7 +149,9 @@ public class HttpTiendaNubeClient implements TiendaNubeClient {
         Function<UriBuilder, URI> uri = b -> b.path("/{store}/products")
                 .queryParam("page", page)
                 .queryParam("per_page", perPage)
-                .queryParam("fields", "id,name,variants")
+                // `fields` recorta la respuesta: lo que no se pide, NO viene. Sin handle no hay link
+                // al producto (S-02) y sin images no hay foto (S-05), y los dos llegarían en null.
+                .queryParam("fields", "id,name,handle,images,variants")
                 .build(props.storeId());
         ResponseEntity<ProductDto[]> res;
         try {

@@ -32,6 +32,68 @@
 
 ## Entradas
 
+## 2026-09-22 (3) — Santi — webhooks/integraciones (⚑ RX-R7H85N: comprado el viernes, seguía PENDIENTE el martes)
+**Qué pasó:** Gon avisó que el viernes hicieron una compra real usando el cupón **RX-R7H85N** y que el
+bono sigue **PENDIENTE** en la plataforma. O sea que en prod **sí se están emitiendo y usando bonos** —
+lo que yo había dado por "todavía no se emiten" cuando cerré S-07. Hay que releer esa entrada con eso
+en mente.
+
+**Lo que ya se puede afirmar sin mirar prod:** aunque el webhook llegara tarde, **el bono no se iba a
+aplicar nunca**. El polling de respaldo barre **sólo las últimas 24 h**; la compra fue el viernes y el
+reclamo llegó el martes. Cuando una orden sale de esa ventana, no hay nada que la vuelva a mirar. Y un
+webhook que no llega es **silencioso**: no hay error, no hay log, no hay fila en `webhook_events`. El
+costo no es cosmético — es la comisión de una profesional que no se liquida.
+
+**Lo que hice:**
+1. **`POST /admin/tiendanube/reconciliar?horas=720`** — barre las órdenes pagadas de la ventana que se
+   le pida (default 30 días, tope 90) y aplica los bonos que hayan quedado colgados. Devuelve **qué
+   códigos movió**, no un "ok" pelado. Es el botón para "compré y sigue pendiente". Idempotente.
+2. **Barrido nocturno (4 AM)** sobre 30 días, la vigencia de un bono: cierra el agujero de las 24 h
+   para siempre. Si encuentra algo loguea **WARN**, porque que el barrido tenga que rescatar un bono
+   significa que un webhook se perdió.
+3. **`ultimoWebhookAt` en `GET /admin/integraciones/estado`** — `null` significa **nunca llegó ningún
+   webhook**, que es un dato completamente distinto de "no hubo ventas". Sin esto no había forma de
+   distinguir "TiendaNube no nos avisa" de "no compró nadie".
+
+**⚑ Y de paso apareció un bug que habría roto dos cosas de esta misma tanda:** `listProducts` pedía
+`fields=id,name,variants`. Ese parámetro **recorta la respuesta: lo que no se pide, no viene**. Así que
+`handle` e `images` iban a llegar **siempre en null** contra la API real, y con eso: el **link directo al
+producto** del mail (S-02 → F-18) nunca se iba a armar, y la **foto del producto** (S-05) tampoco. Los dos
+pasaban los tests, porque los tests fabrican el DTO en vez de pedirlo. Ahora pide
+`id,name,handle,images,variants`.
+
+**Lo que NO pude determinar desde acá, y por qué:** intenté mirar las órdenes reales con el endpoint
+nuevo y me dio **0 órdenes pagadas en 30 días**. Antes de sacar conclusiones chequeé el `store_id`: mi
+`.env` local apunta a la tienda **8145981**, y prod usa la **4135704**. O sea que esa consulta no dice
+absolutamente nada sobre la tienda del cliente. **La causa raíz hay que verla contra prod.**
+
+**Cómo diagnosticarlo en prod, en orden (lo más probable primero):**
+1. **¿La orden figura como pagada?** En el admin de TiendaNube, buscar la orden de RX-R7H85N y mirar su
+   `payment_status`. Si está en `pending` o `authorized` —típico de transferencia o "coordinar con el
+   vendedor"— **el sistema está haciendo lo correcto**: sólo convertimos con `paid`, y el webhook
+   `order/paid` ni siquiera se dispara. Sería un tema de operación del cliente, no un bug.
+2. **¿Llegó algún webhook alguna vez?** `GET /admin/integraciones/estado` → `ultimoWebhookAt`. Si está
+   en null con ventas hechas, TiendaNube no nos está avisando: revisar que el webhook siga registrado
+   (`POST /admin/tiendanube/registrar-webhooks` es idempotente) y que el `TIENDANUBE_WEBHOOK_SECRET` del
+   VPS sea el `client_secret` de la app — si no coincide, **cada webhook se rechaza con 401 y no queda
+   rastro en la base**.
+3. `SELECT * FROM webhook_events ORDER BY created_at DESC LIMIT 20;` — si hay filas con
+   `procesado = false`, el problema es el processor, no la recepción.
+4. Con cualquiera de esos resultados, **correr la reconciliación**: aplica el bono al toque si la orden
+   figura como pagada.
+
+**Decisión que hay que tomar con el cliente:** si la orden quedó en `authorized` y no en `paid`,
+¿convertimos igual? Hoy no, a propósito: `authorized` es pago aprobado pero no capturado, y un bono
+aplicado sobre una venta que después se cae deja una comisión a pagar sobre plata que no entró.
+
+**Impacto para el otro (Fran):** el panel de Integraciones puede mostrar `ultimoWebhookAt` (null =
+"nunca llegó ninguno", que conviene que se lea distinto de una fecha vieja), y el botón de reconciliar
+quedaría bien al lado del de resync de cupones. Los dos son de tu panel; cuando quieras los sumás.
+
+**Refs:** `ReconciliacionService`, `AdminIntegracionesController` (`/tiendanube/reconciliar`),
+`WebhookEventRepository.ultimoRecibido`, `IntegracionEstadoResponse.ultimoWebhookAt`,
+`HttpTiendaNubeClient.listProducts` (el `fields`). 249 tests + el IT en verde.
+
 ## 2026-09-22 (2) — Santi — catálogo/infra (S-03: el filtro no era el problema · S-06: el scheduler corría con un solo hilo)
 **Qué:** Las dos que creía que necesitaban producción. Las resolví contra la **DB local**, que tiene el
 catálogo sincronizado del Contabilium real (2277 productos, los mismos que prod), sin tocar nada del cliente.

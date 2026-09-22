@@ -33,6 +33,7 @@ class IntegracionesEstadoServiceTest {
     @Mock NotificacionRepository notificacionRepository;
     @Mock ProductoRepository productoRepository;
     @Mock ProductoSyncService productoSyncService;
+    @Mock com.bonosapp.modules.webhook.repository.WebhookEventRepository webhookEventRepository;
 
     private final IntegrationHealthRegistry health = new IntegrationHealthRegistry();
 
@@ -43,7 +44,8 @@ class IntegracionesEstadoServiceTest {
                 new TiendaNube(tiendanubeMode, "", "", "", "", "", "", "", ""),
                 new Mail(mailMode, "", ""));
         return new IntegracionesEstadoService(
-                props, health, recetaRepository, notificacionRepository, productoRepository, productoSyncService);
+                props, health, recetaRepository, webhookEventRepository, notificacionRepository,
+                productoRepository, productoSyncService);
     }
 
     private IntegracionEstadoResponse porProveedor(IntegracionesEstadoResponse resp, String proveedor) {

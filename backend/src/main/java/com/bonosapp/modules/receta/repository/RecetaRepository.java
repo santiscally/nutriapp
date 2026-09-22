@@ -58,6 +58,9 @@ public interface RecetaRepository extends JpaRepository<Receta, UUID> {
     /** Guard del borrado de paciente: ¿tiene recetas en un estado dado? (409 si PENDIENTE). */
     boolean existsByPacienteIdAndEstadoAndDeletedAtIsNull(UUID pacienteId, EstadoReceta estado);
 
+    /** Bonos en un estado, global. Lo usa la reconciliación para saber cuáles movió. */
+    List<Receta> findByEstadoAndDeletedAtIsNull(EstadoReceta estado);
+
     /** Job de vencimiento: recetas PENDIENTES cuya vigencia ya pasó (global, todos los nutris). */
     List<Receta> findByEstadoAndVenceAtBeforeAndDeletedAtIsNull(EstadoReceta estado, java.time.LocalDate fecha);
 
