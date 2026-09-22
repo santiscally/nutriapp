@@ -32,6 +32,33 @@
 
 ## Entradas
 
+## 2026-09-22 (4) — Santi — webhooks (corrección: RX-R7H85N no era un bug, y se saca la reconciliación)
+**Qué:** Corrige la entrada de hoy (3). El cliente verificó la orden en el admin de TiendaNube: **el pago
+estaba en `pending`**, así que el evento `order/paid` nunca se disparó y el bono no tenía que aplicarse.
+**El sistema hizo exactamente lo correcto.** No hubo webhook perdido, no hubo bug.
+
+**Qué se saca:** por decisión del usuario, se quitan el endpoint `POST /admin/tiendanube/reconciliar`, su
+servicio y el barrido nocturno. Se habían hecho para rescatar un bono que resultó no necesitar rescate, y
+sin un caso real que los justifique son superficie de más: un endpoint de admin y un job que le pega a
+TiendaNube todas las noches.
+
+**Lo que queda del episodio, porque no depende de él:**
+- **`ultimoWebhookAt`** en `GET /admin/integraciones/estado`. `null` = nunca llegó ningún webhook, que
+  sigue siendo distinto de "no hubo ventas". Si mañana pasa algo parecido, es el primer lugar a mirar.
+- **El fix de `fields` en `listProducts`** (ese sí era un bug de verdad, y grave): pedía
+  `id,name,variants`, y como ese parámetro recorta la respuesta, `handle` e `images` llegaban siempre en
+  null contra la API real. El link directo al producto del mail y la foto no se iban a armar nunca.
+- **El pool del scheduler** en 4 (entrada del 22/09 (2)).
+
+**Lo que queda anotado por si reaparece:** el polling de respaldo sigue mirando **sólo 24 h**. Si algún
+día un webhook se pierde de verdad y nadie lo nota en el día, ese bono queda PENDIENTE para siempre y la
+comisión no se liquida — no hay nada automático que lo recupere. Hoy no tenemos evidencia de que pase,
+así que no se arregla algo que no está roto; pero si vuelve a aparecer un "compré y sigue pendiente" **con
+el pago confirmado**, el primer sospechoso es ese, y el rescate está en el historial de git
+(commit `a75dfec`) para recuperarlo sin volver a escribirlo.
+
+**Refs:** `AdminIntegracionesController`, `RecetaRepository`, `05-api-endpoints.md`, `ESTADO.md`.
+
 ## 2026-09-22 (3) — Santi — webhooks/integraciones (⚑ RX-R7H85N: comprado el viernes, seguía PENDIENTE el martes)
 **Qué pasó:** Gon avisó que el viernes hicieron una compra real usando el cupón **RX-R7H85N** y que el
 bono sigue **PENDIENTE** en la plataforma. O sea que en prod **sí se están emitiendo y usando bonos** —

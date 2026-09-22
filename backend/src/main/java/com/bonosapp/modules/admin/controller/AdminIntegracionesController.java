@@ -7,8 +7,6 @@ import com.bonosapp.modules.producto.service.ProductoSyncService;
 import com.bonosapp.modules.producto.service.TiendaNubeMapeoService;
 import com.bonosapp.modules.receta.dto.ResyncCuponesResponse;
 import com.bonosapp.modules.webhook.dto.RegistrarWebhooksResponse;
-import com.bonosapp.modules.webhook.dto.ReconciliacionResponse;
-import com.bonosapp.modules.webhook.service.ReconciliacionService;
 import com.bonosapp.modules.webhook.service.TiendaNubeWebhookRegistrar;
 import com.bonosapp.modules.receta.service.CuponSyncService;
 import java.util.Map;
@@ -17,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -36,7 +33,6 @@ public class AdminIntegracionesController {
     private final ProductoSyncService productoSyncService;
     private final TiendaNubeMapeoService tiendaNubeMapeoService;
     private final TiendaNubeWebhookRegistrar tiendaNubeWebhookRegistrar;
-    private final ReconciliacionService reconciliacionService;
 
     /** 2.7 — Estado por proveedor: modo, disponible, pendientes, último error, última sync. */
     @GetMapping("/integraciones/estado")
@@ -65,20 +61,6 @@ public class AdminIntegracionesController {
     @PreAuthorize("hasAuthority('admin:manage')")
     public RegistrarWebhooksResponse registrarWebhooks() {
         return tiendaNubeWebhookRegistrar.registrar();
-    }
-
-    /**
-     * S-06 — barre las órdenes pagadas de las últimas {@code horas} y aplica los bonos que hayan
-     * quedado colgados en PENDIENTE. Es el botón para cuando alguien reporta "compré y sigue
-     * pendiente": el polling automático sólo mira 24 h hacia atrás, así que un webhook perdido deja
-     * el bono sin aplicar para siempre.
-     *
-     * <p>Idempotente: lo ya aplicado se saltea. Default 30 días, que es la vigencia de un bono.
-     */
-    @PostMapping("/tiendanube/reconciliar")
-    @PreAuthorize("hasAuthority('admin:manage')")
-    public ReconciliacionResponse reconciliar(@RequestParam(defaultValue = "720") int horas) {
-        return reconciliacionService.reconciliar(horas);
     }
 
     /** 2.8 — Reintenta el registro de los cupones que quedaron pendientes de sync. */

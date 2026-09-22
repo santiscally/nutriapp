@@ -14,7 +14,7 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-22 (3)** — mi mitad de las modificaciones post 1ª entrega está **cerrada
+**Última actualización: 2026-09-22 (4)** — mi mitad de las modificaciones post 1ª entrega está **cerrada
 salvo lo que necesita producción**. Todo en `main`, **nada desplegado todavía**.
 
 **Hecho y verificado:** S-01/S-02 (maestro nuevo + descuento por producto + link al producto) ·
@@ -30,14 +30,6 @@ ya excluidas). Lo que falta es **re-sincronizar prod**, que ya está en la check
 número: después del re-sync el catálogo recetable ronda los **1015**, no los 2277 — la regla de
 precio se lleva 947 (los ~1000 artículos a $1). Para lo que el cliente igual quiera afuera, la
 palanca es `ESTADO BONOSAPP`.
-
-**🔴 ABIERTO — RX-R7H85N: bono comprado el viernes, sigue PENDIENTE.** Gon lo reportó el 22/09, o sea
-que **en prod sí se están usando bonos**. Ya está el rescate: `POST /admin/tiendanube/reconciliar?horas=720`
-aplica los que quedaron colgados (el polling sólo mira 24 h, así que solo no se arreglaba nunca), más un
-barrido nocturno de 30 días y `ultimoWebhookAt` en el panel para saber si los webhooks llegan. **La causa
-raíz necesita prod**: no la pude ver desde acá porque el `.env` local apunta a otra tienda (8145981 vs
-4135704). Pasos de diagnóstico en orden, en el DIARIO del 22/09 (3) — el primero es mirar si la orden
-figura como `paid` y no como `pending`/`authorized`.
 
 **S-06 cerrado:** el pipeline estaba bien; lo que fallaba era que `@EnableScheduling` corría con
 **un solo hilo** (default de Spring) para los seis jobs, así que el processor de webhooks hacía cola
