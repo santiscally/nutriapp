@@ -2,11 +2,7 @@ package com.bonosapp.modules.registro;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-/**
- * @param exigirDatosProfesionales profesión, jurisdicción y matrícula numérica obligatorias (S-11).
- *        Es un interruptor y no una anotación para poder apagarlo sin redeploy si, justo después
- *        de desplegar, alguien todavía tiene cacheado el front viejo que no los manda.
- */
+/** Interruptor y no anotación: si tras el deploy queda cacheado el front viejo, se apaga sin redeploy. */
 @ConfigurationProperties(prefix = "bonosapp.registro")
 public record RegistroProperties(Boolean exigirDatosProfesionales) {
 

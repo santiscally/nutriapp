@@ -103,11 +103,7 @@ public class RegistroService {
         }
     }
 
-    /**
-     * S-11 — con el interruptor prendido, profesión, jurisdicción y una matrícula sólo de dígitos son
-     * obligatorias. Junta todos los faltantes en un solo mensaje: rechazar de a uno obliga a mandar el
-     * formulario tres veces para enterarse de tres errores.
-     */
+    /** S-11: junta todos los faltantes en un mensaje; de a uno obliga a mandar el formulario tres veces. */
     private void exigirDatosProfesionales(RegistroRequest req) {
         if (!registroProps.exigirDatosProfesionales()) {
             return;
