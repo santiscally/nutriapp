@@ -32,6 +32,42 @@
 
 ## Entradas
 
+## 2026-09-23 — Santi — infra/registro (deploy en un comando + S-11 obligatorio + S-18 diagnosticado + S-15 descartado)
+**Qué:** Barrido de los pendientes que no dependen de nadie.
+
+- **`scripts/deploy.sh`** — el deploy en un comando, con el mismo patrón que `rename-db.sh`: preflight
+  (main limpio, `.env` completo, `KEYCLOAK_HOSTNAME` terminando en `/auth`), backup de las dos bases
+  **verificado con `pg_restore -l`**, censo, build de la SPA, levantar backend + nginx, confirmar Flyway,
+  recenso, config del realm y smoke. **S-17 lo resuelve el propio script**: si `TIENDANUBE_STORE_URL` no
+  es la de thebcompany, la corrige en el `.env` con copia previa. `--dry-run` hace preflight, backup y
+  censo sin tocar nada más. Lo único que deja a mano son los dos botones de Integraciones, porque
+  necesitan sesión de admin y el script no se loguea por nadie.
+- **S-11 — profesión, jurisdicción y matrícula numérica pasan a obligatorias**, detrás de un interruptor
+  (`REGISTRO_EXIGIR_DATOS_PROFESIONALES`, default `true`). El motivo para no exigirlas antes era un front
+  viejo cacheado durante el deploy; el interruptor lo resuelve sin posponerlo: si pasa, se apaga por env
+  sin redeploy. Rechaza con **todos** los faltantes en un solo 422.
+- **S-18 — diagnosticado desde el DNS público**, sin acceso a Hostinger. SPF, return-path y DKIM de Resend
+  están bien y alinean; DMARC está en `p=none` **sin `rua`** (nadie recibe reportes) y la casilla de
+  Hostinger no firma DKIM. Los registros exactos a publicar, en orden, quedaron en `DEPLOY.md`. **Lo que
+  importa saber:** la pestaña Promociones de Gmail se decide **por contenido**, no por autenticación — el
+  DNS arregla bandeja vs. spam, no Promociones. Eso es F-22.
+- **S-15 descartado.** Renombrar los paths del API rompe todos los clientes a la vez para cambiar una
+  palabra que ningún usuario ve, y obliga a tocar el front entero. El rename de la UI ya está hecho.
+
+**Problemas del script, encontrados probándolo y no en producción:**
+- El recenso comparaba por **igualdad**. La app sigue recibiendo tráfico durante el deploy, así que una
+  alta nueva en el medio habría disparado un **falso aborto con la versión nueva ya arriba**. Ahora
+  verifica que **ninguna tabla haya perdido filas**, que es lo único que puede delatar una migración
+  destructiva.
+- `git -C /c/Users/...` no encuentra la ruta cuando está puesto `MSYS_NO_PATHCONV` (que hace falta para
+  `docker exec`). El script ya hace `cd` al repo, así que llama a git sin ruta.
+
+**Bloqueado, y por qué:** correr el deploy (acceso al VPS) y publicar el DMARC (panel de DNS de
+Hostinger). Todo lo demás de estos ítems está hecho.
+
+**Refs:** `scripts/deploy.sh`, `RegistroProperties`, `RegistroService.exigirDatosProfesionales`,
+`DEPLOY.md` (secciones "Deploy en un comando" y "Deliverability"), `05-api-endpoints.md`.
+
 ## 2026-09-22 (5) — Fran — frontend (prueba a mano de las dos tandas: 25/28 pasos limpios + 3 hallazgos)
 
 **Qué:** Recorrido manual completo de los cambios post-entrega, con el stack local (mail y las dos

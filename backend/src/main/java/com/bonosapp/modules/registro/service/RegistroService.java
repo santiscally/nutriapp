@@ -1,6 +1,7 @@
 package com.bonosapp.modules.registro.service;
 
 import com.bonosapp.common.error.ConflictException;
+import com.bonosapp.common.error.UnprocessableException;
 import com.bonosapp.integrations.keycloak.KeycloakAdminClient;
 import com.bonosapp.modules.notificacion.service.NotificacionService;
 import com.bonosapp.modules.nutricionista.NutricionistaProperties;
@@ -34,6 +35,7 @@ public class RegistroService {
     private final NutricionistaProperties props;
     private final NotificacionService notificaciones;
     private final ProfesionService profesiones;
+    private final com.bonosapp.modules.registro.RegistroProperties registroProps;
 
     /** S-10: 24 h para validar el mail. El alta ya quedó hecha; esto no puede voltearla. */
     private static final int VERIFICACION_VIGENCIA_SEGUNDOS = 86400;
@@ -50,7 +52,8 @@ public class RegistroService {
             throw new ConflictException("Ese DNI ya está registrado");
         });
 
-        // Antes de crear nada en Keycloak: una profesión inválida no debe dejar un usuario huérfano.
+        // Antes de crear nada en Keycloak: un alta inválida no debe dejar un usuario huérfano.
+        exigirDatosProfesionales(req);
         String profesion = profesiones.validar(req.profesion());
 
         // Keycloak es la fuente de verdad de identidad: crea el usuario deshabilitado + rol.
@@ -97,6 +100,30 @@ public class RegistroService {
                     req.email(), keycloakUserId, ex);
             keycloak.deleteUser(keycloakUserId);
             throw ex;
+        }
+    }
+
+    /**
+     * S-11 — con el interruptor prendido, profesión, jurisdicción y una matrícula sólo de dígitos son
+     * obligatorias. Junta todos los faltantes en un solo mensaje: rechazar de a uno obliga a mandar el
+     * formulario tres veces para enterarse de tres errores.
+     */
+    private void exigirDatosProfesionales(RegistroRequest req) {
+        if (!registroProps.exigirDatosProfesionales()) {
+            return;
+        }
+        java.util.List<String> faltan = new java.util.ArrayList<>();
+        if (req.profesion() == null || req.profesion().isBlank()) {
+            faltan.add("la profesión");
+        }
+        if (req.jurisdiccion() == null || req.jurisdiccion().isBlank()) {
+            faltan.add("la jurisdicción de la matrícula");
+        }
+        if (req.matricula() != null && !req.matricula().trim().matches("\\d+")) {
+            faltan.add("el número de matrícula, sólo con dígitos");
+        }
+        if (!faltan.isEmpty()) {
+            throw new UnprocessableException("Falta completar " + String.join(", ", faltan) + ".");
         }
     }
 

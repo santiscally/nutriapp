@@ -258,9 +258,10 @@ va una entrada en el DIARIO.
 levantado desde `main` ya responden. En prod todavía no: faltan correr `V014`/`V015` y re-sincronizar
 el catálogo.
 
-**Los paths siguen diciendo `recetas`, no `bonos`.** El rename del API es S-15 y es opcional: tocar
-todos los paths rompe el front entero por un cambio de palabra. El rename de la **UI** (F-08/F-09) no
-lo necesita. Lo mismo con los nombres de campo: `recetasPendientes`, `descuentoPct`, etc.
+**Los paths siguen diciendo `recetas`, no `bonos`, y así se quedan.** S-15 (renombrar el API) se
+**descartó** el 2026-09-23: es un cambio que rompe todos los clientes a la vez para cambiar una palabra
+que ningún usuario ve —el rename de la UI (F-08/F-09) ya está hecho y no lo necesitaba—, y obligaría a
+tocar el front de Fran entero. Lo mismo con los nombres de campo: `recetasPendientes`, `descuentoPct`, etc.
 
 ### S-02 · Descuento por producto — `contrato` → alimenta F-13, F-18, F-14
 
@@ -311,9 +312,11 @@ columna propia (flageado en `Registro.tsx:103`). Se parte en tres campos de verd
 - **`profesion`** (`string`) — uno de los 76 valores de `Profesiones.xlsx`. Se valida contra la tabla:
   un valor que no esté en la lista da `422` (`UNPROCESSABLE`), con el nombre adentro del mensaje.
 
-**Los tres son opcionales en el contrato a propósito.** Prod está vivo y recibiendo registros: si el
-backend los exigiera antes de que Fran despliegue, el alta se cae con 400. Pasan a obligatorios en un
-segundo paso, cuando el front ya los mande (queda anotado en el DIARIO al hacerlo).
+**Obligatorios desde 2026-09-23**, con interruptor: `REGISTRO_EXIGIR_DATOS_PROFESIONALES` (default
+`true`). Si falta alguno —o la matrícula trae algo que no sean dígitos— responde `422` con **todos** los
+faltantes en un solo mensaje. El interruptor existe para una sola cosa: si justo después del deploy
+alguien todavía tiene cacheado el front viejo, ponerlo en `false` vuelve a aceptar esas altas **sin
+redeploy**. El front de Fran ya manda los tres desde F-06.
 
 **`GET /profesiones` — público, sin token.** La lista sale de la DB (seed Flyway), no del front:
 

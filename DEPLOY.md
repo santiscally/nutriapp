@@ -49,6 +49,28 @@ Topología (single domain, path-based):
 5. **Definir quién termina TLS.** En este VPS lo hace Caddy y el override ya viene configurado para
    eso → [Detrás del Caddy del VPS](#detrás-del-caddy-del-vps-topología-actual).
 
+## Deploy en un comando (entornos ya levantados)
+
+Para un entorno que **ya está andando** —el caso de todos los deploys después del primero— no hacen
+falta los pasos de abajo uno por uno:
+
+```
+bash scripts/deploy.sh --dry-run    # preflight + backup verificado + censo, sin tocar nada
+bash scripts/deploy.sh              # el deploy entero
+```
+
+Es fail-closed: frena si no estás en `main` limpio, si falta alguna variable del `.env` o si
+`KEYCLOAK_HOSTNAME` no termina en `/auth`; toma backup de las dos bases y lo **verifica con
+`pg_restore -l`** antes de tocar nada; ajusta el `.env` (con copia) para `TIENDANUBE_STORE_URL` y
+`CATALOGO_TIPOS_ERP`; compila la SPA, levanta backend y nginx, confirma que Flyway llegó a la versión
+esperada, **aborta si alguna tabla perdió filas**, aplica la config del realm y hace un smoke de
+`/terminos`. Si algo sale mal, el mensaje dice dónde quedó el dump.
+
+Lo único que no hace: los dos botones del panel de Integraciones (sincronizar y mapear productos),
+porque necesitan una sesión de admin y el script no se loguea por nadie. Los imprime al final.
+
+Los pasos de abajo quedan para el **primer** levantamiento de un entorno nuevo.
+
 ## Pasos de despliegue
 
 ### 1. Certificados TLS → `nginx/certs/`
@@ -852,6 +874,50 @@ Propagación: con TTL 300 son minutos, pero la delegación en nic.ar + la creaci
 hPanel pueden tardar bastante más. Mientras siga dando SERVFAIL, el problema está antes del `.zone`.
 
 ---
+
+## Deliverability del mail — bonosapp.com.ar (S-18)
+
+Estado real, leído del DNS público el 2026-09-23 (no hace falta acceso a Hostinger para verlo):
+
+| Registro | Valor | Qué significa |
+|---|---|---|
+| SPF raíz | `v=spf1 include:_spf.mail.hostinger.com ~all` | Autoriza a Hostinger (la casilla `info@`). Resend **no** está, y está bien: no manda desde la raíz |
+| `send.bonosapp.com.ar` | SPF de Resend + MX `feedback.forge.rmta.net` | El *return-path* de Resend. Como es subdominio de la raíz, el SPF **alinea** para DMARC |
+| `resend._domainkey` | clave pública presente | Resend firma DKIM con el dominio propio → **alinea**. Es el TXT que se había borrado el 17/09 y no se toca |
+| `_dmarc` | `v=DMARC1; p=none` | Política en observación y **sin `rua`**: nadie recibe los reportes |
+| DKIM de Hostinger | **no encontrado** (probados `hostingermail1..3`) | Lo que se manda a mano desde `info@` sale sin firmar y pasa DMARC sólo por SPF |
+
+**Lo primero que hay que saber: esto no saca los mails de "Promociones".** La pestaña Promociones
+de Gmail la decide un clasificador **por contenido** (tono comercial, "descuento", "bono", links y
+botones), no por autenticación. SPF/DKIM/DMARC deciden **bandeja vs. spam** y la reputación del
+dominio; que un mail autenticado caiga en Promociones es lo esperable para un mail que ofrece un
+descuento. Esa parte es **F-22** (contenido del mail, de Fran). Lo del DNS igual conviene hacerlo: sin
+reportes no hay forma de saber si algo está fallando.
+
+**Cambios a publicar en Hostinger, en este orden** (🔴 bloqueado: necesita acceso al panel de DNS):
+
+1. **Ya:** reemplazar el TXT de `_dmarc` por
+   ```
+   v=DMARC1; p=none; rua=mailto:info@bonosapp.com.ar; fo=1
+   ```
+   Sigue sin bloquear nada; sólo empieza a llegar un reporte diario por proveedor (Google, Microsoft,
+   Yahoo) que dice cuántos mails pasaron y cuántos no, y desde qué IPs.
+2. **Ya:** en el panel de correo de Hostinger, **activar DKIM para `bonosapp.com.ar`**. Crea un TXT
+   `hostingermail…._domainkey`. Sin eso, un mail de `info@` reenviado por el destinatario pierde el SPF
+   y no tiene firma que lo respalde.
+3. **Recién después de ~2 semanas de reportes con todo en verde:** subir a
+   ```
+   v=DMARC1; p=quarantine; rua=mailto:info@bonosapp.com.ar; fo=1
+   ```
+   Saltar directo a `quarantine` sin reportes es la forma clásica de mandar a spam mail legítimo sin
+   enterarse — por ejemplo, el de Keycloak, que desde S-09 sale por el mismo Resend pero nadie lo
+   verificó desde afuera todavía.
+
+**Verificación sin panel**, desde cualquier máquina:
+```
+Resolve-DnsName _dmarc.bonosapp.com.ar -Type TXT        # PowerShell
+dig +short TXT _dmarc.bonosapp.com.ar                   # Linux
+```
 
 ## Backup / restore de la DB
 ```

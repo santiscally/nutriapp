@@ -114,6 +114,10 @@ bonosapp:
     # el valor de su ficha.
     descuento-pct-default: ${NUTRICIONISTA_DESCUENTO_PCT_DEFAULT:15.00}
     comision-pct-default: ${NUTRICIONISTA_COMISION_PCT_DEFAULT:1.00}
+  registro:
+    # S-11: profesión, jurisdicción y matrícula numérica obligatorias. En false vuelve a aceptar altas
+    # sin esos datos, sin redeploy: es la salida si el front viejo sigue cacheado después de desplegar.
+    exigir-datos-profesionales: ${REGISTRO_EXIGIR_DATOS_PROFESIONALES:true}
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
     # Los % de descuento y comisión no viven acá: son de cada nutricionista (ver arriba).

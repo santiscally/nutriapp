@@ -43,7 +43,8 @@ class RegistroServiceVerificacionTest {
     private RegistroService service() {
         NutricionistaProperties props =
                 new NutricionistaProperties(new BigDecimal("15.00"), new BigDecimal("1.00"));
-        return new RegistroService(repository, keycloak, archivoService, props, notificaciones, profesiones);
+        return new RegistroService(repository, keycloak, archivoService, props, notificaciones, profesiones,
+                new com.bonosapp.modules.registro.RegistroProperties(true));
     }
 
     private RegistroRequest alta() {
@@ -86,6 +87,34 @@ class RegistroServiceVerificacionTest {
 
         verify(repository).save(any(Nutricionista.class));
         verify(keycloak, never()).deleteUser(anyString());
+    }
+
+    /** S-11: con el interruptor prendido faltan datos → 422 con TODOS los faltantes, y sin tocar Keycloak. */
+    @Test
+    void sinDatosProfesionales_rechazaConTodosLosFaltantes() {
+        keycloakCrea();
+        RegistroRequest incompleto = new RegistroRequest("Ana", "García", "ana@x.com", "+5491155551234",
+                "MN 1234", null, "  ", "30123456", "27301234564", "Monotributo", "secreto123");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service().registrar(incompleto, null))
+                .isInstanceOf(com.bonosapp.common.error.UnprocessableException.class)
+                .hasMessageContaining("profesión")
+                .hasMessageContaining("jurisdicción")
+                .hasMessageContaining("sólo con dígitos");
+        verify(keycloak, never()).registrarNutricionista(anyString(), anyString(), anyString(), anyString());
+    }
+
+    /** El interruptor apagado es la salida si el front viejo sigue cacheado tras el deploy. */
+    @Test
+    void conElInterruptorApagado_aceptaAltasSinDatosProfesionales() {
+        keycloakCrea();
+        RegistroService sinExigir = new RegistroService(repository, keycloak, archivoService,
+                new NutricionistaProperties(new BigDecimal("15.00"), new BigDecimal("1.00")),
+                notificaciones, profesiones, new com.bonosapp.modules.registro.RegistroProperties(false));
+        RegistroRequest viejo = new RegistroRequest("Ana", "García", "ana@x.com", "+5491155551234",
+                "CABA · N° 1234", null, null, "30123456", "27301234564", "Monotributo", "secreto123");
+
+        assertThatCode(() -> sinExigir.registrar(viejo, null)).doesNotThrowAnyException();
     }
 
     @Test
