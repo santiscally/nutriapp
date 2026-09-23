@@ -157,13 +157,11 @@ reparto; se corrigen tres supuestos y aparecen dos decisiones que necesitan al c
 1. ~~**`DESCUENTO %` viene como `0.2` y `0.55`, sin formato de porcentaje.**~~ **RESUELTO (2026-09-21):
    son 20 % y 55 %.** El parser acepta igual las dos escalas (por debajo de 1 = fracción, de 1 en
    adelante = porcentaje) para que un 20 tipeado a mano mañana no rompa nada.
-2. **`ESTADO` y `ESTADO BONOSAPP` se contradicen en el archivo que mandaron.** De 2252 filas,
-   **1497 están `BLOQUEADO`** en la columna `ESTADO` (la de TBC) y al mismo tiempo **las 2252 están en
-   `SI`** en `ESTADO BONOSAPP` (la nueva, la que según el plan decide si el producto aparece en el
-   buscador). Hoy el importador bloquea por `ESTADO`, así que importar ese archivo tal cual **dejaría
-   fuera del buscador a 1497 productos de golpe**. Hay que preguntar cuál manda. Mientras no haya
-   respuesta, la regla implementada es: **`ESTADO BONOSAPP` manda si viene; `ESTADO` queda como dato**
-   — es lo que dice el plan ("SI = aparece en el buscador") y lo que evita vaciar el catálogo.
+2. ~~**`ESTADO` y `ESTADO BONOSAPP` se contradicen en el archivo que mandaron.**~~ **RESUELTO
+   (2026-09-23), sin consultar al cliente: manda `ESTADO BONOSAPP`**, que es la columna con la que el
+   plan dice que se decide qué aparece en el buscador. `ESTADO` queda como dato. Era la regla que ya
+   estaba implementada, así que no hubo que tocar código. (Contexto: en el archivo que mandaron, 1497
+   de 2252 filas estaban `BLOQUEADO` en `ESTADO` y todas en `SI` en `ESTADO BONOSAPP`.)
 
 ---
 

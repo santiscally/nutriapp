@@ -30,8 +30,6 @@ S-15 **descartado** (renombrar el API rompe todo por una palabra que nadie ve).
 - **S-18, publicar el DNS** → acceso al panel de Hostinger. Los registros exactos y el orden están en
   `DEPLOY.md` ("Deliverability"). Ojo: esto arregla bandeja vs. spam, **no** la pestaña Promociones, que
   la decide el contenido del mail.
-- **Respuesta de Gon** → si manda `ESTADO` o `ESTADO BONOSAPP` en el maestro (1497 filas se contradicen).
-  Hasta que conteste, está implementado que manda `ESTADO BONOSAPP`.
 - **Reescribir los 5 commits con atribución a Claude** (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`,
   `ff2e780`) → necesita el OK de Santi: implica force-push sobre `main`, que comparte con Fran.
 - **F-14 y F-20** son de Fran y dependen del cliente (importar el maestro / mandar la plantilla del PDF).
