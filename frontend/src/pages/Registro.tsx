@@ -5,7 +5,7 @@
 import { useCallback, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ApiRequestError } from "../api/client";
-import { listarProfesiones, registrar } from "../api/registro";
+import { listarProfesiones, reenviarVerificacion, registrar } from "../api/registro";
 import { config } from "../config";
 import { CONDICIONES_FISCALES, JURISDICCIONES } from "../types/registro";
 import { useFetch } from "../hooks/useFetch";
@@ -67,6 +67,7 @@ export function Registro() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [reenvio, setReenvio] = useState<"idle" | "enviando" | "enviado">("idle");
 
   const set =
     (k: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -153,6 +154,32 @@ export function Registro() {
           <p className="muted">
             Tu registro quedó <strong>pendiente de aprobación</strong>. Te avisaremos por email cuando
             un administrador valide tu cuenta.
+          </p>
+          <p className="muted">
+            Además te mandamos un mail a <strong>{f.email.trim()}</strong> para{" "}
+            <strong>validar tu casilla</strong>: sin ese paso no vas a poder ingresar, aunque tu cuenta
+            ya esté aprobada. Si no lo ves, mirá en spam y en promociones.
+          </p>
+          <p className="muted">
+            {reenvio === "enviado" ? (
+              "Listo: te lo reenviamos."
+            ) : (
+              <button
+                type="button"
+                className="link-button"
+                disabled={reenvio === "enviando"}
+                onClick={async () => {
+                  setReenvio("enviando");
+                  try {
+                    await reenviarVerificacion(f.email.trim());
+                  } finally {
+                    setReenvio("enviado");
+                  }
+                }}
+              >
+                {reenvio === "enviando" ? "Reenviando…" : "No me llegó: reenviar el mail"}
+              </button>
+            )}
           </p>
           <div className="exito__actions">
             <Link className="btn btn--primary" to="/">

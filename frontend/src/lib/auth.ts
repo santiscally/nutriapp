@@ -69,6 +69,8 @@ function mensajeDeError(desc?: string): string {
       return "Tu cuenta todavía no está habilitada: el administrador tiene que aprobar tu solicitud de acceso.";
     case "Account temporarily disabled":
       return "Demasiados intentos fallidos. Esperá unos minutos y volvé a probar.";
+    case "Account is not fully set up":
+      return "Todavía no validaste tu mail. Buscá el enlace que te mandamos al registrarte (mirá también en spam y promociones).";
     case "Invalid client credentials":
       return "No se pudo validar la aplicación. Avisale al equipo técnico.";
     default:
@@ -99,9 +101,22 @@ export async function login(username: string, password: string): Promise<void> {
 
   const data = (await res.json()) as KeycloakTokenResponse;
   if (!res.ok) {
-    throw new Error(mensajeDeError(data.error_description));
+    throw new LoginError(mensajeDeError(data.error_description), data.error_description === MAIL_SIN_VALIDAR);
   }
   store(data);
+}
+
+/** Lo que responde Keycloak cuando la cuenta existe pero el mail todavía no se validó (S-10). */
+const MAIL_SIN_VALIDAR = "Account is not fully set up";
+
+/** Error de login que además dice si el problema es el mail sin validar, para ofrecer el reenvío. */
+export class LoginError extends Error {
+  readonly mailSinValidar: boolean;
+  constructor(message: string, mailSinValidar: boolean) {
+    super(message);
+    this.name = "LoginError";
+    this.mailSinValidar = mailSinValidar;
+  }
 }
 
 /** Intenta refrescar el access token con el refresh token guardado. */

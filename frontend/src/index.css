@@ -2222,3 +2222,80 @@ html, body { overflow-x: hidden; }
 }
 .toast__cerrar:hover { opacity: 1; background: rgba(0, 0, 0, 0.07); }
 .toast__cerrar:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; opacity: 1; }
+
+/* ---- Responsive de la cáscara, las tablas y las tarjetas (celular y tablet) ---- */
+/* `clip` corta el desborde igual que `hidden` pero no crea contenedor de scroll, así el sticky funciona. */
+html, body { overflow-x: hidden; overflow-x: clip; }
+/* La navbar se parte en dos filas desde bastante antes del celular: fija con alto supuesto tapaba el título. */
+.navbar { position: sticky; }
+.app-shell { padding-top: 0; }
+
+@media (max-width: 720px) {
+  .app-shell { padding-bottom: 0; }
+  /* El pie fijo se comía una franja de pantalla todo el tiempo: acá va al final del contenido. */
+  .footer { position: static; }
+  .navbar__inner { padding: 8px 16px; gap: 8px 14px; min-height: 56px; }
+  .navbar__link { padding: 8px 12px; font-size: 0.9rem; }
+  .navbar__nav { scrollbar-width: none; }
+  .navbar__nav::-webkit-scrollbar { display: none; }
+
+  /* Las tablas se deslizan dentro de su caja en vez de recortar las columnas que no entran. */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table th, .table td { white-space: nowrap; }
+  /* Sombra en el borde que tiene más contenido: sin esto no se nota que la tabla se desliza. */
+  .table {
+    background-color: var(--surface);
+    background-image:
+      linear-gradient(to right, var(--surface) 30%, transparent),
+      linear-gradient(to left, var(--surface) 30%, transparent),
+      radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.14), transparent),
+      radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.14), transparent);
+    background-position: left center, right center, left center, right center;
+    background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+    background-repeat: no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+}
+
+@media (max-width: 560px) {
+  /* Las pestañas que no entran se insinúan con un fundido: antes quedaban cortadas a la mitad. */
+  .navbar__nav {
+    -webkit-mask-image: linear-gradient(to right, #000 82%, transparent);
+    mask-image: linear-gradient(to right, #000 82%, transparent);
+    padding-right: 24px;
+  }
+  .navbar__brand { font-size: 1.05rem; }
+
+  /* Dos tarjetas por fila: de a una, los tres números del panel ocupaban la pantalla entera. */
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .tile { gap: 0.6rem; padding: 0.9rem; }
+  .tile__icon { width: 34px; height: 34px; border-radius: 10px; }
+  .tile__icon .icon { width: 20px; height: 20px; }
+  .tile__value { font-size: 1.3rem; overflow-wrap: anywhere; }
+}
+
+/* minmax(420px, 1fr) en una pantalla de 375 armaba una columna más ancha que la pantalla y recortaba el formulario. */
+.auth { grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); }
+
+@media (max-width: 860px) {
+  /* Sin el panel de marca el login quedaba sin logo: en angosto vuelve como una franja con el isotipo. */
+  .auth { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .auth__brand { display: flex; padding: 16px 20px; gap: 0; justify-content: flex-start; }
+  .auth__brand > :not(.auth__brand-top) { display: none; }
+  .auth__brand-name { font-size: 1.1rem; }
+  .auth__panel { place-items: start center; padding: 28px 20px 40px; }
+}
+
+/* Acción secundaria con aspecto de link (reenviar el mail de validación); es un botón porque dispara un POST. */
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link-button:disabled { color: var(--muted); cursor: default; text-decoration: none; }

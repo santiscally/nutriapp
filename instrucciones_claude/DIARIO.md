@@ -32,6 +32,57 @@
 
 ## Entradas
 
+## 2026-09-23 (2) — Santi — frontend (responsive: de 27 combinaciones rotas a 0 + la UI de S-10) — ⚠️ toca zona de Fran
+**Qué:** Dos pendientes de front que no tenían dueño, hechos **por pedido explícito del usuario**: el
+responsive (sumado a la lista el 23/09: "no lo es") y la UI de verificación de mail de S-10.
+
+**Cómo se midió, porque "no es responsive" no alcanza:** un script con Chrome headless recorre las 15
+pantallas (públicas, de profesional y de admin) a 375, 768 y 1280 px, logueado con cada rol, y detecta tres
+cosas: **contenido inalcanzable** (elementos que salen de pantalla sin un contenedor que los deje deslizar),
+**título tapado** por la navbar, y **pie fijo** en celular. Medir "si desborda" no servía: `html/body` tenían
+`overflow-x: hidden`, así que lo que no entraba **no desbordaba, se recortaba** y quedaba invisible.
+
+**Antes: a 375 px, las 15 pantallas tenían algún problema; a 768, otras 12** (27 de 30 combinaciones):
+- **Login, registro y recupero cortados** (15, 48 y 9 elementos inalcanzables): la puerta de entrada no se
+  veía completa en un celular.
+- **Título tapado en las 12 pantallas logueadas** (78 px), y **también a 768** (22 px).
+- **Tablas del admin inalcanzables**: panel 48, bonos 71, cierres 13, catálogo 154 elementos.
+- Pie fijo comiéndose una franja de pantalla, pestañas cortadas sin aviso, códigos partidos (`RX-` / `8UZ2XH`).
+
+**Después: 45 combinaciones de pantalla × ancho, 0 con contenido inalcanzable, 0 con título tapado, 0
+errores de JavaScript.** Desktop sin cambios (verificado a 1280).
+
+**Las causas, que eran pocas y centrales:**
+1. `.auth` usaba `minmax(420px, 1fr)`: en 375 px la columna medía 420. Ahora `minmax(min(420px, 100%), 1fr)`.
+   Y como en angosto el panel de marca desaparecía entero, el login quedaba **sin logo**: vuelve como una
+   franja con el isotipo.
+2. **Ninguna de las 9 tablas usaba `.table-wrap`**: esa regla nunca se aplicaba. En vez de envolver 9 tablas
+   en 9 archivos tuyos, en angosto la tabla misma pasa a ser una caja con scroll horizontal, con una sombra en
+   el borde que indica que hay más columnas.
+3. La navbar era `fixed` con un alto supuesto de 64 px, pero **se parte en dos filas mucho antes del celular**
+   (ya a 768). El comentario explicaba que no era `sticky` porque el `overflow-x: hidden` lo rompía:
+   `overflow-x: clip` corta igual pero no crea contenedor de scroll, así que ahora es `sticky` y reserva su alto
+   real, sea cual sea.
+4. Pie estático en celular; en tablet y desktop sigue fijo, como lo diseñaste.
+5. Tarjetas del panel de a dos en celular, y las pestañas que no entran se funden a la derecha.
+
+**S-10 en el front:** el login mostraba **"Account is not fully set up" en inglés** a cualquier profesional
+que no hubiera validado el mail — bug que dejé yo al activar S-10 sin su contraparte. Ahora está traducido y
+ofrece "Reenviarme el mail de validación". La pantalla de "Solicitud enviada" avisa que hay que validar la
+casilla y tiene su propio reenvío. **Verificado en el navegador:** cuenta sin validar → mensaje en castellano
+→ botón → el mail llega a mailpit.
+
+**Qué toqué de tu zona, para que no te sorprenda:** `index.css` (**sólo agregué bloques al final**, no edité
+ninguna regla tuya), `Login.tsx` y `Registro.tsx` (la pantalla de éxito), `lib/auth.ts` (la traducción y un
+`LoginError` que dice si el problema es el mail) y `api/registro.ts` (`reenviarVerificacion`). **No toqué** la
+lista de productos de Emitir: su alto de 340 px con scroll propio es una decisión tuya y la dejé.
+
+**Impacto para el otro (Fran):** si algo del responsive no te cierra, está todo en el último tramo de
+`index.css`, en dos bloques comentados; sacarlos vuelve atrás sin tocar nada más. El script de medición no
+quedó en el repo (vive en mi scratchpad); si te sirve lo subo a `frontend/scripts/`.
+
+**Refs:** `frontend/src/index.css` (final), `Login.tsx`, `Registro.tsx`, `lib/auth.ts`, `api/registro.ts`.
+
 ## 2026-09-23 — Santi — infra/registro (deploy en un comando + S-11 obligatorio + S-18 diagnosticado + S-15 descartado)
 **Qué:** Barrido de los pendientes que no dependen de nadie.
 

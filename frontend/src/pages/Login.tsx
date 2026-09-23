@@ -8,6 +8,8 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { reenviarVerificacion } from "../api/registro";
+import { LoginError } from "../lib/auth";
 import { homeDe } from "../lib/home";
 import { Icon } from "../components/ui/Icon";
 import { Logo } from "../components/ui/Logo";
@@ -40,6 +42,8 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [mailSinValidar, setMailSinValidar] = useState(false);
+  const [reenvio, setReenvio] = useState<"idle" | "enviando" | "enviado">("idle");
 
   // C-07: cada rol arranca en su propia pantalla (el admin no tiene panel de recetas).
   if (!initializing && me) return <Navigate to={homeDe(me)} replace />;
@@ -47,12 +51,15 @@ export function Login() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setMailSinValidar(false);
+    setReenvio("idle");
     setSubmitting(true);
     try {
       const sesion = await login(email, password);
       navigate(homeDe(sesion), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesión.");
+      setMailSinValidar(err instanceof LoginError && err.mailSinValidar);
     } finally {
       setSubmitting(false);
     }
@@ -135,6 +142,30 @@ export function Login() {
           </p>
 
           {error && <div className="alert alert--error">{error}</div>}
+
+          {mailSinValidar && (
+            <p className="auth__olvide">
+              {reenvio === "enviado" ? (
+                "Listo: te reenviamos el mail de validación."
+              ) : (
+                <button
+                  type="button"
+                  className="link-button"
+                  disabled={reenvio === "enviando"}
+                  onClick={async () => {
+                    setReenvio("enviando");
+                    try {
+                      await reenviarVerificacion(email.trim());
+                    } finally {
+                      setReenvio("enviado");
+                    }
+                  }}
+                >
+                  {reenvio === "enviando" ? "Reenviando…" : "Reenviarme el mail de validación"}
+                </button>
+              )}
+            </p>
+          )}
 
           <button className="auth__submit" type="submit" disabled={submitting}>
             {submitting ? "Ingresando…" : "Ingresar"}

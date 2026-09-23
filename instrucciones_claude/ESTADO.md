@@ -14,62 +14,35 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-22 (4)** — mi mitad de las modificaciones post 1ª entrega está **cerrada
-salvo lo que necesita producción**. Todo en `main`, **nada desplegado todavía**.
+**Última actualización: 2026-09-23** — **no queda ningún pendiente mío que se pueda hacer sin acceso
+externo.** Todo en `main`; nada desplegado.
 
-**Hecho y verificado:** S-01/S-02 (maestro nuevo + descuento por producto + link al producto) ·
-S-04 (fuera los Combo) · **S-05** (la foto de producto) · S-07 (cupón no combinable) · S-08
-(fuerza bruta) · S-09 (recupero de contraseña + su UI) · S-10 (verificación de mail) · S-11
-(profesión y jurisdicción) · S-12 (comisión 1 %) · S-13/S-14 (solapas PANEL y BONOS del admin) ·
-S-16 (términos de uso en `/terminos`). Más: adjuntos en `MailSender` (destraba F-20 de Fran) y el
-endpoint del PDF documentado.
+**Hecho en esta tanda (post 1ª entrega):** S-01 a S-14, S-16 y S-18 (en lo que no es DNS) · adjuntos en
+`MailSender` para F-20 · el endpoint del PDF documentado · `scripts/deploy.sh` (el deploy en un comando,
+fail-closed, que además resuelve S-17) · profesión/jurisdicción/matrícula obligatorias con interruptor ·
+**responsive** (27 combinaciones de pantalla × ancho rotas → 0) y la UI de S-10 en login y registro.
+S-15 **descartado** (renombrar el API rompe todo por una palabra que nadie ve).
 
-**S-03 cerrado sin tocar código:** el filtro de rubro **funciona** (los 104 productos fuera de
-"Producto terminado" están despublicados, y las cajas de cartón están en `Insumos para producción`,
-ya excluidas). Lo que falta es **re-sincronizar prod**, que ya está en la checklist. Ojo con el
-número: después del re-sync el catálogo recetable ronda los **1015**, no los 2277 — la regla de
-precio se lleva 947 (los ~1000 artículos a $1). Para lo que el cliente igual quiera afuera, la
-palanca es `ESTADO BONOSAPP`.
+**🔴 Bloqueado — y de qué depende cada uno:**
+- **El deploy** → acceso al VPS. Queda reducido a `bash scripts/deploy.sh` (probar antes con `--dry-run`)
+  y después dos botones en Integraciones: "Sincronizar productos" y "Mapear productos". Con eso se aplica
+  S-17 solo.
+- **S-18, publicar el DNS** → acceso al panel de Hostinger. Los registros exactos y el orden están en
+  `DEPLOY.md` ("Deliverability"). Ojo: esto arregla bandeja vs. spam, **no** la pestaña Promociones, que
+  la decide el contenido del mail.
+- **Respuesta de Gon** → si manda `ESTADO` o `ESTADO BONOSAPP` en el maestro (1497 filas se contradicen).
+  Hasta que conteste, está implementado que manda `ESTADO BONOSAPP`.
+- **Reescribir los 5 commits con atribución a Claude** (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`,
+  `ff2e780`) → necesita el OK de Santi: implica force-push sobre `main`, que comparte con Fran.
+- **F-14 y F-20** son de Fran y dependen del cliente (importar el maestro / mandar la plantilla del PDF).
 
-**S-06 cerrado:** el pipeline estaba bien; lo que fallaba era que `@EnableScheduling` corría con
-**un solo hilo** (default de Spring) para los seis jobs, así que el processor de webhooks hacía cola
-detrás del polling de TiendaNube y del dispatcher de mails. `spring.task.scheduling.pool.size` = 4,
-con un test que lo cuida.
+**Después del deploy:** abrir un link real de recupero de contraseña (confirma que `KEYCLOAK_HOSTNAME`
+arma bien el enlace) y probar `/terminos`. Si alguien quedó con el front viejo cacheado y el registro le
+tira 400, `REGISTRO_EXIGIR_DATOS_PROFESIONALES=false` lo destraba sin redeploy.
 
-**🔴 Lo que falta, todo del lado de producción:**
-- **S-17** — `TIENDANUBE_STORE_URL` en el `.env` del VPS. (Fran verificó que la tienda ya redirige
-  `bienestarandsalud.mitiendanube.com` → `www.thebcompany.com.ar` con un 301, así que no es urgente.)
-- **S-18** — deliverability: DMARC está en `p=none` y los mails caen en Promociones.
-- **S-15** — rename del path del API. Opcional, sin hacer.
-
-**⚠️ Checklist de deploy (6 pasos, ninguno hecho):**
-1. `bash scripts/keycloak-config.sh` — fuerza bruta + SMTP del realm + verificación de mail, con el
-   backfill de `emailVerified` **antes** de exigirla. Sin este paso, el realm de prod se queda con el
-   default de 30 intentos, sin mail de recupero, y activar la verificación a mano dejaría a todo el
-   padrón afuera.
-2. Migraciones `V014` / `V015` / `V016`.
-3. Re-sincronizar el catálogo (cambiar `CATALOGO_TIPOS_ERP` no recalcula nada por sí solo).
-4. **Correr el mapeo de TiendaNube**: puebla el `handle` (sin eso `urlProducto` viaja en null y el
-   link del mail no sale) **y ahora también la foto de cada producto**.
-5. `TIENDANUBE_STORE_URL` en el `.env` del VPS.
-6. Montar `./static` en nginx (términos de uso) y recargar la config (el CSP cambió: ahora deja pasar
-   las imágenes de la tienda).
-
-**Después del deploy, dos cosas:** abrir un link real de recupero de contraseña para confirmar que el
-`KEYCLOAK_HOSTNAME` arma bien el enlace (mismo tipo de bug que el `issuer` sin `/auth` de agosto), y
-recién ahí pasar `profesion` / `jurisdiccion` / `matricula` a obligatorios en el backend — el front de
-Fran ya los manda los tres, pero exigirlos antes del deploy rompe el alta si alguien tiene el front
-viejo cacheado.
-
-**⚠️ Para preguntarle a Gon antes de importar el maestro:** `ESTADO` y `ESTADO BONOSAPP` se
-contradicen — **1497 de 2252 filas están BLOQUEADO** y a la vez las 2252 están en `SI`. Implementado
-queda que manda `ESTADO BONOSAPP`. Y ojo: **2078 de 2252 filas no traen link de imagen**; por eso la
-foto ahora sale de la tienda y no del Excel.
-
-**Estado de producción (no romper):** `bonosapp.com.ar` en vivo · mail live por Resend
-(`info@bonosapp.com.ar`; el TXT DKIM `resend._domainkey` no se toca) · Contabilium y TiendaNube live
-contra la tienda real — **todavía no se emitieron bonos** · padrón de 3 usuarios · el maestro lo
-importa el cliente y aún no lo hizo.
+**Estado de producción (no romper):** `bonosapp.com.ar` en vivo · mail live por Resend (el TXT DKIM
+`resend._domainkey` no se toca) · Contabilium y TiendaNube live contra la tienda real — **se están emitiendo
+y usando bonos** · padrón de 3 usuarios · el maestro todavía no lo importó el cliente.
 
 ## Fran / frontend
 

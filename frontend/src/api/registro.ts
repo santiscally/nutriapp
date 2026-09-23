@@ -19,3 +19,7 @@ export const registrar = (body: RegistroRequest, matricula: File) => {
  */
 export const listarProfesiones = (signal?: AbortSignal) =>
   api.get<Profesion[]>("/profesiones", undefined, signal);
+
+/** S-10: reenvía el mail de "validá tu casilla". 204 siempre, exista o no la cuenta. */
+export const reenviarVerificacion = (email: string) =>
+  api.post<void>("/registro/reenviar-verificacion", { email });
