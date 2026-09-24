@@ -219,7 +219,7 @@ export function CatalogoAdmin() {
 
       {data && data.content.length > 0 && (
         <>
-          <table className="table">
+          <table className="table table--cards">
             <thead>
               <tr>
                 <th>Producto</th>
@@ -245,14 +245,14 @@ export function CatalogoAdmin() {
                       </>
                     )}
                   </td>
-                  <td className="mono">{p.producto.sku}</td>
-                  <td className="muted">{p.producto.categoria || "—"}</td>
-                  <td className="ta-right">{money(p.producto.precio)}</td>
-                  <td className="ta-right">{p.producto.stock}</td>
-                  <td>
+                  <td className="mono" data-label="SKU">{p.producto.sku}</td>
+                  <td className="muted" data-label="Categoría">{p.producto.categoria || "—"}</td>
+                  <td className="ta-right" data-label="Precio">{money(p.producto.precio)}</td>
+                  <td className="ta-right" data-label="Stock">{p.producto.stock}</td>
+                  <td data-label="Estado">
                     <Etiquetas p={p} />
                   </td>
-                  <td className="ta-right muted">{p.producto.tags?.length || "—"}</td>
+                  <td className="ta-right muted" data-label="Tags">{p.producto.tags?.length || "—"}</td>
                 </tr>
               ))}
             </tbody>

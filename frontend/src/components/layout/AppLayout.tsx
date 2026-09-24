@@ -1,6 +1,7 @@
 // Layout autenticado (rediseño 2026-07-26): top NavBar (marca + navegación + CTA + usuario) +
 // contenido centrado (<Outlet/>) + Footer. Reemplaza el sidebar/topbar anterior.
 
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Avatar } from "../ui/Avatar";
@@ -39,17 +40,43 @@ export function AppLayout() {
   const nav = isAdmin ? NAV_ADMIN : NAV_NUTRI;
   // Estando ya en el emisor, el CTA "Nuevo bono" no lleva a ningún lado: se esconde.
   const enEmision = useLocation().pathname === "/bonos/nuevo";
+  // En celular la navegación va plegada detrás de un botón; en escritorio no se usa.
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const botonMenu = useRef<HTMLButtonElement>(null);
+  const cerrarMenu = () => setMenuAbierto(false);
+
+  useEffect(() => {
+    if (!menuAbierto) return;
+    const alEscape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setMenuAbierto(false);
+      // El menú se oculta con el foco adentro: sin esto el foco cae al body y se pierde el lugar.
+      botonMenu.current?.focus();
+    };
+    window.addEventListener("keydown", alEscape);
+    return () => window.removeEventListener("keydown", alEscape);
+  }, [menuAbierto]);
+
+  useEffect(() => {
+    // Abierto en celular y agrandado a escritorio, al volver a achicar reaparecía abierto.
+    const escritorio = window.matchMedia("(min-width: 721px)");
+    const alCambiar = (e: MediaQueryListEvent) => {
+      if (e.matches) setMenuAbierto(false);
+    };
+    escritorio.addEventListener("change", alCambiar);
+    return () => escritorio.removeEventListener("change", alCambiar);
+  }, []);
 
   return (
     <div className="app-shell">
-      <header className="navbar">
+      <header className={"navbar" + (menuAbierto ? " navbar--abierto" : "")}>
         <div className="navbar__inner">
-          <Link to={isAdmin ? "/panel" : "/dashboard"} className="navbar__brand">
+          <Link to={isAdmin ? "/panel" : "/dashboard"} className="navbar__brand" onClick={cerrarMenu}>
             <Logo size={34} />
-            BonosApp
+            <span className="navbar__brand-name">BonosApp</span>
           </Link>
 
-          <nav className="navbar__nav">
+          <nav id="navbar-menu" className="navbar__nav" onClick={cerrarMenu}>
             {nav.map((item) => (
               <NavLink
                 key={item.to}
@@ -62,11 +89,25 @@ export function AppLayout() {
                 {item.label}
               </NavLink>
             ))}
+            {/* La cuenta y el botón de salir viven arriba a la derecha; en el menú de celular bajan acá. */}
+            <div className="navbar__cuenta">
+              <Avatar me={me} />
+              <span className="navbar__cuenta-meta">
+                <span className="navbar__user-name">
+                  {me ? `${me.nombre} ${me.apellido}` : ""}
+                </span>
+                <span className="navbar__user-role">{roleLabel(me?.roles)}</span>
+              </span>
+              <button type="button" className="btn btn--sm btn--ghost" onClick={logout}>
+                <Icon name="logout" size={16} />
+                Salir
+              </button>
+            </div>
           </nav>
 
           <div className="navbar__right">
             {!isAdmin && !enEmision && (
-              <Link to="/bonos/nuevo" className="navbar__cta">
+              <Link to="/bonos/nuevo" className="navbar__cta" onClick={cerrarMenu}>
                 <Icon name="plus" size={17} />
                 Nuevo bono
               </Link>
@@ -88,6 +129,17 @@ export function AppLayout() {
               aria-label="Salir"
             >
               <Icon name="logout" size={17} />
+            </button>
+            <button
+              ref={botonMenu}
+              type="button"
+              className="navbar__menu"
+              aria-controls="navbar-menu"
+              aria-expanded={menuAbierto}
+              aria-label={menuAbierto ? "Cerrar el menú" : "Abrir el menú"}
+              onClick={() => setMenuAbierto((v) => !v)}
+            >
+              <Icon name={menuAbierto ? "close" : "menu"} size={20} />
             </button>
           </div>
         </div>

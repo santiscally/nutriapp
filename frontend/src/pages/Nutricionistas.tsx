@@ -84,7 +84,7 @@ export function Nutricionistas() {
       )}
 
       {data && data.content.length > 0 && (
-        <table className="table">
+        <table className="table table--cards">
           <thead>
             <tr>
               <th>Nombre</th>
@@ -102,18 +102,18 @@ export function Nutricionistas() {
                 <td>
                   {n.nombre} {n.apellido}
                 </td>
-                <td className="muted">{n.email}</td>
-                <td className="muted">{n.matricula || "—"}</td>
-                <td>
+                <td className="muted" data-label="Email">{n.email}</td>
+                <td className="muted" data-label="Matrícula">{n.matricula || "—"}</td>
+                <td data-label="Descuento">
                   <strong>{n.descuentoPct}%</strong>
                 </td>
-                <td>
+                <td data-label="Comisión">
                   <strong>{n.comisionPct}%</strong>
                 </td>
-                <td>
+                <td data-label="Acceso">
                   <AccesoBadge activo={n.activo} />
                 </td>
-                <td className="muted">
+                <td className="muted" data-label={tab === "PENDIENTE" ? "Solicitó" : "Validada"}>
                   {tab === "PENDIENTE"
                     ? fecha(n.createdAt)
                     : n.validadoAt

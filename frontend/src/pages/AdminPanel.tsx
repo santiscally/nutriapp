@@ -116,7 +116,7 @@ export function AdminPanel() {
           {data.ultimasRecetas.length === 0 ? (
             <p className="muted">Todavía no se emitió ningún bono.</p>
           ) : (
-            <table className="table">
+            <table className="table table--cards">
               <thead>
                 <tr>
                   <th>Código</th>
@@ -131,17 +131,17 @@ export function AdminPanel() {
                 {data.ultimasRecetas.map((r) => (
                   <tr key={r.id}>
                     <td className="mono">{r.codigo}</td>
-                    <td>
+                    <td data-label="Profesional">
                       {r.nutricionista.nombre} {r.nutricionista.apellido}
                     </td>
-                    <td>
+                    <td data-label="Paciente">
                       {r.paciente.nombre} {r.paciente.apellido}
                     </td>
-                    <td>
+                    <td data-label="Estado">
                       <EstadoBadge estado={r.estado} />
                     </td>
-                    <td className="muted">{fecha(r.emitidaAt)}</td>
-                    <td className="ta-right">
+                    <td className="muted" data-label="Emitido">{fecha(r.emitidaAt)}</td>
+                    <td className="ta-right" data-label="Comisión">
                       {r.conversion ? (
                         money(r.conversion.comisionMonto)
                       ) : (

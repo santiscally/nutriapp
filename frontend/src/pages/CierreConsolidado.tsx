@@ -156,7 +156,7 @@ export function CierreConsolidado() {
             </div>
           </div>
 
-          <table className="table">
+          <table className="table table--cards">
             <thead>
               <tr>
                 <th>Profesional</th>
@@ -175,10 +175,10 @@ export function CierreConsolidado() {
                     <br />
                     <span className="muted">{f.email}</span>
                   </td>
-                  <td className="ta-right">{f.recetas}</td>
-                  <td className="ta-right">{money(f.facturado)}</td>
-                  <td className="ta-right">{money(f.comision)}</td>
-                  <td className="ta-right">
+                  <td className="ta-right" data-label="Bonos">{f.recetas}</td>
+                  <td className="ta-right" data-label="Facturado">{money(f.facturado)}</td>
+                  <td className="ta-right" data-label="Comisión">{money(f.comision)}</td>
+                  <td className="ta-right" data-label="Pendiente">
                     {f.recetasPendientes > 0 ? (
                       <strong>{money(f.comisionPendiente)}</strong>
                     ) : (

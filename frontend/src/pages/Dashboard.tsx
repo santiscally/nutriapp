@@ -107,7 +107,7 @@ export function Dashboard() {
           {data.ultimasRecetas.length === 0 ? (
             <p className="muted">Todavía no emitiste bonos.</p>
           ) : (
-            <table className="table">
+            <table className="table table--cards">
               <thead>
                 <tr>
                   <th>Código</th>
@@ -124,15 +124,15 @@ export function Dashboard() {
                 {data.ultimasRecetas.map((r) => (
                   <tr key={r.id} className="row-click" onClick={() => setDetalleId(r.id)}>
                     <td className="mono">{r.codigo}</td>
-                    <td>
+                    <td data-label="Paciente">
                       {r.paciente.nombre} {r.paciente.apellido}
                     </td>
-                    <td>
+                    <td data-label="Estado">
                       <EstadoBadge estado={r.estado} />
                     </td>
-                    <td className="muted">{fecha(r.emitidaAt)}</td>
-                    <td className="muted">{fecha(r.venceAt)}</td>
-                    <td className="ta-right">
+                    <td className="muted" data-label="Emitida">{fecha(r.emitidaAt)}</td>
+                    <td className="muted" data-label="Vence">{fecha(r.venceAt)}</td>
+                    <td className="ta-right" data-label="Comisión">
                       {r.conversion ? money(r.conversion.comisionMonto) : <span className="muted">—</span>}
                     </td>
                   </tr>

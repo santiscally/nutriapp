@@ -2299,3 +2299,148 @@ html, body { overflow-x: hidden; overflow-x: clip; }
   text-underline-offset: 2px;
 }
 .link-button:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+
+/* ---- Menú de celular, tablas como tarjetas y modales como hoja inferior ---- */
+.navbar__menu, .navbar__cuenta { display: none; }
+
+@media (max-width: 720px) {
+  /* Una sola fila (marca, "Nuevo bono", menú): las tres filas de antes ocupaban 140px fijos arriba. */
+  .navbar__brand { margin-right: auto; }
+  .navbar__divider, .navbar__user, .navbar__logout { display: none; }
+  .navbar__right { gap: 8px; }
+  .navbar__cta { padding: 9px 14px; }
+  .navbar__menu {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .navbar__nav { display: none; }
+  .navbar--abierto .navbar__nav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 6px 0 4px;
+    border-top: 1px solid var(--border);
+    max-height: calc(100vh - 72px);
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .navbar--abierto .navbar__link { padding: 12px; font-size: 1rem; }
+  .navbar__cuenta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    padding: 12px 0 6px;
+    border-top: 1px solid var(--border);
+  }
+  .navbar__cuenta-meta { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; flex: 1; }
+
+  /* Safari de iOS hace zoom al enfocar un campo con letra de menos de 16px y la página queda agrandada. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea,
+  .filtros__campo > select,
+  .buscador__campo select { font-size: 16px; }
+
+  /* La lista de productos se pagina de a 8: sin tope no hay un scroll adentro de otro. */
+  .prod-list, .emitir__items { max-height: none; }
+}
+
+@media (max-width: 350px) {
+  .navbar__brand-name { display: none; }
+}
+
+/* Los mínimos fijos de 320–340px desbordaban en los celulares de 320: el tope es el ancho disponible. */
+.perfil-grid { grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); }
+.charts { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.integraciones-grid { grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+.emitir__paciente { min-width: min(260px, 100%); }
+.rango { min-width: min(240px, 100%); }
+.filtros-bar__search { min-width: min(220px, 100%); }
+.filtros__campo--ancho { min-width: min(200px, 100%); }
+.buscador__barra .picker__input { min-width: 0; }
+
+@media (max-width: 980px) {
+  /* Un `1fr` pelado no baja del ancho mínimo de su contenido y en 320 empujaba la página hacia la derecha. */
+  .emitir__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 1024px) {
+  /* En tablet los mails largos ensanchaban la tabla y la columna de acciones quedaba recortada. */
+  .table td[data-label="Email"], .table td .muted { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 640px) {
+  /* Cada fila pasa a ser una tarjeta: título arriba y el resto de a dos columnas con su rótulo. */
+  .table--cards { display: block; overflow: hidden; background-image: none; }
+  .table--cards thead { display: none; }
+  .table--cards tbody, .table--cards tfoot { display: block; }
+  .table--cards tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table--cards tbody tr:last-child { border-bottom: none; }
+  .table--cards tfoot tr { border-top: 1px solid var(--border); border-bottom: none; background: var(--surface-2); }
+  .table--cards td {
+    padding: 0;
+    border: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    min-width: 0;
+    text-align: left;
+  }
+  .table--cards td:first-child { grid-column: 1 / -1; font-weight: 700; }
+  .table--cards td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.7rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--subtle);
+  }
+  .table--cards td.table__actions { grid-column: 1 / -1; }
+  .table--cards td:empty { display: none; }
+}
+
+@media (max-width: 560px) {
+  /* Hoja que sube desde abajo: usa todo el ancho y los botones quedan al alcance del pulgar. */
+  .modal__backdrop { place-items: end stretch; padding: 0; }
+  .modal__card {
+    max-width: none;
+    border-radius: 18px 18px 0 0;
+    max-height: 92vh;
+    max-height: 92dvh;
+    animation-name: hoja-in;
+  }
+  .detalle__actions { flex-direction: column; align-items: stretch; }
+  .prod-admin { flex-direction: column; align-items: stretch; }
+  .prod-admin__img { align-self: center; }
+
+  .pager { gap: 0.5rem; }
+  .pager .btn { white-space: nowrap; flex: none; }
+  .pager > span { text-align: center; font-size: 0.8rem; }
+
+  .exito__actions { flex-direction: column; align-items: stretch; }
+}
+
+/* Los cuatro botones del bono emitido en una fila sin corte ensanchaban la tarjeta más que la pantalla. */
+.exito__card { width: 100%; }
+.exito__actions { flex-wrap: wrap; }
+@keyframes hoja-in {
+  from { opacity: 0; transform: translateY(32px); }
+  to { opacity: 1; transform: translateY(0); }
+}

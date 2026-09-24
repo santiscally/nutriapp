@@ -32,6 +32,45 @@
 
 ## Entradas
 
+## 2026-09-24 — Santi — frontend (F-26 responsive, 2ª pasada: menú de celular, tablas como tarjetas, modales) — ⚠️ toca zona de Fran
+**Qué:** F-26 cerrada, **por pedido explícito del usuario** ("el responsive lo tomamos nosotros"). Menú de
+celular, las 9 tablas como tarjetas, modales como hoja inferior, Emitir sin scroll anidado, pantalla de
+"Bono emitido" arreglada, campos a 16 px para iOS y mínimos que desbordaban a 320 px.
+
+**Corrección a la entrada del 23/09 (2):** los "45/45 sin problemas" de ese día se midieron con
+`ana.lopez@demo.test`, que **no tiene bonos ni pacientes**: las tablas del profesional estaban vacías. Con
+`nutri@bonosapp.dev` (7 bonos, 4 pacientes) aparecieron cosas que no se habían visto: en Bonos y Pacientes
+las acciones quedaban fuera de la pantalla a 375, y en **Pacientes a 768 la columna de acciones quedaba
+recortada** (la tabla no es scrolleable arriba de 720 y los mails largos la ensanchaban). **Medir con datos.**
+
+**Lo que cambió, en corto:**
+- `AppLayout.tsx`: botón `.navbar__menu` (sólo ≤720 px) con `aria-expanded`; se cierra al navegar y con
+  Escape. La cuenta y "Salir" bajan adentro del menú (`.navbar__cuenta`). Ícono `menu` nuevo en `Icon.tsx`.
+- 9 tablas con `table--cards` y `data-label` en cada celda (sin rótulo = título de la tarjeta). El CSS
+  (≤640 px) arma la tarjeta con `td::before { content: attr(data-label) }`. **Si agregás una columna a una
+  tabla, ponele `data-label`**, o en celular sale sin rótulo.
+- Modales ≤560 px: hoja desde abajo a todo el ancho, `92dvh`, botones de `.detalle__actions` apilados.
+- `.buscador__campo select` y `.filtros__campo > select` pisaban el tamaño de letra con `font: inherit`:
+  por eso la regla de 16 px los nombra explícitamente.
+- Todo el CSS nuevo está al final de `index.css`; no se editaron reglas existentes.
+
+**Verificación:** 15 pantallas × 5 anchos (320/375/768/1024/1280) sin contenido inalcanzable; 9 modales y
+paneles a 320/375/768; flujo emitir → éxito → WhatsApp en modo táctil; registro con archivo; las 45
+combinaciones de 375/768/1280 en **WebKit** (Playwright), con la navbar quedando fija. `tsc -b`, `vite build`
+y `oxlint` limpios. No se probó en un iPhone físico.
+
+**Problemas:** el backend local de Santi corre con **TiendaNube, Contabilium y mail en `live`** (`.env`).
+Emitir un bono de prueba ahí crea un cupón real. Para el flujo se levantó el backend en `stub`
+(`CONTABILIUM_MODE=stub TIENDANUBE_MODE=stub MAIL_MODE=stub docker compose up -d backend`), y los 2 bonos de
+prueba se borraron de la DB local (con sus `receta_items` y `notificaciones`) antes de volver a `live`: si
+no, al volver a `live` se sincronizaba el cupón pendiente y salía el mail encolado.
+
+**Impacto para el otro:** si tocás `AppLayout.tsx` o una tabla, mirá lo de arriba (`data-label`, el menú).
+Las reglas quedan cortadas por ancho: menú ≤720, tarjetas ≤640, hoja inferior ≤560, sin marca ≤350.
+
+**Refs:** `frontend/src/components/layout/AppLayout.tsx`, `frontend/src/components/ui/Icon.tsx`, las 9
+páginas con tabla en `frontend/src/pages/`, `frontend/src/index.css` (último tramo).
+
 ## 2026-09-23 (2) — Santi — frontend (responsive: de 27 combinaciones rotas a 0 + la UI de S-10) — ⚠️ toca zona de Fran
 **Qué:** Dos pendientes de front que no tenían dueño, hechos **por pedido explícito del usuario**: el
 responsive (sumado a la lista el 23/09: "no lo es") y la UI de verificación de mail de S-10.

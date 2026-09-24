@@ -79,24 +79,27 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
 
 ## Agregadas después del plan
 - **F-26 · Responsive (celular y tablet)** — sumada el 2026-09-23: la app **no se usa bien en el celular**.
-  **Dueño: Santi** (reasignada el 2026-09-24 por decisión de Santi, aunque es `frontend/`). **En curso.**
-  - **Lo que ya se hizo** (Santi, commit `088371b`, en `main`): los problemas de *layout* que se pueden medir
-    al abrir cada pantalla — login, registro y recupero cortados; tablas con columnas inaccesibles; título
-    tapado por la navbar; pie fijo en celular. Medido sobre las 15 pantallas a 375, 768 y 1280 px. El CSS
-    está en el último tramo de `index.css`, sin tocar reglas existentes.
-  - **Lo que falta para darla por hecha:**
-    - **Modales y paneles flotantes**, que no se revisaron: detalle del bono, ficha y porcentajes del
-      profesional, "Más info" del producto, panel de filtros del buscador, selector de paciente, avisos.
-    - **Emitir bono:** la lista de productos tiene su propio scroll de 340 px adentro del scroll de la
-      página; en el celular el dedo mueve una cosa o la otra.
-    - **Tablas** (bonos, pacientes, profesionales, catálogo, cierres): hoy se deslizan de costado. En celular
-      lo habitual es mostrar cada fila como una tarjeta.
-    - **Navegación:** las pestañas se deslizan con un fundido. En celular lo habitual es un menú
-      (hamburguesa o barra inferior).
-    - **Los flujos completos en un celular**, no sólo cada pantalla por separado: emitir → éxito → mandar
-      por WhatsApp; registro con el archivo de la matrícula; cierre mensual.
-    - **Safari de iOS:** la navbar queda arriba gracias a `overflow-x: clip`, que pide Safari 16 o más; en
-      versiones anteriores se va con el scroll. No rompe nada, pero hay que verlo en un iPhone.
+  **Dueño: Santi** (reasignada el 2026-09-24 por decisión de Santi, aunque es `frontend/`). ✅ **Hecha
+  (2026-09-24).**
+  - **1ª pasada** (commit `088371b`): el *layout* de cada pantalla — login, registro y recupero cortados,
+    tablas con columnas inaccesibles, título tapado por la navbar, pie fijo en celular.
+  - **2ª pasada:**
+    - **Menú de celular** (≤720 px): una sola fila con la marca, "Nuevo bono" y un botón que despliega las
+      secciones, la cuenta y "Salir". Antes la cabecera ocupaba tres filas fijas (140 px).
+    - **Tablas como tarjetas** (≤640 px) en las 9 tablas: título arriba y el resto de a dos columnas con su
+      rótulo; las acciones quedan a la vista. En tablet los mails largos se cortan para que no recorten la
+      columna de acciones (pasaba en Pacientes a 768).
+    - **Modales como hoja inferior** (≤560 px): todo el ancho, botones apilados, alto con `dvh`.
+    - **Emitir bono:** sin el scroll de 340 px adentro de la página (la lista se pagina de a 8); la pantalla
+      de "Bono emitido" ya no desborda.
+    - **iOS:** los campos van a 16 px en celular (con menos, Safari hace zoom al enfocarlos).
+    - **320 px:** los mínimos fijos de grillas y buscadores ahora topean en el ancho disponible.
+  - **Verificado:** las 15 pantallas a 320, 375, 768, 1024 y 1280 px con una cuenta **con datos** (la 1ª
+    pasada midió la de nutricionista vacía), los 9 modales y paneles a 320/375/768, el flujo emitir → éxito →
+    WhatsApp en modo táctil, el registro con archivo, y las 45 combinaciones en **WebKit** (el motor de
+    Safari), con la navbar quedando fija.
+  - **Límite conocido:** la navbar fija usa `overflow-x: clip` (Safari 16+). En iOS 15 o anterior se va con
+    el scroll; no rompe nada. No se probó en un iPhone físico.
 
 ---
 

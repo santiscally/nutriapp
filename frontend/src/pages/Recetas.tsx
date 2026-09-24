@@ -152,7 +152,7 @@ export function Recetas() {
 
       {data && data.content.length > 0 && (
         <>
-          <table className="table">
+          <table className="table table--cards">
             <thead>
               <tr>
                 <th>Código</th>
@@ -167,14 +167,14 @@ export function Recetas() {
               {data.content.map((r) => (
                 <tr key={r.id} className="row-click" onClick={() => setDetalleId(r.id)}>
                   <td className="mono">{r.codigo}</td>
-                  <td>
+                  <td data-label="Paciente">
                     {r.paciente.nombre} {r.paciente.apellido}
                   </td>
-                  <td>
+                  <td data-label="Estado">
                     <EstadoBadge estado={r.estado} />
                   </td>
-                  <td className="muted">{fecha(r.emitidaAt)}</td>
-                  <td className="muted">{fecha(r.venceAt)}</td>
+                  <td className="muted" data-label="Emitida">{fecha(r.emitidaAt)}</td>
+                  <td className="muted" data-label="Vence">{fecha(r.venceAt)}</td>
                   {/* Sólo un bono PENDIENTE se puede mandar o anular; en el resto la celda queda
                       con la descarga del PDF sola, que sirve en cualquier estado. */}
                   <td className="table__actions">

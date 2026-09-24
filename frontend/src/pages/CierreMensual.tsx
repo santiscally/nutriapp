@@ -113,7 +113,7 @@ export function CierreMensual() {
           {data.detalle.length === 0 ? (
             <p className="muted">No hay bonos aplicados en este mes todavía.</p>
           ) : (
-            <table className="table">
+            <table className="table table--cards">
               <thead>
                 <tr>
                   <th>Código</th>
@@ -126,11 +126,11 @@ export function CierreMensual() {
                 {data.detalle.map((d) => (
                   <tr key={d.recetaCodigo}>
                     <td className="mono">{d.recetaCodigo}</td>
-                    <td>{d.paciente}</td>
-                    <td className="ta-right" style={{ fontWeight: 700 }}>
+                    <td data-label="Paciente">{d.paciente}</td>
+                    <td className="ta-right" data-label="Comisión" style={{ fontWeight: 700 }}>
                       {money(d.comisionMonto)}
                     </td>
-                    <td className="ta-right muted">{fecha(d.paidAt)}</td>
+                    <td className="ta-right muted" data-label="Pagada">{fecha(d.paidAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -139,7 +139,7 @@ export function CierreMensual() {
                   <td colSpan={2} className="muted">
                     {data.recetasAplicadas} bonos aplicados
                   </td>
-                  <td className="ta-right" style={{ fontWeight: 700 }}>
+                  <td className="ta-right" data-label="Total" style={{ fontWeight: 700 }}>
                     {money(data.comisionTotal)}
                   </td>
                   <td />

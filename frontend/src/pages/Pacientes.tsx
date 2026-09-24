@@ -118,7 +118,7 @@ export function Pacientes() {
 
       {data && data.content.length > 0 && (
         <>
-          <table className="table">
+          <table className="table table--cards">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -140,9 +140,9 @@ export function Pacientes() {
                       </span>
                     </span>
                   </td>
-                  <td>{p.email}</td>
-                  <td className="muted">{p.whatsapp || "—"}</td>
-                  <td className="cell-nota">
+                  <td data-label="Email">{p.email}</td>
+                  <td className="muted" data-label="WhatsApp">{p.whatsapp || "—"}</td>
+                  <td className="cell-nota" data-label="Notas">
                     {p.notas ? (
                       <button className="btn btn--sm btn--ghost" onClick={() => setNota(p)}>
                         Ver nota
@@ -151,7 +151,7 @@ export function Pacientes() {
                       <span className="muted">—</span>
                     )}
                   </td>
-                  <td className="muted">{fecha(p.createdAt)}</td>
+                  <td className="muted" data-label="Alta">{fecha(p.createdAt)}</td>
                   <td className="table__actions">
                     <button
                       className="btn-icon"
