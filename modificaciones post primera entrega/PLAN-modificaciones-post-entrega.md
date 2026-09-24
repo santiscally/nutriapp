@@ -70,6 +70,10 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
   **Estado 2026-09-24: ya no está bloqueada.** El template provisorio existe (`PdfSimpleBonoGenerator`) y
   `MailSender` ya adjunta archivos (`MailSender.Adjunto.pdf(nombre, bytes)`). Falta sólo conectar el PDF al
   mail del paciente; cuando llegue el template del cliente se cambia el diseño, no el circuito.
+  **Ojo al conectarlo:** `BonoPdfService.generar` resuelve el bono con `RecetaService.get`, que exige que
+  el usuario logueado sea el dueño (404 si no). El `NotificacionDispatcher` corre en un scheduler **sin
+  usuario**, así que desde ahí hace falta una lectura del bono de sistema; hoy el dispatcher llama al
+  `send` sin adjuntos.
 - **F-21 · Backend notificación:** endpoint para **re-descargar el PDF** del bono (alimenta F-15).
 - **F-15 · Bono emitido (UI):** ícono para **re-descargar el PDF** del bono. → depende de F-21.
 - **F-22 · Deliverability (contenido):** estructurar el mail para no caer en "Promociones" (from-name,
