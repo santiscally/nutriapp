@@ -79,7 +79,7 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
 
 ## Agregadas después del plan
 - **F-26 · Responsive (celular y tablet)** — sumada el 2026-09-23: la app **no se usa bien en el celular**.
-  **Dueño: Fran** (es `frontend/`). **Pendiente.**
+  **Dueño: Santi** (reasignada el 2026-09-24 por decisión de Santi, aunque es `frontend/`). **En curso.**
   - **Lo que ya se hizo** (Santi, commit `088371b`, en `main`): los problemas de *layout* que se pueden medir
     al abrir cada pantalla — login, registro y recupero cortados; tablas con columnas inaccesibles; título
     tapado por la navbar; pie fijo en celular. Medido sobre las 15 pantallas a 375, 768 y 1280 px. El CSS

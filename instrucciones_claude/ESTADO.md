@@ -14,7 +14,8 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-24** — **no me queda ninguna tarea de desarrollo.** Todo en `main`.
+**Última actualización: 2026-09-24** — **en curso: F-26, responsive** (la tomamos nosotros, aunque es
+`frontend/`). Fuera de eso no me queda ninguna tarea de desarrollo. Todo en `main`.
 
 **Hecho en esta tanda (post 1ª entrega):** S-01 a S-14, S-16, S-17 (lo aplica `scripts/deploy.sh`) y
 S-18 (diagnóstico y registros listos) · adjuntos en `MailSender` para F-20 · el endpoint del PDF
@@ -22,11 +23,9 @@ documentado · `scripts/deploy.sh` · profesión/jurisdicción/matrícula obliga
 UI de S-10 en login y registro · primera pasada de responsive (el *layout* de las pantallas; el resto
 quedó como **F-26**, de Fran). S-15 **descartado**.
 
-**Lo que falta del proyecto, todo de Fran:**
+**Lo que falta del proyecto:** F-26 (mía, en curso) y, de Fran:
 - **F-20** — conectar el PDF al mail del paciente. Ya no está bloqueada: hay template provisorio y
   `MailSender` adjunta.
-- **F-26** — responsive: modales, lista de Emitir, tablas como tarjetas, menú de celular, flujos
-  completos y Safari de iOS. Detalle en el PLAN.
 - **F-14** — sacar el % de descuento de la ficha del admin. Espera a que el cliente importe el maestro:
   hasta entonces es el único descuento que existe.
 
