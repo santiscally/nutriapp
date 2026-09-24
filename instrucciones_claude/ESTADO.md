@@ -14,29 +14,25 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-23** — **no queda ningún pendiente mío que se pueda hacer sin acceso
-externo.** Todo en `main`; nada desplegado.
+**Última actualización: 2026-09-24** — **no me queda ninguna tarea de desarrollo.** Todo en `main`.
 
-**Hecho en esta tanda (post 1ª entrega):** S-01 a S-14, S-16 y S-18 (en lo que no es DNS) · adjuntos en
-`MailSender` para F-20 · el endpoint del PDF documentado · `scripts/deploy.sh` (el deploy en un comando,
-fail-closed, que además resuelve S-17) · profesión/jurisdicción/matrícula obligatorias con interruptor ·
-**responsive** (27 combinaciones de pantalla × ancho rotas → 0) y la UI de S-10 en login y registro.
-S-15 **descartado** (renombrar el API rompe todo por una palabra que nadie ve).
+**Hecho en esta tanda (post 1ª entrega):** S-01 a S-14, S-16, S-17 (lo aplica `scripts/deploy.sh`) y
+S-18 (diagnóstico y registros listos) · adjuntos en `MailSender` para F-20 · el endpoint del PDF
+documentado · `scripts/deploy.sh` · profesión/jurisdicción/matrícula obligatorias con interruptor ·
+UI de S-10 en login y registro · primera pasada de responsive (el *layout* de las pantallas; el resto
+quedó como **F-26**, de Fran). S-15 **descartado**.
 
-**🔴 Bloqueado — y de qué depende cada uno:**
-- **El deploy** → acceso al VPS. Queda reducido a `bash scripts/deploy.sh` (probar antes con `--dry-run`)
-  y después dos botones en Integraciones: "Sincronizar productos" y "Mapear productos". Con eso se aplica
-  S-17 solo.
-- **S-18, publicar el DNS** → acceso al panel de Hostinger. Los registros exactos y el orden están en
-  `DEPLOY.md` ("Deliverability"). Ojo: esto arregla bandeja vs. spam, **no** la pestaña Promociones, que
-  la decide el contenido del mail.
-- **Reescribir los 5 commits con atribución a Claude** (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`,
-  `ff2e780`) → necesita el OK de Santi: implica force-push sobre `main`, que comparte con Fran.
-- **F-14 y F-20** son de Fran y dependen del cliente (importar el maestro / mandar la plantilla del PDF).
+**Lo que falta del proyecto, todo de Fran:**
+- **F-20** — conectar el PDF al mail del paciente. Ya no está bloqueada: hay template provisorio y
+  `MailSender` adjunta.
+- **F-26** — responsive: modales, lista de Emitir, tablas como tarjetas, menú de celular, flujos
+  completos y Safari de iOS. Detalle en el PLAN.
+- **F-14** — sacar el % de descuento de la ficha del admin. Espera a que el cliente importe el maestro:
+  hasta entonces es el único descuento que existe.
 
-**Después del deploy:** abrir un link real de recupero de contraseña (confirma que `KEYCLOAK_HOSTNAME`
-arma bien el enlace) y probar `/terminos`. Si alguien quedó con el front viejo cacheado y el registro le
-tira 400, `REGISTRO_EXIGIR_DATOS_PROFESIONALES=false` lo destraba sin redeploy.
+**No son tareas de desarrollo** (acciones de operación, para cuando se decida): correr
+`scripts/deploy.sh` en el VPS, publicar el DMARC en Hostinger (valores en `DEPLOY.md`), y decidir si se
+reescriben los 5 commits con atribución a Claude (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`, `ff2e780`).
 
 **Estado de producción (no romper):** `bonosapp.com.ar` en vivo · mail live por Resend (el TXT DKIM
 `resend._domainkey` no se toca) · Contabilium y TiendaNube live contra la tienda real — **se están emitiendo

@@ -67,12 +67,36 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
   {descripción} con {XX}% de descuento ya está listo…"* (webapp y mail).
 - **F-20 · Mail:** adjuntar el **bono profesional en PDF**. ⏳ **BLOQUEADO:** el cliente manda el template la
   próxima semana. Se puede ir armando la infra de generación de PDF con un template provisorio.
+  **Estado 2026-09-24: ya no está bloqueada.** El template provisorio existe (`PdfSimpleBonoGenerator`) y
+  `MailSender` ya adjunta archivos (`MailSender.Adjunto.pdf(nombre, bytes)`). Falta sólo conectar el PDF al
+  mail del paciente; cuando llegue el template del cliente se cambia el diseño, no el circuito.
 - **F-21 · Backend notificación:** endpoint para **re-descargar el PDF** del bono (alimenta F-15).
 - **F-15 · Bono emitido (UI):** ícono para **re-descargar el PDF** del bono. → depende de F-21.
 - **F-22 · Deliverability (contenido):** estructurar el mail para no caer en "Promociones" (from-name,
   texto menos "promocional", ratio texto/HTML). → coordina con **S-18** (DNS/DMARC).
 - **F-23 · Admin, Integraciones:** revisar el error que muestra "E-MAIL" (ahora que el mail está `live` en
   prod puede haberse limpiado) y ajustar el display si hace falta.
+
+## Agregadas después del plan
+- **F-26 · Responsive (celular y tablet)** — sumada el 2026-09-23: la app **no se usa bien en el celular**.
+  **Dueño: Fran** (es `frontend/`). **Pendiente.**
+  - **Lo que ya se hizo** (Santi, commit `088371b`, en `main`): los problemas de *layout* que se pueden medir
+    al abrir cada pantalla — login, registro y recupero cortados; tablas con columnas inaccesibles; título
+    tapado por la navbar; pie fijo en celular. Medido sobre las 15 pantallas a 375, 768 y 1280 px. El CSS
+    está en el último tramo de `index.css`, sin tocar reglas existentes.
+  - **Lo que falta para darla por hecha:**
+    - **Modales y paneles flotantes**, que no se revisaron: detalle del bono, ficha y porcentajes del
+      profesional, "Más info" del producto, panel de filtros del buscador, selector de paciente, avisos.
+    - **Emitir bono:** la lista de productos tiene su propio scroll de 340 px adentro del scroll de la
+      página; en el celular el dedo mueve una cosa o la otra.
+    - **Tablas** (bonos, pacientes, profesionales, catálogo, cierres): hoy se deslizan de costado. En celular
+      lo habitual es mostrar cada fila como una tarjeta.
+    - **Navegación:** las pestañas se deslizan con un fundido. En celular lo habitual es un menú
+      (hamburguesa o barra inferior).
+    - **Los flujos completos en un celular**, no sólo cada pantalla por separado: emitir → éxito → mandar
+      por WhatsApp; registro con el archivo de la matrícula; cierre mensual.
+    - **Safari de iOS:** la navbar queda arriba gracias a `overflow-x: clip`, que pide Safari 16 o más; en
+      versiones anteriores se va con el scroll. No rompe nada, pero hay que verlo en un iPhone.
 
 ---
 
