@@ -9,14 +9,22 @@ import java.util.List;
 public interface MailSender {
 
     /**
-     * Envío con adjuntos. Es el método que implementan los senders — la sobrecarga sin adjuntos
-     * delega acá. Hacerlo al revés (un default que ignore la lista) dejaría que un sender mande el
-     * mail <b>sin</b> el PDF sin que nadie se entere.
+     * Envío completo. Es el método que implementan los senders — las sobrecargas delegan acá.
+     * Hacerlo al revés (defaults que ignoren el HTML o los adjuntos) dejaría que un sender mande
+     * un mail incompleto sin que nadie se entere.
+     *
+     * @param body texto plano; viaja SIEMPRE, también cuando hay HTML. Es lo que ve quien tiene el
+     *             HTML desactivado y lo que leen los filtros de spam, así que nunca es opcional.
+     * @param html cuerpo HTML, o null para mandar sólo texto.
      */
-    void send(String to, String subject, String body, List<Adjunto> adjuntos);
+    void send(String to, String subject, String body, String html, List<Adjunto> adjuntos);
+
+    default void send(String to, String subject, String body, List<Adjunto> adjuntos) {
+        send(to, subject, body, null, adjuntos);
+    }
 
     default void send(String to, String subject, String body) {
-        send(to, subject, body, List.of());
+        send(to, subject, body, null, List.of());
     }
 
     /** Un archivo que viaja pegado al mail. {@code contenido} ya en memoria: son PDFs de pocos KB. */

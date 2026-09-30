@@ -4,7 +4,6 @@ import com.bonosapp.integrations.IntegrationUnavailableException;
 import com.bonosapp.integrations.health.IntegrationHealthRegistry;
 import com.bonosapp.integrations.health.IntegrationHealthRegistry.Proveedor;
 import com.bonosapp.integrations.mail.MailSender;
-import com.bonosapp.modules.bonopdf.service.BonoPdfService;
 import com.bonosapp.modules.notificacion.NotificacionProperties;
 import com.bonosapp.modules.notificacion.entity.TipoNotificacion;
 import com.bonosapp.modules.notificacion.service.NotificacionService.NotificacionPendiente;
@@ -36,7 +35,8 @@ public class NotificacionDispatcher {
     private final MailSender mailSender;
     private final NotificacionProperties props;
     private final IntegrationHealthRegistry health;
-    private final BonoPdfService bonoPdf;
+    private final BonoDeSistema bonoDeSistema;
+    private final BonoMailHtml bonoHtml;
 
     @Scheduled(
             fixedDelayString = "${bonosapp.notificaciones.dispatch-interval-ms}",
@@ -50,7 +50,7 @@ public class NotificacionDispatcher {
         int enviadas = 0, sinConexion = 0, fallidas = 0;
         for (NotificacionPendiente n : lote) {
             try {
-                mailSender.send(n.destinatario(), n.asunto(), n.cuerpo(), adjuntos(n));
+                mailSender.send(n.destinatario(), n.asunto(), n.cuerpo(), html(n), List.of());
                 service.marcarEnviada(n.id());
                 health.registrarExito(Proveedor.MAIL);
                 enviadas++;
@@ -69,23 +69,28 @@ public class NotificacionDispatcher {
     }
 
     /**
-     * F-20 — el mail de emisión lleva el bono en PDF; los avisos de alta no llevan nada.
+     * F-20 — el mail de emisión <b>es</b> el bono: va en HTML, con la plantilla del cliente. Los
+     * avisos del alta siguen siendo texto plano, que es lo que corresponde a un aviso.
      *
-     * <p>Si el PDF no se puede armar, <b>el mail sale igual, sin adjunto</b>: el código del cupón va
-     * en el cuerpo y es lo que la paciente necesita para comprar. Quedarse sin mandar el mail por un
-     * adjunto sería cambiar un problema cosmético por uno real.
+     * <p>El HTML se arma acá y no al encolar: así el mail sale siempre con el template actual, y no
+     * hay que guardarlo en la fila de la notificación.
+     *
+     * <p>Si no se puede armar, <b>el mail sale igual en texto plano</b>: el código del cupón y el
+     * link van en el cuerpo de texto, que es lo que la paciente necesita para comprar. Quedarse sin
+     * mandar el mail por el diseño sería cambiar un problema cosmético por uno real.
      */
-    private List<MailSender.Adjunto> adjuntos(NotificacionPendiente n) {
+    private String html(NotificacionPendiente n) {
         if (n.tipo() != TipoNotificacion.EMISION_RECETA || n.recetaId() == null) {
-            return List.of();
+            return null;
         }
         try {
-            BonoPdfService.Bono bono = bonoPdf.generarDeSistema(n.recetaId());
-            return List.of(MailSender.Adjunto.pdf(bono.nombreArchivo(), bono.contenido()));
+            return bonoDeSistema.buscar(n.recetaId())
+                    .map(d -> bonoHtml.armar(d.receta(), d.firmante()))
+                    .orElse(null);
         } catch (Exception ex) {
-            log.error("No se pudo adjuntar el PDF del bono {} — el mail sale sin adjunto: {}",
+            log.error("No se pudo armar el HTML del bono {} — el mail sale en texto plano: {}",
                     n.recetaId(), ex.toString());
-            return List.of();
+            return null;
         }
     }
 }

@@ -11,25 +11,27 @@ import static org.mockito.Mockito.when;
 
 import com.bonosapp.integrations.health.IntegrationHealthRegistry;
 import com.bonosapp.integrations.mail.MailSender;
-import com.bonosapp.modules.bonopdf.service.BonoPdfService;
 import com.bonosapp.modules.notificacion.NotificacionProperties;
 import com.bonosapp.modules.notificacion.entity.CanalNotificacion;
 import com.bonosapp.modules.notificacion.entity.TipoNotificacion;
 import com.bonosapp.modules.notificacion.service.NotificacionService.NotificacionPendiente;
+import com.bonosapp.modules.receta.dto.RecetaResponse;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 /**
- * F-20 — el bono va adjunto al mail del paciente. Lo que se verifica acá es la regla de negocio del
- * adjunto, no el PDF en sí: a qué mails se pega, a cuáles no, y qué pasa cuando no se puede armar.
+ * F-20 — el mail del bono <b>es</b> el bono: va en HTML con la plantilla del cliente y sin archivos
+ * adjuntos. Lo que se verifica acá es la regla de negocio, no el HTML en sí: a qué mails se les
+ * arma, a cuáles no, y qué pasa cuando no se puede armar.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -38,7 +40,9 @@ class NotificacionDispatcherTest {
     @Mock NotificacionService service;
     @Mock MailSender mailSender;
     @Mock IntegrationHealthRegistry health;
-    @Mock BonoPdfService bonoPdf;
+    @Mock BonoDeSistema bonoDeSistema;
+    @Mock BonoMailHtml bonoHtml;
+    @Mock RecetaResponse receta;
 
     private NotificacionDispatcher dispatcher;
 
@@ -49,7 +53,7 @@ class NotificacionDispatcherTest {
         dispatcher = new NotificacionDispatcher(
                 service, mailSender,
                 new NotificacionProperties(30000L, 5, 25, "admin@bonosapp.dev", "https://bonosapp.com.ar"),
-                health, bonoPdf);
+                health, bonoDeSistema, bonoHtml);
     }
 
     private void enCola(TipoNotificacion tipo, UUID receta) {
@@ -58,62 +62,71 @@ class NotificacionDispatcherTest {
                 "paciente@example.com", "Tu bono profesional RX-1", "cuerpo")));
     }
 
-    @SuppressWarnings("unchecked")
-    private List<MailSender.Adjunto> adjuntosEnviados() {
-        ArgumentCaptor<List<MailSender.Adjunto>> captor = ArgumentCaptor.forClass(List.class);
-        verify(mailSender).send(any(), any(), any(), captor.capture());
+    private void bonoResuelto() {
+        when(bonoDeSistema.buscar(recetaId))
+                .thenReturn(Optional.of(new BonoDeSistema.Datos(receta, "Ana Gómez")));
+        when(bonoHtml.armar(receta, "Ana Gómez")).thenReturn("<html>el bono</html>");
+    }
+
+    private String htmlEnviado() {
+        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+        verify(mailSender).send(any(), any(), any(), captor.capture(), any());
         return captor.getValue();
     }
 
+    @SuppressWarnings("unchecked")
+    private List<MailSender.Adjunto> adjuntosEnviados() {
+        ArgumentCaptor<List<MailSender.Adjunto>> captor = ArgumentCaptor.forClass(List.class);
+        verify(mailSender).send(any(), any(), any(), any(), captor.capture());
+        return captor.getValue();
+    }
+
+    /** El bono es el cuerpo del mail, no un archivo: va en HTML y sin adjuntos. */
     @Test
-    void elMailDelBonoLlevaElPdfAdjunto() {
+    void elMailDelBonoVaEnHtmlYSinAdjuntos() {
         enCola(TipoNotificacion.EMISION_RECETA, recetaId);
-        when(bonoPdf.generarDeSistema(recetaId))
-                .thenReturn(new BonoPdfService.Bono("bono-RX-1.pdf", new byte[] {1, 2, 3}));
+        bonoResuelto();
 
         dispatcher.dispatch();
 
-        assertThat(adjuntosEnviados()).singleElement().satisfies(a -> {
-            assertThat(a.nombreArchivo()).isEqualTo("bono-RX-1.pdf");
-            assertThat(a.contentType()).isEqualTo("application/pdf");
-        });
+        assertThat(htmlEnviado()).isEqualTo("<html>el bono</html>");
+        assertThat(adjuntosEnviados()).isEmpty();
     }
 
-    /** Los avisos del alta no tienen bono: no hay nada que adjuntar ni PDF que armar. */
+    /** Un aviso del alta no es un bono: sigue siendo texto plano y ni siquiera se busca la receta. */
     @Test
-    void losAvisosDeRegistroNoLlevanAdjunto() {
+    void losAvisosDeRegistroVanEnTextoPlano() {
         enCola(TipoNotificacion.REGISTRO_APROBADO, null);
 
         dispatcher.dispatch();
 
-        assertThat(adjuntosEnviados()).isEmpty();
-        verify(bonoPdf, never()).generarDeSistema(any());
+        assertThat(htmlEnviado()).isNull();
+        verify(bonoDeSistema, never()).buscar(any());
     }
 
     /**
-     * Si el PDF no se puede armar, el mail <b>igual sale</b>: el código del cupón va en el cuerpo y
-     * es lo que la paciente necesita. Quedarse sin mandarlo cambiaría un problema cosmético por uno
-     * real.
+     * Si el HTML no se puede armar, el mail <b>igual sale</b> en texto plano: el código del cupón y
+     * el link van en el cuerpo de texto, que es lo que la paciente necesita. Quedarse sin mandarlo
+     * cambiaría un problema cosmético por uno real.
      */
     @Test
-    void siElPdfFallaElMailSaleIgualSinAdjunto() {
+    void siElHtmlFallaElMailSaleIgualEnTextoPlano() {
         enCola(TipoNotificacion.EMISION_RECETA, recetaId);
-        when(bonoPdf.generarDeSistema(recetaId)).thenThrow(new IllegalStateException("boom"));
+        when(bonoDeSistema.buscar(recetaId)).thenThrow(new IllegalStateException("boom"));
 
         dispatcher.dispatch();
 
-        assertThat(adjuntosEnviados()).isEmpty();
+        assertThat(htmlEnviado()).isNull();
         verify(service).marcarEnviada(any());
     }
 
-    /** Un fallo del proveedor de mail sigue siendo un fallo, adjunto o no. */
+    /** Un fallo del proveedor de mail sigue siendo un fallo, con HTML o sin él. */
     @Test
     void siElMailFallaLaNotificacionNoQuedaComoEnviada() {
         enCola(TipoNotificacion.EMISION_RECETA, recetaId);
-        when(bonoPdf.generarDeSistema(recetaId))
-                .thenReturn(new BonoPdfService.Bono("bono-RX-1.pdf", new byte[] {1}));
+        bonoResuelto();
         doThrow(new RuntimeException("smtp caído"))
-                .when(mailSender).send(any(), any(), any(), any());
+                .when(mailSender).send(any(), any(), any(), any(), any());
 
         dispatcher.dispatch();
 

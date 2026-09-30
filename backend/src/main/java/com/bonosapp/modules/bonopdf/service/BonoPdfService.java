@@ -2,12 +2,9 @@ package com.bonosapp.modules.bonopdf.service;
 
 import com.bonosapp.common.error.NotFoundException;
 import com.bonosapp.modules.notificacion.service.BonoContenido;
-import com.bonosapp.modules.nutricionista.repository.NutricionistaRepository;
+import com.bonosapp.modules.notificacion.service.BonoDeSistema;
 import com.bonosapp.modules.receta.dto.RecetaResponse;
-import com.bonosapp.modules.receta.entity.Receta;
-import com.bonosapp.modules.receta.repository.RecetaRepository;
 import com.bonosapp.modules.receta.service.RecetaService;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,15 +25,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class BonoPdfService {
 
     private final RecetaService recetas;
-    private final RecetaRepository recetaRepository;
-    private final NutricionistaRepository nutricionistas;
+    private final BonoDeSistema deSistema;
     private final BonoPdfGenerator generator;
     private final BonoContenido contenido;
 
     /** Descarga pedida por una persona logueada: valida que el bono sea suyo. */
     @Transactional(readOnly = true)
     public Bono generar(UUID recetaId) {
-        return armar(recetas.get(recetaId), firmante(recetaId));
+        String firmante = deSistema.buscar(recetaId).map(BonoDeSistema.Datos::firmante).orElse(null);
+        return armar(recetas.get(recetaId), firmante);
     }
 
     /**
@@ -45,37 +42,14 @@ public class BonoPdfService {
      */
     @Transactional(readOnly = true)
     public Bono generarDeSistema(UUID recetaId) {
-        Receta receta = recetaRepository.findByIdInAndDeletedAtIsNull(List.of(recetaId)).stream()
-                .findFirst()
+        BonoDeSistema.Datos datos = deSistema.buscar(recetaId)
                 .orElseThrow(() -> new NotFoundException("Bono no encontrado"));
-        return armar(recetas.toResponse(receta), nombre(receta.getNutricionistaId()));
+        return armar(datos.receta(), datos.firmante());
     }
 
     private Bono armar(RecetaResponse receta, String firmante) {
         byte[] pdf = generator.generar(receta, contenido.linkCupon(receta.codigo()), firmante);
         return new Bono("bono-" + receta.codigo() + ".pdf", pdf);
-    }
-
-    /** El profesional que emitió el bono, para la firma del PDF. */
-    private String firmante(UUID recetaId) {
-        return recetaRepository.findByIdInAndDeletedAtIsNull(List.of(recetaId)).stream()
-                .findFirst()
-                .map(r -> nombre(r.getNutricionistaId()))
-                .orElse(null);
-    }
-
-    private String nombre(UUID nutricionistaId) {
-        if (nutricionistaId == null) {
-            return null;
-        }
-        return nutricionistas.findById(nutricionistaId)
-                .map(n -> (safe(n.getNombre()) + " " + safe(n.getApellido())).trim())
-                .filter(s -> !s.isBlank())
-                .orElse(null);
-    }
-
-    private static String safe(String v) {
-        return v == null ? "" : v;
     }
 
     /** PDF listo para servir: nombre de archivo sugerido + bytes. */
