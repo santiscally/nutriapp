@@ -32,6 +32,55 @@
 
 ## Entradas
 
+## 2026-09-30 (3) — Fran — backend/mail (⚠️ TOCA ZONA DE SANTI — el bono pasa a ser el cuerpo del mail, en HTML)
+
+**Qué:** Cambio de enfoque de F-20, pedido por el usuario: el paciente **no tiene que abrir un archivo** para
+ver su bono. El mail ahora **replica la plantilla del cliente en HTML** (logo, banda verde, código, pie con TBC
+y el QR) y **no lleva ningún adjunto**. Backend **252 tests, 0 fallos**.
+
+**⚠️ Santi: toqué `integrations/mail/`, con OK explícito del usuario.** Tres archivos, cambio acotado:
+- `MailSender`: el método que implementan los senders suma el parámetro `html`. Las sobrecargas viejas siguen
+  andando (delegan con `html=null`), así que nada de lo tuyo se rompe.
+- `SmtpMailSender`: si viene HTML, `helper.setText(texto, html)` → **multipart/alternative**. El texto plano
+  **viaja siempre**: es lo que se ve con el HTML desactivado y lo que leen los filtros de spam.
+- `StubMailSender`: loguea si hubo HTML.
+Si preferís otra forma (un `Mensaje` en vez de parámetros sueltos, por ejemplo), cambialo sin drama: del lado
+del dispatcher es una línea.
+
+**Por qué HTML rehecho y no la plantilla como imagen.** Un mail que es una sola imagen queda **en blanco** en
+cuanto el cliente bloquea imágenes —y varios lo hacen por defecto—, no deja copiar el código de cupón, y los
+filtros castigan el mail sin texto. Acá el texto es texto; las imágenes son sólo el logo y el pie, y si no
+cargan el mail se entiende entero.
+
+**Las imágenes van por URL, no por CID.** Un inline por CID vuelve a aparecer como archivo adjunto en varios
+clientes, que es justo lo que se quería sacar. Salen de **`frontend/public/mail/`** (se sirve tal cual en la
+raíz del dominio, como el favicon) y el HTML las apunta con `APP_PUBLIC_URL`. **Sin `APP_PUBLIC_URL` el mail
+sale sin imágenes**, porque una URL relativa en un mail no apunta a ningún lado. Las dos las **recorté de la
+plantilla original**, así son las del cliente y no una reconstrucción.
+
+**El texto no es literal el de la plantilla.** Decía "Adjuntamos el bono profesional" porque nació pensada como
+PDF adjunto; ahora el bono **es** el mail y esa frase mentiría. Efecto colateral bienvenido: al escribirlo
+nosotros, **el typo del arte ("imprimirel cupón") no se arrastra**.
+
+**El PDF no se va:** sigue vivo para el botón de descarga (F-15/F-21), con la plantilla. Lo que se quitó es el
+adjunto en el mail. `BonoDeSistema` (nuevo) factoriza la lectura del bono sin sesión, que ahora comparten el
+mail y el PDF — antes estaba duplicada en `BonoPdfService`.
+
+**Verificación:** SMTP local (mailpit) en la red del stack → mail con **0 adjuntos**, con HTML **y** texto
+plano, y el HTML renderizado en Chrome se ve como la plantilla. Después se mandó uno real por Resend a la
+casilla del usuario. El entorno quedó en `MAIL_MODE=stub`.
+
+**🟡 Lo que hay que mirar después del deploy (y va contra F-22):** el mail de texto plano estaba cayendo en
+**Recibidos**, no en Promociones. Un mail HTML con logo, color y QR es justo el perfil que Gmail manda a
+Promociones. El usuario lo decidió sabiendo esto. **Conviene confirmar dónde cae el primero que salga en prod**;
+si cae en Promociones, las palancas que quedan son de contenido (menos imágenes, menos botón), no de DNS.
+
+**Ojo con el orden del deploy:** las imágenes del mail se publican con el **frontend**. Si se despliega sólo el
+backend, los mails salen con el logo y el pie rotos hasta que se despliegue el front.
+
+**Refs:** `modules/notificacion/service/BonoMailHtml.java` y `BonoDeSistema.java` (nuevos),
+`NotificacionDispatcher.html()`, `integrations/mail/*`, `frontend/public/mail/`, commit `6c71b5b`.
+
 ## 2026-09-30 (2) — Fran — infra/mail (corrección: el DKIM de Hostinger SÍ existe · DMARC con `rua` publicado)
 
 **Corrección a `DEPLOY.md`.** La tabla de "Estado real del DNS" dice **"DKIM de Hostinger: no encontrado

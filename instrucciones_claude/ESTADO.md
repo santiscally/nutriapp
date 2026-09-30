@@ -40,9 +40,12 @@ y usando bonos** · padrón de 3 usuarios · el maestro todavía no lo importó 
 
 **Última actualización: 2026-09-30.**
 
-**Mi mitad está cerrada.** F-01 a F-13, F-15 a F-25 en `main`. **F-20 cerrada hoy**: el PDF usa la plantilla
-del cliente y viaja adjunto al mail de emisión, verificado de punta a punta contra un SMTP local. F-26
-(responsive) la tomó Santi.
+**Mi mitad está cerrada.** F-01 a F-13, F-15 a F-25 en `main`. **F-20 cerrada hoy**: el bono **es el cuerpo
+del mail**, en HTML con la plantilla del cliente y **sin adjuntos** (el PDF sigue vivo para el botón de
+descarga). Verificado contra un SMTP local y con un envío real por Resend. F-26 (responsive) la tomó Santi.
+
+**⚠️ Toqué `integrations/mail/` (zona de Santi), con OK del usuario:** el port suma el cuerpo HTML y
+`SmtpMailSender` arma multipart/alternative. Detalle en el DIARIO.
 
 **Lo único mío que queda abierto: F-14** — sacar "Descuento de bonos (%)" de la ficha del admin. Espera a que
 **el cliente importe el maestro**: hasta entonces ese % es el único descuento que existe en el sistema y
