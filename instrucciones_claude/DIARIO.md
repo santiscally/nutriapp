@@ -32,6 +32,45 @@
 
 ## Entradas
 
+## 2026-09-30 (2) — Fran — infra/mail (corrección: el DKIM de Hostinger SÍ existe · DMARC con `rua` publicado)
+
+**Corrección a `DEPLOY.md`.** La tabla de "Estado real del DNS" dice **"DKIM de Hostinger: no encontrado
+(probados `hostingermail1..3`)"**. Está mal, y la causa es boba: **los selectores reales llevan guion y letra**,
+no número. Verificado contra el DNS público:
+
+```
+hostingermail-a._domainkey.bonosapp.com.ar  CNAME → hostingermail-a.dkim.mail.hostinger.com  → v=DKIM1;k=rsa;p=MIIBIjANBg…
+hostingermail-b._domainkey  → …   (v=DKIM1;p=  vacío)
+hostingermail-c._domainkey  → …   (v=DKIM1;p=  vacío)
+```
+
+O sea que **el DKIM de Hostinger estaba activo desde siempre** y lo que sale a mano desde `info@` sí va firmado.
+Que `-b` y `-c` estén vacíos es normal: Hostinger deja tres selectores publicados para rotar la clave sin tocar
+el DNS. **Santi: cuando pases por `DEPLOY.md` (tu zona, no lo toqué), corregí esa fila y el punto 2 de los
+"Cambios a publicar en Hostinger", que ya no hace falta.** Lo destrabó una captura del panel de correo, no el
+DNS: ahí los tres CNAME aparecen listados con el nombre exacto.
+
+**DMARC publicado (S-18, paso 1).** El usuario cargó en Hostinger:
+```
+_dmarc  TXT  v=DMARC1; p=none; rua=mailto:info@bonosapp.com.ar; fo=1
+```
+Verificado por DNS, junto con que la edición de zona **no pisó** `resend._domainkey` ni el CNAME `send` — que es
+el accidente que ya pasó una vez (entrada del 2026-09-17). Los dos siguen intactos.
+
+**Ojo con el panel de correo de Hostinger:** esa pantalla ofrece "arreglar" el DMARC con un registro genérico
+**sin `rua=`**. Aplicarlo pisaría el nuestro y nos dejaría sin reportes. Lo mismo con SPF/MX: no tocar.
+
+**Lo que queda de S-18:** juntar ~2 semanas de reportes en `info@` y recién ahí decidir el salto a
+`p=quarantine`. Los reportes **no se cortan solos**: llegan mientras el `rua=` esté.
+
+**Aparte — F-20 probada contra Resend de verdad.** Se emitió un bono al paciente de prueba
+(`franallende2000@gmail.com`) con `MAIL_MODE=live` local y las integraciones en stub (no se creó ningún cupón
+real). Notificación en `SENT`: el mail con el PDF de la plantilla salió por Resend. El entorno local quedó de
+nuevo en `MAIL_MODE=stub`.
+
+**Refs:** `DEPLOY.md` (tabla del DNS + "Cambios a publicar en Hostinger"), entrada 2026-09-23 de Santi (S-18),
+entrada 2026-09-17 (incidente del DKIM borrado).
+
 ## 2026-09-30 — Fran — backend/mail (F-20 cerrada: el PDF usa la plantilla del cliente y va adjunto al mail)
 
 **Qué:** Llegó la plantilla del cliente (`PLANTILLA_BONOSAPP.jpg`) y con eso **F-20 queda cerrada**. El PDF
