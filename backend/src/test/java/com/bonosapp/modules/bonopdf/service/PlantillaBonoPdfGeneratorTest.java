@@ -18,11 +18,11 @@ import org.junit.jupiter.api.Test;
  * el servidor, falla en el lector de PDF de ella. Por eso se verifica la estructura del archivo
  * (header, xref, trailer) y no sólo que salgan bytes.
  */
-class PdfSimpleBonoGeneratorTest {
+class PlantillaBonoPdfGeneratorTest {
 
     private static final Charset WIN_ANSI = Charset.forName("windows-1252");
 
-    private final PdfSimpleBonoGenerator generator = new PdfSimpleBonoGenerator();
+    private final PlantillaBonoPdfGenerator generator = new PlantillaBonoPdfGenerator();
 
     private RecetaResponse receta() {
         ProductoResponse producto = new ProductoResponse(
@@ -42,7 +42,7 @@ class PdfSimpleBonoGeneratorTest {
 
     @Test
     void generaUnPdfConEstructuraValida() {
-        byte[] pdf = generator.generar(receta(), "https://tienda.test/discount/RX-3V737V");
+        byte[] pdf = generator.generar(receta(), "https://tienda.test/discount/RX-3V737V", "Ana Gómez");
         String texto = new String(pdf, WIN_ANSI);
 
         assertThat(texto).startsWith("%PDF-1.4");
@@ -53,7 +53,7 @@ class PdfSimpleBonoGeneratorTest {
     /** El startxref tiene que apuntar al byte exacto donde arranca la tabla; si no, no abre. */
     @Test
     void elStartxrefApuntaAlaTablaXref() {
-        byte[] pdf = generator.generar(receta(), null);
+        byte[] pdf = generator.generar(receta(), null, "Ana Gómez");
         String texto = new String(pdf, WIN_ANSI);
 
         int declarado = Integer.parseInt(
@@ -63,9 +63,20 @@ class PdfSimpleBonoGeneratorTest {
         assertThat(texto.indexOf("xref\n0 ")).isEqualTo(declarado);
     }
 
+    /** La plantilla del cliente va embebida como JPEG; sin eso el PDF sale en blanco. */
+    @Test
+    void embebeLaPlantillaComoImagen() {
+        String texto = new String(generator.generar(receta(), null, "Ana Gómez"), WIN_ANSI);
+
+        assertThat(texto)
+                .contains("/Subtype/Image")
+                .contains("/Filter/DCTDecode")
+                .contains("/Im0 Do");
+    }
+
     @Test
     void traeLosDatosDelBono() {
-        String texto = new String(generator.generar(receta(), "https://tienda.test/discount/RX-3V737V"), WIN_ANSI);
+        String texto = new String(generator.generar(receta(), "https://tienda.test/discount/RX-3V737V", "Ana Gómez"), WIN_ANSI);
 
         assertThat(texto)
                 .contains("RX-3V737V")
@@ -79,7 +90,7 @@ class PdfSimpleBonoGeneratorTest {
     /** Sin tienda configurada no hay link: el PDF sale igual, sin un renglón colgado. */
     @Test
     void sinLinkNoImprimeLaInstruccion() {
-        String texto = new String(generator.generar(receta(), null), WIN_ANSI);
+        String texto = new String(generator.generar(receta(), null, "Ana Gómez"), WIN_ANSI);
 
         assertThat(texto).doesNotContain("No combinable").doesNotContain("null");
     }

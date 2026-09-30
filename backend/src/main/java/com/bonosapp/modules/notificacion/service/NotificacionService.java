@@ -148,8 +148,8 @@ public class NotificacionService {
         return repo.findByEstadoAndIntentosLessThanAndDeletedAtIsNullOrderByCreatedAtAsc(
                         EstadoNotificacion.QUEUED, maxIntentos, PageRequest.of(0, batchSize))
                 .stream()
-                .map(n -> new NotificacionPendiente(n.getId(), n.getCanal(),
-                        n.getDestinatario(), n.getAsunto(), n.getCuerpo()))
+                .map(n -> new NotificacionPendiente(n.getId(), n.getTipo(), n.getRecetaId(),
+                        n.getCanal(), n.getDestinatario(), n.getAsunto(), n.getCuerpo()))
                 .toList();
     }
 
@@ -184,7 +184,12 @@ public class NotificacionService {
         });
     }
 
-    /** Datos de una notificación a enviar, desprendidos de la sesión JPA. */
+    /**
+     * Datos de una notificación a enviar, desprendidos de la sesión JPA. Lleva {@code tipo} y
+     * {@code recetaId} porque el dispatcher tiene que poder adjuntar el PDF del bono (F-20), y
+     * fuera de la transacción ya no puede volver a la entidad a buscarlos.
+     */
     public record NotificacionPendiente(
-            UUID id, CanalNotificacion canal, String destinatario, String asunto, String cuerpo) {}
+            UUID id, TipoNotificacion tipo, UUID recetaId, CanalNotificacion canal,
+            String destinatario, String asunto, String cuerpo) {}
 }
