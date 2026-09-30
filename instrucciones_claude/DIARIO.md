@@ -32,6 +32,55 @@
 
 ## Entradas
 
+## 2026-09-30 — Fran — backend/mail (F-20 cerrada: el PDF usa la plantilla del cliente y va adjunto al mail)
+
+**Qué:** Llegó la plantilla del cliente (`PLANTILLA_BONOSAPP.jpg`) y con eso **F-20 queda cerrada**. El PDF
+del bono se arma sobre esa plantilla y **viaja adjunto** en el mail de emisión. Backend **252 tests, 0 fallos**.
+
+**Cómo se arma el PDF.** La plantilla llegó compuesta (logo, banda verde, QR y marca de TBC), así que va como
+**imagen de fondo a página completa** y los datos se escriben encima. Rehacer ese diseño a mano sería copiar
+algo que ya existe, y cualquier retoque del cliente obligaría a rehacerlo; así, cambiar el diseño es
+**reemplazar un archivo**. El JPEG se embebe tal cual con `DCTDecode`, sin recomprimir — por eso el JPG y no
+el PNG, que pediría implementar los filtros de PNG a mano.
+
+**Las posiciones están medidas, no estimadas:** decodifiqué el PNG y saqué la caja de cada rótulo impreso, y
+cada valor se apoya en el suyo ("Fecha emisión:", "Firmado electrónicamente por:"). Están todas juntas en la
+clase `Pos` **porque si el cliente manda una plantilla con los rótulos corridos hay que volver a medirlas**.
+
+**Dos decisiones que conviene revisar con Gon:**
+1. **"Firmado electrónicamente por" lo firma el profesional que emitió el bono**, no "BonosApp". El rótulo
+   pregunta quién responde por el documento, y quien lo emite es esa persona. Si el cliente quería la
+   plataforma, es cambiar una línea.
+2. **La plantilla tiene un typo:** dice *"No es necesario imprimirel cupón"* (falta el espacio). Está horneado
+   en el arte, no lo podemos arreglar de este lado.
+
+**La trampa del scheduler, resuelta.** El dispatcher corre **sin usuario** y `RecetaService.get` exige dueño
+(404 si no), así que desde ahí esa llamada fallaba siempre. Se agrega `BonoPdfService.generarDeSistema`, que no
+valida pertenencia y **por eso no se expone por HTTP**: quien la llama ya resolvió a quién le corresponde. Si el
+PDF no se puede armar, **el mail sale igual sin adjunto** — el código del cupón va en el cuerpo y es lo que la
+paciente necesita; quedarse sin mandar el mail cambiaría un problema cosmético por uno real.
+
+**Verificación de punta a punta, no sólo unitaria:** levanté un SMTP local (mailpit) en la red del stack, puse
+`MAIL_MODE=live` apuntado ahí y emití un bono. Resultado: mail `Tu bono profesional RX-6WMRRH` con
+`bono-RX-6WMRRH.pdf` (360 KB) que **abre y tiene los datos correctos** (código, producto, fechas, profesional).
+De paso drenó las 8 notificaciones que estaban encoladas, todas con su adjunto — o sea que la lectura de sistema
+también sirve para bonos viejos. El entorno quedó de nuevo en `MAIL_MODE=stub`.
+
+**Lo que NO está cubierto por tests:** que el adjunto salga desde el scheduler es justamente lo que el test
+unitario mockea. Eso se probó a mano como cuenta el párrafo de arriba; si alguien toca el dispatcher, conviene
+repetir esa prueba y no confiar sólo en el verde.
+
+**Pendiente cosmético:** los valores van en Helvetica y la plantilla usa una tipografía redondeada propia, así
+que de cerca se nota que son de otra familia. Emparejarlo obliga a embeber la fuente real en el PDF; se puede
+hacer si el cliente lo pide.
+
+**Impacto para el otro (Santi):** nada que tocar. Usé tu `MailSender.Adjunto.pdf(...)` tal cual y la plantilla
+quedó en `backend/src/main/resources/bono/plantilla-bono.jpg` (367 KB, va al jar). El mail de emisión ahora pesa
+~370 KB más; con Resend no es problema, pero si algún día se mira el consumo, sale de acá.
+
+**Refs:** `modules/bonopdf/service/PlantillaBonoPdfGenerator.java` (reemplaza a `PdfSimpleBonoGenerator`),
+`BonoPdfService.generarDeSistema`, `NotificacionDispatcher.adjuntos`, `NotificacionDispatcherTest`, commit `4f4ed15`.
+
 ## 2026-09-24 — Santi — frontend (F-26 responsive, 2ª pasada: menú de celular, tablas como tarjetas, modales) — ⚠️ toca zona de Fran
 **Qué:** F-26 cerrada, **por pedido explícito del usuario** ("el responsive lo tomamos nosotros"). Menú de
 celular, las 9 tablas como tarjetas, modales como hoja inferior, Emitir sin scroll anidado, pantalla de

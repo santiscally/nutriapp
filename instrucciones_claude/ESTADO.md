@@ -38,42 +38,37 @@ y usando bonos** · padrón de 3 usuarios · el maestro todavía no lo importó 
 
 ## Fran / frontend
 
-**Última actualización: 2026-09-21 (2).**
+**Última actualización: 2026-09-30.**
 
-**En qué estoy:** modificaciones post 1ª entrega (PLAN en
-`modificaciones post primera entrega/PLAN-modificaciones-post-entrega.md`). **Mi mitad está cerrada salvo lo
-que depende de terceros.**
+**Mi mitad está cerrada.** F-01 a F-13, F-15 a F-25 en `main`. **F-20 cerrada hoy**: el PDF usa la plantilla
+del cliente y viaja adjunto al mail de emisión, verificado de punta a punta contra un SMTP local. F-26
+(responsive) la tomó Santi.
 
-**✅ Cerrado (todo en `main`, pusheado):**
-- **1ª tanda:** F-01..F-05, F-08, F-09, F-11, F-12, F-15, F-17, F-19, F-21, F-22, F-23.
-- **2ª tanda (destrabada por S-01..S-16):** F-06 (profesión desde `GET /profesiones`), F-07 (link a
-  `/terminos`), F-10 ("Tu comisión" en el perfil), F-13 (filtro % + % por producto), F-16 (checkbox
-  combinable destildado + cálculo con el descuento del producto), F-18 **completo**, F-24 (solapa PANEL),
-  F-25 (solapa BONOS).
+**Lo único mío que queda abierto: F-14** — sacar "Descuento de bonos (%)" de la ficha del admin. Espera a que
+**el cliente importe el maestro**: hasta entonces ese % es el único descuento que existe en el sistema y
+sacarlo dejaría los bonos sin descuento.
 
-**Verificación:** backend **239 tests, 0 fallos** (en contenedor: no hay Java en este host). Front `tsc -b` +
-`oxlint` + `vite build`. Y las dos pantallas nuevas del admin **verificadas en el navegador** contra el backend
-local (Chrome headless por CDP): login → `/panel` y `/admin/bonos` con datos reales, sin errores de consola.
+**Dos cosas para preguntarle a Gon** (salieron al implementar la plantilla):
+1. **"Firmado electrónicamente por"**: lo firma el **profesional que emitió el bono**. Si querían que dijera
+   "BonosApp", es una línea.
+2. **La plantilla tiene un typo**: *"No es necesario imprimirel cupón"*. Está en el arte, no se puede
+   arreglar desde el código.
 
-**⚠️ Lo que aprendí probando F-18 (importa para el cliente):** TiendaNube **ignora** los parámetros de redirect
-en `/discount/<codigo>` — siempre cae en la home. No existe un link único que aplique el cupón *y* aterrice en
-el producto, así que el mensaje manda **dos links en orden**: primero el que activa el bono, después el del
-producto. Si Gon esperaba un solo link, esto hay que contárselo.
+**Pendiente cosmético del PDF:** los valores van en Helvetica y la plantilla usa una tipografía redondeada
+propia; de cerca se nota. Emparejarlo obliga a embeber la fuente en el PDF — se hace si el cliente lo pide.
 
-**Bloqueado, y no por Santi:**
-- **F-20** — la plantilla del PDF la manda el cliente. Además, adjuntarlo al mail necesita que
-  `integrations/mail/MailSender` sepa adjuntar, y esa carpeta es zona de Santi.
-- **F-14** — hasta que el cliente importe el maestro nuevo, el % de la ficha del admin es el único descuento
-  que existe (lo marcó Santi en el contrato de S-02).
+**Pendiente de verificar cuando se despliegue:** que `/terminos` abra (en local la SPA se lo come; la config de
+nginx dice que en prod no pasa) y dónde cae el mail en Gmail.
 
 **Notas de entorno (mi máquina):**
-- `frontend/.env.local` apuntaba al realm viejo `nutriapp`: corregido a `bonosapp`. Si el login local falla con
-  "No pudimos conectarnos con el servidor", mirar ahí primero.
 - Mi `.env` de raíz tiene `MAIL_MODE=live`: **levantar el stack local con `MAIL_MODE=stub` por variable de
-  entorno**, o el dispatcher manda mails reales por Resend desde la máquina.
+  entorno**, o el dispatcher manda mails reales por Resend. Para probar mail de verdad sin mandar nada afuera:
+  `docker run -d --rm --name bonosapp-mailpit --network bonosapp_bonosapp-net -p 8025:8025 axllent/mailpit`
+  y levantar con `MAIL_MODE=live MAIL_SMTP_HOST=bonosapp-mailpit MAIL_SMTP_PORT=1025 MAIL_SMTP_AUTH=false
+  MAIL_SMTP_STARTTLS=false`.
 - Backend sin Java en el host:
   `docker run --rm -v "<repo>/backend:/app" -v bonosapp-m2:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn test`
   (Git Bash: `MSYS_NO_PATHCONV=1` y la ruta en formato Windows).
-
-**Esperando de Santi:** documentar `GET /api/v1/recetas/{id}/pdf` en `05-api-endpoints.md` (su zona) y el
-adjunto en `MailSender` para F-20.
+- `frontend/.env.local` tiene que apuntar al realm `bonosapp` (tenía el viejo `nutriapp`).
+- La plantilla original quedó también en `frontend/src/assets/PLANTILLA_BONOSAPP.*`, sin usar: la que manda es
+  la copia de `backend/src/main/resources/bono/`.
