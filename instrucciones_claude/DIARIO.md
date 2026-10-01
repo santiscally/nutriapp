@@ -32,6 +32,66 @@
 
 ## Entradas
 
+## 2026-10-01 — Fran — infra (deploy del mail HTML en prod · ⚠️ el smoke de `deploy.sh` da falso negativo)
+
+**Qué:** Se desplegó en prod el mail HTML del bono (F-20). **El deploy quedó bien**, pero
+`scripts/deploy.sh` **aborta en el paso 9/9** con `/terminos no responde 200` — y es un **falso negativo
+del chequeo**, no un problema del deploy.
+
+**La causa.** El smoke pide, desde adentro del contenedor de nginx:
+
+```
+wget http://localhost/terminos
+```
+
+y `nginx/conf.d-proxied/bonosapp.conf` tiene arriba un catch-all deliberado:
+
+```
+server { listen 80 default_server; server_name _; return 444; }
+server { listen 80; server_name bonosapp.com.ar www.bonosapp.com.ar; ... }
+```
+
+Como `localhost` no matchea ningún `server_name`, cae en el catch-all y nginx **cierra la conexión (444)**.
+O sea: **el chequeo falla por la propia protección anti-Host-desconocido**. Verificado desde afuera, todo
+responde:
+
+```
+https://bonosapp.com.ar/            200
+https://bonosapp.com.ar/terminos    200  text/html; charset=utf-8   ← el default_type del location
+https://bonosapp.com.ar/mail/bonosapp-logo.png  200 image/png
+https://bonosapp.com.ar/mail/tbc-qr.png         200 image/png
+https://bonosapp.com.ar/api/v1/profesiones      200 application/json
+```
+
+**Santi — el arreglo es una línea en `scripts/deploy.sh` (tu zona, no la toqué):** agregarle el Host a la
+función `codigo()`.
+
+```
+wget -S -qO /dev/null --header="Host: bonosapp.com.ar" "http://localhost$1"
+```
+
+**Importa más de lo que parece:** el abort es en el 9 de 9, o sea **después** de aplicar todo (incluido el
+paso 8, la config del realm), así que el deploy quedó completo pero **sin imprimir el resumen final** — el
+que recuerda dónde quedaron los backups. Quien deployee F-14 se va a comer el mismo abort y puede creer
+que falló.
+
+**Otra corrección a `DEPLOY.md` (también tuya):** el runbook dice `cd /root/bonosapp`, y el checkout real
+del VPS es **`/root/nutriapp`**. Queda de la época anterior al rebranding, igual que la fila del DKIM que
+corregí en la entrada del 30/09 (2).
+
+**Resultado del mail en prod:** el bono llega con el template nuevo y las imágenes cargan (ya están
+publicadas). **Sigue cayendo en Promociones.** El usuario lo da por cerrado del lado técnico: la pestaña la
+decide el clasificador de Gmail por contenido y comportamiento, y las palancas que quedan —sacar el botón,
+menos imágenes, cuerpo más sobrio— son una decisión de diseño con el cliente, no una corrección de código.
+
+**Lo único que NO está verificado todavía en todo el circuito:** que un cupón real **se aplique en el
+checkout**. Hasta hoy siempre se probó con TiendaNube en `stub`, donde el cupón nunca se crea; el link cae
+en la home y no pasa nada, que es lo esperable. El test de verdad es emitir un bono en prod, abrir el link,
+sumar el producto al carrito y mirar el total en el checkout.
+
+**Refs:** `scripts/deploy.sh` (función `codigo()`, paso 9), `nginx/conf.d-proxied/bonosapp.conf:60-70`,
+`DEPLOY.md` (runbook del VPS), entrada 2026-09-30 (3).
+
 ## 2026-10-01 — Santi — backend+frontend (F-14: el descuento deja de ser de la profesional; queda sólo la comisión) — ⚠️ toca zona de Fran
 
 **Qué:** "Descuento de bonos (%)" sale de la ficha del admin, de la tabla de Profesionales, de `GET /me`,

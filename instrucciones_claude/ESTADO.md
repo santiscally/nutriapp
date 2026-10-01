@@ -33,40 +33,44 @@ y usando bonos** · DMARC con `rua` publicado el 30/09.
 
 ## Fran / frontend
 
-**Última actualización: 2026-09-30.**
+**Última actualización: 2026-10-01.**
 
-**Mi mitad está cerrada.** F-01 a F-13, F-15 a F-25 en `main`. **F-20 cerrada hoy**: el bono **es el cuerpo
-del mail**, en HTML con la plantilla del cliente y **sin adjuntos** (el PDF sigue vivo para el botón de
-descarga). Verificado contra un SMTP local y con un envío real por Resend. F-26 (responsive) la tomó Santi.
+**No me queda desarrollo abierto.** F-01 a F-13 y F-15 a F-25, en `main` y **desplegadas**. F-14 la tomó
+Santi (está en `main`, **sin deployar**); F-26 (responsive) también fue suya.
 
-**⚠️ Toqué `integrations/mail/` (zona de Santi), con OK del usuario:** el port suma el cuerpo HTML y
-`SmtpMailSender` arma multipart/alternative. Detalle en el DIARIO.
+**Lo último que se cerró — F-20, el bono es el mail.** El cuerpo del mail replica la plantilla del cliente
+en HTML (logo, banda verde, código, pie con TBC y QR) y **no lleva adjuntos**. El PDF sigue vivo para el
+botón de descarga de la app. Toqué `integrations/mail/` (zona de Santi) con OK del usuario: el port suma el
+cuerpo HTML y `SmtpMailSender` arma multipart/alternative — el texto plano viaja siempre.
 
-**Lo único mío que queda abierto: F-14** — sacar "Descuento de bonos (%)" de la ficha del admin. Espera a que
-**el cliente importe el maestro**: hasta entonces ese % es el único descuento que existe en el sistema y
-sacarlo dejaría los bonos sin descuento.
+**Verificado en prod:** `/`, `/terminos`, `/mail/bonosapp-logo.png`, `/mail/tbc-qr.png` y
+`/api/v1/profesiones` responden 200; el mail llega con el template y las imágenes cargan.
 
-**Dos cosas para preguntarle a Gon** (salieron al implementar la plantilla):
-1. **"Firmado electrónicamente por"**: lo firma el **profesional que emitió el bono**. Si querían que dijera
-   "BonosApp", es una línea.
-2. **La plantilla tiene un typo**: *"No es necesario imprimirel cupón"*. Está en el arte, no se puede
-   arreglar desde el código.
+**⚠️ Lo único del circuito que nadie probó todavía:** que un **cupón real se aplique en el checkout**.
+Siempre se probó con TiendaNube en `stub`, donde el cupón no se crea. El test: emitir un bono en prod, abrir
+el link, sumar el producto al carrito y mirar el total.
 
-**Pendiente cosmético del PDF:** los valores van en Helvetica y la plantilla usa una tipografía redondeada
-propia; de cerca se nota. Emparejarlo obliga a embeber la fuente en el PDF — se hace si el cliente lo pide.
+**Mail y Promociones — cerrado del lado técnico.** El mail llega a la bandeja (DKIM/SPF/DMARC alinean), pero
+cae en **Promociones**. La pestaña la decide el clasificador de Gmail por contenido y comportamiento, no la
+autenticación. Las palancas que quedan (sacar el botón, menos imágenes, cuerpo más sobrio) chocan con el
+diseño que pidió el cliente: es decisión suya, no un bug.
 
-**Pendiente de verificar cuando se despliegue:** que `/terminos` abra (en local la SPA se lo come; la config de
-nginx dice que en prod no pasa) y dónde cae el mail en Gmail.
+**Para Santi, dos correcciones anotadas en el DIARIO (su zona, no las toqué):**
+- `scripts/deploy.sh` aborta en 9/9 por un falso negativo: el smoke pide `/terminos` a `localhost` y cae en
+  el catch-all `return 444` de nginx. Se arregla pasándole `--header="Host: bonosapp.com.ar"`.
+- `DEPLOY.md` dice `/root/bonosapp`; el checkout real es `/root/nutriapp`.
+
+**Con el cliente:** la plantilla corregida (el typo "imprimirel cupón" **ya no está en el mail** —ese texto
+lo escribimos nosotros— pero **sigue en el PDF** de descarga) y confirmar que "Firmado electrónicamente por"
+lleve el nombre del profesional y no "BonosApp".
 
 **Notas de entorno (mi máquina):**
-- Mi `.env` de raíz tiene `MAIL_MODE=live`: **levantar el stack local con `MAIL_MODE=stub` por variable de
-  entorno**, o el dispatcher manda mails reales por Resend. Para probar mail de verdad sin mandar nada afuera:
+- Mi `.env` de raíz tiene `MAIL_MODE=live`: **levantar el stack local con `MAIL_MODE=stub`**, o el dispatcher
+  manda mails reales por Resend. Para probar mail sin mandar nada afuera:
   `docker run -d --rm --name bonosapp-mailpit --network bonosapp_bonosapp-net -p 8025:8025 axllent/mailpit`
-  y levantar con `MAIL_MODE=live MAIL_SMTP_HOST=bonosapp-mailpit MAIL_SMTP_PORT=1025 MAIL_SMTP_AUTH=false
-  MAIL_SMTP_STARTTLS=false`.
+  + `MAIL_MODE=live MAIL_SMTP_HOST=bonosapp-mailpit MAIL_SMTP_PORT=1025 MAIL_SMTP_AUTH=false MAIL_SMTP_STARTTLS=false`.
+- Las imágenes del mail salen de `frontend/public/mail/` y se publican **con el frontend**: desplegar sólo el
+  backend las deja rotas.
 - Backend sin Java en el host:
   `docker run --rm -v "<repo>/backend:/app" -v bonosapp-m2:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn test`
   (Git Bash: `MSYS_NO_PATHCONV=1` y la ruta en formato Windows).
-- `frontend/.env.local` tiene que apuntar al realm `bonosapp` (tenía el viejo `nutriapp`).
-- La plantilla original quedó también en `frontend/src/assets/PLANTILLA_BONOSAPP.*`, sin usar: la que manda es
-  la copia de `backend/src/main/resources/bono/`.
