@@ -32,6 +32,34 @@
 
 ## Entradas
 
+## 2026-10-01 (2) — Santi — infra (F-14 desplegada en prod · arreglado el smoke de `deploy.sh`)
+
+**Qué:** F-14 está en prod (`2a5fdca`). El descuento del bono sale sólo del producto y la ficha de la
+profesional queda con la comisión. `scripts/deploy.sh` ya no aborta en el 9/9: el smoke manda el Host del
+sitio.
+
+**Orden:** primero se importó el maestro y recién después se desplegó. Antes del import, **0 de 516**
+productos publicados tenían %, así que con F-14 arriba todo bono habría dado 422. Después del import, los
+**563 publicados tienen %**. No hubo migraciones: la base sigue en v016 y el recenso no perdió filas.
+Backups: `backups/*-20261001-144123.dump.gpg`.
+
+**El smoke:** era el falso negativo que anotó Fran. `codigo()` le pegaba a `localhost`, caía en el catch-all
+`return 444` y abortaba con todo ya aplicado. Ahora manda `--header="Host: …"`, con el host sacado de
+`APP_PUBLIC_URL` (el preflight ya lo exige) en vez de hardcodear el dominio. Probado contra el nginx de
+prod: `/terminos` da 200.
+
+**Pendiente de operación — "Mapear productos":** los 563 publicados tienen `tiendanube_product_id` pero
+**ninguno tiene `tiendanube_handle`**. El último mapeo corrió antes de V015, que es la migración que agregó
+la columna. Sin el handle, el link del bono no puede ir directo al producto (F-18). Se corre desde
+Integraciones (pide sesión de admin). "Sincronizar productos" **no pisa** el % del maestro: lo único que
+escribe `descuento_pct` es `MaestroImportService`.
+
+**Impacto para el otro (Fran):** `deploy.sh` vuelve a cerrar con el resumen y los backups. El
+`/root/bonosapp` de `DEPLOY.md` sigue sin corregir.
+
+**Refs:** `scripts/deploy.sh` (paso 9/9), entrada 2026-10-01 de Fran (el smoke), entrada 2026-10-01 de
+Santi (F-14).
+
 ## 2026-10-01 — Fran — infra (deploy del mail HTML en prod · ⚠️ el smoke de `deploy.sh` da falso negativo)
 
 **Qué:** Se desplegó en prod el mail HTML del bono (F-20). **El deploy quedó bien**, pero

@@ -14,18 +14,18 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-10-01.** **F-14 hecha** (la tomé aunque toca `frontend/`, por pedido del
-usuario): el % de descuento sale de la profesional en todo el sistema y queda sólo la comisión. Sin
-deployar todavía.
+**Última actualización: 2026-10-01.** **F-14 desplegada en prod**, con el maestro importado antes: los
+563 productos publicados tienen %. El smoke de `deploy.sh` ya no da falso negativo (manda el Host).
 
 **De la tanda post 1ª entrega no queda desarrollo abierto.** S-01 a S-14, S-16, S-17, S-18, F-26 y F-14
 hechos; S-15 descartado; la mitad de Fran, cerrada (ver su sección). El usuario da por solucionado lo de
 Promociones/Spam.
 
-**Pendiente de operación:** que el cliente suba el maestro (lo hace hoy) y deployar F-14 con
-`scripts/deploy.sh`; después, "Sincronizar productos" y "Mapear productos" en Integraciones. Sigue sin
-decidir si se reescriben los 5 commits con atribución a Claude (`c236fa1`, `dde2bf6`, `d051370`,
-`0c84e7e`, `ff2e780`).
+**Pendiente de operación:** "Mapear productos" en Integraciones. Ningún producto tiene
+`tiendanube_handle` todavía, y sin el handle el link del bono no va directo al producto (F-18). También
+"Sincronizar productos", que no pisa el % del maestro. En `DEPLOY.md` falta corregir `/root/bonosapp` →
+`/root/nutriapp` y la fila del DKIM de Hostinger. Sigue sin decidir si se reescriben los 5 commits con
+atribución a Claude (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`, `ff2e780`).
 
 **Estado de producción (no romper):** `bonosapp.com.ar` en vivo · mail live por Resend (el TXT DKIM
 `resend._domainkey` no se toca) · Contabilium y TiendaNube live contra la tienda real — **se están emitiendo

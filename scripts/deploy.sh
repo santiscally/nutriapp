@@ -185,7 +185,9 @@ COMPOSE_FILES="${COMPOSE_FILES}" bash "${REPO_ROOT}/scripts/keycloak-config.sh" 
   || die "falló la config del realm. La app ya está arriba con el código nuevo; correr scripts/keycloak-config.sh a mano."
 
 paso "9/9 smoke"
-codigo() { dc exec -T nginx wget -S -qO /dev/null "http://localhost$1" 2>&1 | awk '/HTTP\//{print $2}' | tail -1; }
+# Con el Host del sitio: nginx corta (444) los pedidos a un server_name que no conoce, localhost incluido.
+SITIO_HOST="${APP_PUBLIC_URL#*://}"; SITIO_HOST="${SITIO_HOST%%/*}"
+codigo() { dc exec -T nginx wget -S -qO /dev/null --header="Host: ${SITIO_HOST}" "http://localhost$1" 2>&1 | awk '/HTTP\//{print $2}' | tail -1; }
 [ "$(codigo /terminos)" = "200" ] || die "/terminos no responde 200: revisar el montaje de ./static en nginx."
 echo "   /terminos 200."
 
