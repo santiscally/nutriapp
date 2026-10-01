@@ -32,6 +32,51 @@
 
 ## Entradas
 
+## 2026-10-01 (2) — Fran — bono/plantilla (⛔ la plantilla "corregida" trae un QR MUERTO: no se subió)
+
+**Qué:** Llegó del cliente la plantilla con el typo arreglado (`PLANTILLA BONOSAPP.JPG.jpeg`, en
+`frontend/src/assets/`, sin commitear). **No se subió**, por decisión del usuario: arregla el typo pero
+**rompe el QR**. Se queda la plantilla actual hasta que el diseñador mande el arte bueno.
+
+**El hallazgo.** Los dos QR decodificados (zbar):
+
+```
+plantilla ACTUAL → https://www.thebcompany.com.ar/?srsltid=AfmBOoo…   → 200, la tienda. Funciona.
+plantilla NUEVA  → https://qr.link/kdiyHS                              → "Código QR Desactivado | QR.io"
+```
+
+El diseñador lo regeneró con **QR.io, un servicio de QR dinámicos**: el código **no lleva la URL adentro**,
+lleva un link al servicio que redirige. Cuando el plan se vence o el código se desactiva —que es lo que ya
+pasó— **el QR muere para siempre, incluso impreso**. El de la plantilla actual es estático: la URL viaja
+dentro del código (con un parámetro `srsltid` de tracking de Google, feo pero inofensivo).
+
+**Para pedirle al diseñador:** que el QR sea **estático** y apunte directo a `https://www.thebcompany.com.ar`.
+Cualquier generador sirve mientras no sea "dinámico"/"editable"/"con seguimiento" — esas tres palabras son
+las que delatan que el QR depende de un tercero.
+
+**El trabajo de medición ya está hecho: cuando llegue el arte bueno, es pegar el archivo y aplicar esto.**
+La plantilla nueva **movió los rótulos del pie** (entre otras cosas "Fecha de vencimiento" pasó a "Fecha
+vencimiento"), así que las coordenadas actuales **no sirven** para ella. Medido sobre el PNG nuevo:
+
+| Rótulo | Termina en x (actual → nueva) | Valor va en |
+|---|---|---|
+| `Estimada/o:` | 253 → 250 | `PACIENTE_X = px(263), PACIENTE_Y = alto(435)` |
+| `Fecha emisión:` | 287 → 294 | `EMISION_X = px(307), EMISION_Y = alto(3270)` |
+| `Fecha vencimiento:` | 402 → **365** | `VENCE_X = px(378), VENCE_Y = alto(3329)` |
+| `Firmado electrónicamente por:` | 524 → 539 | `FIRMA_X = px(552), FIRMA_Y = alto(3389)` |
+
+Verificado: con esos valores el PDF calza (se generó y se miró el recorte del pie y de la cabecera). También
+hay que **rehacer los recortes de `frontend/public/mail/`** desde el arte nuevo — el script de recorte quedó
+con los offsets de la plantilla nueva (`x:70 y:40 w:330 h:280` para el logo, `x:2010 y:3055 w:385 h:185` para
+TBC+QR).
+
+**Cómo medir si cambia de nuevo:** decodificar el PNG con zlib y sacar la caja de cada banda de texto oscuro
+(lo hice con un script de Node sin dependencias). No estimar a ojo: el pie se movió 37 px y a simple vista no
+se nota hasta que el valor queda flotando lejos del rótulo.
+
+**Refs:** `modules/bonopdf/service/PlantillaBonoPdfGenerator.java` (clase `Pos`),
+`backend/src/main/resources/bono/plantilla-bono.jpg`, `frontend/public/mail/`.
+
 ## 2026-10-01 (2) — Santi — infra (F-14 desplegada en prod · arreglado el smoke de `deploy.sh`)
 
 **Qué:** F-14 está en prod (`2a5fdca`). El descuento del bono sale sólo del producto y la ficha de la
