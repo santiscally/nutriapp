@@ -25,11 +25,7 @@ public record NutricionistaResponse(
         Instant validadoAt,
         String notasValidacion,
         Instant createdAt,
-        /**
-         * % propios, siempre presentes (V011 eliminó el global y con él la distinción entre el
-         * override y el valor "efectivo": lo que está acá es lo que se aplica).
-         */
-        BigDecimal descuentoPct,
+        /** % de comisión propio; el descuento es de cada producto (F-14). */
         BigDecimal comisionPct,
         /** ¿Puede loguearse hoy? Refleja el `enabled` del usuario en Keycloak. */
         boolean activo,

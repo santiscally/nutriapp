@@ -113,7 +113,7 @@ cupón de una receta y corre el mismo procesamiento. **No existe en prod.**
 | GET | `/recetas/{id}/pdf` | **F-21** — el bono en PDF. Devuelve `application/pdf` con `Content-Disposition: attachment` y nombre propio, no JSON. `404` si el bono no es de quien pide (misma regla de pertenencia que el detalle). Permiso `recetas:read`: es el mismo bono que ya puede ver, en otro formato |
 
 ```json
-// RecetaCreateRequest — el % de descuento NO viaja: es el de la nutricionista, lo define el admin (viene en /me).
+// RecetaCreateRequest — el % de descuento NO viaja: sale del producto (maestro). Producto sin % → 422 (F-14).
 { "pacienteId": "...", "items": [ { "productoId": "...", "cantidad": 1, "indicaciones": "1 medida post-entreno" } ] }
 
 // RecetaResponse
@@ -169,17 +169,18 @@ Todo dato real; el front deriva el delta de comisión vs. el mes anterior.
 
 ## Parámetros de negocio — por nutricionista
 
-Los % de **descuento** y **comisión** son **propios de cada nutricionista** y los define el admin desde su ficha.
-**`GET /configuracion` y `PUT /admin/configuracion` ya no existen** (V011): había un valor global y además un
-override por nutricionista, o sea el mismo dato en dos lugares y dos formas de leerlo. Ahora hay una sola.
+**Desde F-14 (2026-10-01) a la nutricionista le queda sólo la comisión.** El % de **descuento** es de
+cada **producto** (columna `DESCUENTO %` del maestro, ver S-02) y ya no existe en la nutricionista: ni en
+su ficha, ni en `GET /me`, ni en `NutricionistaResponse`.
+**`GET /configuracion` y `PUT /admin/configuracion` ya no existen** (V011).
 
-- El emisor lee el descuento de **`GET /me` → `descuentoPct`** (read-only).
-- El admin los edita en `PUT /admin/nutricionistas/{id}/parametros` (ambos obligatorios).
+- La **comisión** la edita el admin en `PUT /admin/nutricionistas/{id}/parametros` (obligatoria).
 - Se **snapshotean** en la receta al emitir (descuento) y al convertir (comisión): cambiarlos no reescribe
   la historia ni mueve los cierres ya cerrados.
-- Una nutricionista que se registra nace con los valores de `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT` /
-  `NUTRICIONISTA_COMISION_PCT_DEFAULT` (15/10). No es una configuración de negocio: es el punto de partida
-  del alta, porque el registro es público y nadie elige ahí su propio descuento.
+- Una nutricionista que se registra nace con `NUTRICIONISTA_COMISION_PCT_DEFAULT` (1 %). La variable
+  `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT` ya no se lee.
+- La columna `nutricionistas.descuento_pct` sigue en la base (con su default de V011) pero nadie la lee
+  ni la escribe: queda para poder volver atrás sin migración.
 
 ## Perfil propio
 
@@ -199,7 +200,7 @@ fiscales, porcentajes) los toca el admin: son los que se validaron al aprobar la
 | GET | `/admin/nutricionistas?estado=&q=&page=` | bandeja de validación |
 | POST | `/admin/nutricionistas/{id}/aprobar` | habilita el usuario Keycloak; 409 si no está PENDIENTE |
 | POST | `/admin/nutricionistas/{id}/rechazar` | body `{ "motivo": "..." }` |
-| PUT | `/admin/nutricionistas/{id}/parametros` | body `{ "descuentoPct": 30, "comisionPct": 8 }` — **ambos obligatorios** (V011) |
+| PUT | `/admin/nutricionistas/{id}/parametros` | body `{ "comisionPct": 8 }` — obligatorio. Desde F-14 no lleva descuento (si llega `descuentoPct`, se ignora) |
 | POST | `/admin/nutricionistas/{id}/desactivar` | le quita el acceso (deshabilita en Keycloak) sin borrar nada. Reversible. No cambia `estadoValidacion` |
 | POST | `/admin/nutricionistas/{id}/reactivar` | devuelve el acceso; `409` si la solicitud no está APROBADA |
 | DELETE | `/admin/nutricionistas/{id}` | baja definitiva: borra el usuario de Keycloak, sus pacientes, sus archivos y la fila. `409` si emitió recetas (están en los cierres) → hay que desactivar. `204` |
@@ -283,11 +284,11 @@ Filtro nuevo en `GET /productos`: **`descuentoPct=20`** — valor exacto, no ran
 disponibles salen de `GET /productos/filtros` → `"descuentos": [20.00, 55.00]` (el maestro de hoy
 tiene exactamente esos dos: 2212 productos al 20 % y 40 al 55 %). **El front no hardcodea la lista.**
 
-**Fallback mientras el maestro no esté importado en prod:** si el producto no tiene descuento, el bono
-se emite con el % de la profesional, que es el de hoy. `RecetaResponse.descuentoPct` sigue siendo el
-número que manda y se sigue snapshoteando al emitir.
-⚠️ **F-14 (sacar "Descuento de bonos (%)" de la ficha del admin) NO se puede hacer todavía**: hasta que
-el cliente importe el maestro nuevo, ese campo es el único descuento que existe en el sistema.
+**Sin fallback desde F-14 (2026-10-01):** el % de la profesional se eliminó. Un producto sin descuento
+(o con 0 %) **no puede ir en un bono**: `POST /recetas` responde `422` nombrando el producto, y la pantalla
+de emisión lo avisa antes y no deja emitir. Los productos siguen apareciendo en el buscador: la regla de
+publicación no cambió. `RecetaResponse.descuentoPct` sigue siendo el número que manda y se snapshotea al
+emitir.
 
 **Bono con dos productos de distinto %:** `409`. El cupón de TiendaNube es un solo porcentaje y no
 puede honrar dos. Con el MVP en 1 producto por bono no se dispara nunca.
@@ -332,11 +333,11 @@ nullable (las altas viejas no los tienen).
 
 ### S-12 · Comisión 1 % + `comisionPct` en `/me` — `contrato` → alimenta F-10
 
-`GET /me` suma **`comisionPct`** al lado del `descuentoPct` que ya viajaba:
+`GET /me` suma **`comisionPct`** (desde F-14, `descuentoPct` ya no viaja):
 
 ```json
 { "id": "...", "nombre": "Ana", "estadoValidacion": "APROBADA",
-  "descuentoPct": 15.00, "comisionPct": 1.00 }
+  "comisionPct": 1.00 }
 ```
 
 `null` para el admin, que no emite bonos. El default de alta pasa de **10 % a 1 %**
@@ -502,7 +503,7 @@ sigue aceptando guiones: hay CUITs ya guardados que entraron con ese formato.
 | Dashboard | `GET /dashboard/resumen` + `GET /dashboard/estadisticas?meses=6` (gráficos) |
 | Cierre mensual | `GET /dashboard/cierre-mensual?year=&month=` (selector de mes) |
 | Pacientes | CRUD `/pacientes` |
-| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` (trae `precioMin`/`precioMax` para el slider) + el descuento de `GET /me` + `POST /recetas` |
+| Emitir Receta | `GET /pacientes?q=` (picker) + `GET /productos?...` + `GET /productos/filtros` (trae `precioMin`/`precioMax` para el slider) + el `descuentoPct` de cada producto + `POST /recetas` |
 | Recetas | `GET /recetas?estado=&q=&pacienteId=&desde=&hasta=` + detalle + anular/reenviar |
 | Productos (admin) | `GET /admin/productos` + `GET /admin/productos/resumen` |
 | Admin Nutricionistas | `GET /admin/nutricionistas` + aprobar/rechazar + parámetros + desactivar/reactivar/borrar/password |

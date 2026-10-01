@@ -42,7 +42,7 @@ export function Nutricionistas() {
         <div>
           <h1 className="page-title">Profesionales</h1>
           <p className="muted">
-            Validá las solicitudes y definí el descuento y la comisión de cada uno.
+            Validá las solicitudes y definí la comisión de cada uno.
           </p>
         </div>
       </div>
@@ -90,7 +90,6 @@ export function Nutricionistas() {
               <th>Nombre</th>
               <th>Email</th>
               <th>Matrícula</th>
-              <th>Descuento</th>
               <th>Comisión</th>
               <th>Acceso</th>
               <th>{tab === "PENDIENTE" ? "Solicitó" : "Validada"}</th>
@@ -104,9 +103,6 @@ export function Nutricionistas() {
                 </td>
                 <td className="muted" data-label="Email">{n.email}</td>
                 <td className="muted" data-label="Matrícula">{n.matricula || "—"}</td>
-                <td data-label="Descuento">
-                  <strong>{n.descuentoPct}%</strong>
-                </td>
                 <td data-label="Comisión">
                   <strong>{n.comisionPct}%</strong>
                 </td>

@@ -14,27 +14,22 @@
 
 ## Santi / backend / infra / db / auth
 
-**Última actualización: 2026-09-24** — **no me queda ninguna tarea de desarrollo.** Todo en `main`.
+**Última actualización: 2026-10-01.** **F-14 hecha** (la tomé aunque toca `frontend/`, por pedido del
+usuario): el % de descuento sale de la profesional en todo el sistema y queda sólo la comisión. Sin
+deployar todavía.
 
-**Hecho en esta tanda (post 1ª entrega):** S-01 a S-14, S-16, S-17 (lo aplica `scripts/deploy.sh`) y
-S-18 (diagnóstico y registros listos) · adjuntos en `MailSender` para F-20 · el endpoint del PDF
-documentado · `scripts/deploy.sh` · profesión/jurisdicción/matrícula obligatorias con interruptor ·
-UI de S-10 en login y registro · **F-26 responsive, completa** (la tomé aunque es `frontend/`: menú de
-celular, tablas como tarjetas, modales como hoja inferior; detalle en el PLAN). S-15 **descartado**.
+**De la tanda post 1ª entrega no queda desarrollo abierto.** S-01 a S-14, S-16, S-17, S-18, F-26 y F-14
+hechos; S-15 descartado; la mitad de Fran, cerrada (ver su sección). El usuario da por solucionado lo de
+Promociones/Spam.
 
-**Lo que falta del proyecto, todo de Fran:**
-- **F-20** — conectar el PDF al mail del paciente. Ya no está bloqueada: hay template provisorio y
-  `MailSender` adjunta.
-- **F-14** — sacar el % de descuento de la ficha del admin. Espera a que el cliente importe el maestro:
-  hasta entonces es el único descuento que existe.
-
-**No son tareas de desarrollo** (acciones de operación, para cuando se decida): correr
-`scripts/deploy.sh` en el VPS, publicar el DMARC en Hostinger (valores en `DEPLOY.md`), y decidir si se
-reescriben los 5 commits con atribución a Claude (`c236fa1`, `dde2bf6`, `d051370`, `0c84e7e`, `ff2e780`).
+**Pendiente de operación:** que el cliente suba el maestro (lo hace hoy) y deployar F-14 con
+`scripts/deploy.sh`; después, "Sincronizar productos" y "Mapear productos" en Integraciones. Sigue sin
+decidir si se reescriben los 5 commits con atribución a Claude (`c236fa1`, `dde2bf6`, `d051370`,
+`0c84e7e`, `ff2e780`).
 
 **Estado de producción (no romper):** `bonosapp.com.ar` en vivo · mail live por Resend (el TXT DKIM
 `resend._domainkey` no se toca) · Contabilium y TiendaNube live contra la tienda real — **se están emitiendo
-y usando bonos** · padrón de 3 usuarios · el maestro todavía no lo importó el cliente.
+y usando bonos** · DMARC con `rua` publicado el 30/09.
 
 ## Fran / frontend
 

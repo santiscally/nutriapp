@@ -101,12 +101,12 @@ public class AdminNutricionistaController {
         service.resetearPassword(id, req.password());
     }
 
-    /** % de descuento y de comisión de esta nutricionista. Ambos obligatorios (V011). */
+    /** % de comisión de esta nutricionista. */
     @PutMapping("/{id}/parametros")
     @PreAuthorize("hasAuthority('admin:manage')")
     public NutricionistaResponse actualizarParametros(@PathVariable UUID id,
                                                       @Valid @RequestBody ParametrosNutricionistaRequest req) {
-        return service.actualizarParametros(id, req.descuentoPct(), req.comisionPct());
+        return service.actualizarParametros(id, req.comisionPct());
     }
 
     /**

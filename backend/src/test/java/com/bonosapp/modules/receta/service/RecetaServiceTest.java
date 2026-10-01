@@ -11,12 +11,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bonosapp.common.error.ConflictException;
+import com.bonosapp.common.error.UnprocessableException;
 import com.bonosapp.integrations.IntegrationUnavailableException;
 import com.bonosapp.integrations.tiendanube.TiendaNubeClient;
 import com.bonosapp.modules.notificacion.service.NotificacionService;
 import com.bonosapp.modules.nutricionista.entity.Nutricionista;
 import com.bonosapp.modules.nutricionista.service.NutricionistaService;
-import com.bonosapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.bonosapp.modules.paciente.entity.Paciente;
 import com.bonosapp.modules.paciente.mapper.PacienteMapper;
 import com.bonosapp.modules.paciente.repository.PacienteRepository;
@@ -51,7 +51,6 @@ class RecetaServiceTest {
     @Mock PacienteMapper pacienteMapper;
     @Mock ProductoMapper productoMapper;
     @Mock NutricionistaService nutricionistaService;
-    @Mock ParametrosNegocioService parametrosNegocioService;
     @Mock NotificacionService notificacionService;
     @Mock CodigoGenerator codigoGenerator;
     @Mock TiendaNubeClient tiendaNubeClient;
@@ -89,6 +88,7 @@ class RecetaServiceTest {
     private Producto producto(UUID id, String descuentoPct) {
         Producto p = new Producto();
         p.setId(id);
+        p.setNombre("Producto " + id);
         p.setPrecio(new BigDecimal("13500.00"));
         if (descuentoPct != null) {
             p.setDescuentoPct(new BigDecimal(descuentoPct));
@@ -140,24 +140,48 @@ class RecetaServiceTest {
         UUID productoId = UUID.randomUUID();
         RecetaCreateRequest req = emisionDe(productoId);
         producto(productoId, "20.00");
-        when(parametrosNegocioService.descuentoPctDe(nutri)).thenReturn(new BigDecimal("15.00"));
 
         service.emitir(req);
 
         verify(repo).save(argThat(r -> r.getDescuentoPct().compareTo(new BigDecimal("20.00")) == 0));
     }
 
-    /** Sin maestro importado ningún producto tiene descuento: se emite con el de ella, como antes. */
+    /** F-14: sin % de la profesional al que caer, un producto sin descuento no puede ir en un bono. */
     @Test
-    void emitir_sinDescuentoEnElProducto_caeAlDeLaProfesional() {
+    void emitir_productoSinDescuento_esUnprocessable() {
         UUID productoId = UUID.randomUUID();
         RecetaCreateRequest req = emisionDe(productoId);
         producto(productoId, null);
-        when(parametrosNegocioService.descuentoPctDe(nutri)).thenReturn(new BigDecimal("15.00"));
 
-        service.emitir(req);
+        assertThatThrownBy(() -> service.emitir(req))
+                .isInstanceOf(UnprocessableException.class)
+                .hasMessageContaining("no tiene % de descuento");
+        verify(repo, never()).save(any(Receta.class));
+    }
 
-        verify(repo).save(argThat(r -> r.getDescuentoPct().compareTo(new BigDecimal("15.00")) == 0));
+    @Test
+    void emitir_productoConDescuentoCero_esUnprocessable() {
+        UUID productoId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(productoId);
+        producto(productoId, "0");
+
+        assertThatThrownBy(() -> service.emitir(req))
+                .isInstanceOf(UnprocessableException.class);
+        verify(repo, never()).save(any(Receta.class));
+    }
+
+    /** Si uno solo de los productos no tiene %, el cupón le aplicaría el del otro: se rechaza. */
+    @Test
+    void emitir_unProductoConDescuentoYOtroSin_esUnprocessable() {
+        UUID unId = UUID.randomUUID();
+        UUID otroId = UUID.randomUUID();
+        RecetaCreateRequest req = emisionDe(unId, otroId);
+        producto(unId, "20.00");
+        producto(otroId, null);
+
+        assertThatThrownBy(() -> service.emitir(req))
+                .isInstanceOf(UnprocessableException.class);
+        verify(repo, never()).save(any(Receta.class));
     }
 
     /** El cupón de TiendaNube es un solo porcentaje: dos productos con % distintos no se pueden. */

@@ -1,17 +1,4 @@
-// C-09 — ficha de una nutricionista: datos del registro, sus % (obligatorios desde V011: se
-// eliminó el valor global) y las acciones del admin sobre su cuenta.
-//
-// El modal está partido en dos zonas con jerarquías distintas, porque mezclarlas confunde:
-//   · Arriba, la ficha y los porcentajes, con su botón de guardar (o aprobar, si está pendiente).
-//     Es lo que se toca todos los días.
-//   · Abajo, separada, la zona de cuenta: contraseña, desactivar/reactivar y borrar. Son acciones
-//     que casi nunca se usan y dos de ellas son difíciles o imposibles de revertir.
-//
-// Las acciones no son intercambiables y por eso conviven:
-//   · Aprobar/Rechazar → resuelven la SOLICITUD, sólo mientras está pendiente.
-//   · Desactivar/Reactivar → cortan o devuelven el acceso conservando todo. Para bajas.
-//   · Borrar → elimina de verdad. Para altas equivocadas; el backend lo frena si emitió recetas.
-//   · Nueva contraseña → única vía de recuperación que existe (no hay "olvidé mi contraseña").
+// C-09 — ficha de una nutricionista: arriba datos y comisión; abajo, separadas, las acciones de cuenta difíciles de revertir.
 
 import { useState, type FormEvent } from "react";
 import { ApiRequestError } from "../../api/client";
@@ -45,7 +32,6 @@ const pctValido = (v: string) => {
 export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
   const toast = useToast();
   const { confirmar, pedirTexto } = useDialog();
-  const [descuento, setDescuento] = useState(nutri.descuentoPct.toString());
   const [comision, setComision] = useState(nutri.comisionPct.toString());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,14 +40,11 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
   const aprobada = nutri.estadoValidacion === "APROBADA";
 
   async function guardarParametros(): Promise<boolean> {
-    if (!pctValido(descuento) || !pctValido(comision)) {
-      setError("Los dos porcentajes son obligatorios y van entre 0 y 100.");
+    if (!pctValido(comision)) {
+      setError("La comisión es obligatoria y va entre 0 y 100.");
       return false;
     }
-    await actualizarParametros(nutri.id, {
-      descuentoPct: Number(descuento),
-      comisionPct: Number(comision),
-    });
+    await actualizarParametros(nutri.id, { comisionPct: Number(comision) });
     return true;
   }
 
@@ -82,7 +65,7 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
 
   async function onGuardar(e: FormEvent) {
     e.preventDefault();
-    // Guardar los % es lo mismo apruebe o no: si está pendiente, se guardan y además se aprueba.
+    // Guardar la comisión es lo mismo apruebe o no: si está pendiente, además se aprueba.
     await correr(async () => {
       if (!(await guardarParametros())) throw new Error("validación");
       if (pendiente) await aprobarNutricionista(nutri.id);
@@ -220,20 +203,8 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
         )}
 
         <section className="ficha__bloque">
-          <h3 className="ficha__titulo">Porcentajes</h3>
+          <h3 className="ficha__titulo">Comisión</h3>
           <div className="ficha__pcts">
-            <label className="field">
-              <span>Descuento de bonos (%)</span>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                required
-                value={descuento}
-                onChange={(e) => setDescuento(e.target.value)}
-              />
-            </label>
             <label className="field">
               <span>Comisión (%)</span>
               <input
@@ -247,7 +218,8 @@ export function ParametrosModal({ nutri, onClose, onChanged }: Props) {
               />
             </label>
             <p className="ficha__hint">
-              Aplican a los bonos futuros: los emitidos conservan su porcentaje.
+              Aplica a las ventas que se conviertan desde ahora. El descuento de cada bono sale del
+              producto, según el maestro de artículos.
             </p>
           </div>
         </section>

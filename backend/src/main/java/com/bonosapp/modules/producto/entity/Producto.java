@@ -98,7 +98,7 @@ public class Producto extends BaseEntity {
     /** ESTADO BONOSAPP del maestro. Null = la planilla no trae la columna; ahí manda el ESTADO. */
     private Boolean estadoBonosapp;
 
-    /** DESCUENTO % del maestro, escala 0-100. Null = sin dato: cae al % de la profesional. */
+    /** DESCUENTO % del maestro, escala 0-100. Null = sin dato: no se puede emitir un bono con él. */
     private BigDecimal descuentoPct;
 
     /**

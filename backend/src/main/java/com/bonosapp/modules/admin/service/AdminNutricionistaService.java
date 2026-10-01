@@ -106,18 +106,12 @@ public class AdminNutricionistaService {
         return AuthUtils.currentUserId().map(UUID::toString).orElse(null);
     }
 
-    /**
-     * Setea el % de descuento y de comisión de una nutricionista. Ambos obligatorios desde V011
-     * (no hay global al que volver). Se puede llamar sobre cualquier estado: el admin los fija al
-     * aprobar (C-09) y los edita después.
-     */
+    /** Setea la comisión, en cualquier estado: el admin la fija al aprobar (C-09) y la edita después. */
     @Transactional
-    public NutricionistaResponse actualizarParametros(UUID id, BigDecimal descuentoPct, BigDecimal comisionPct) {
+    public NutricionistaResponse actualizarParametros(UUID id, BigDecimal comisionPct) {
         Nutricionista n = getVigente(id);
-        n.setDescuentoPct(descuentoPct);
         n.setComisionPct(comisionPct);
-        log.info("Parámetros de {} actualizados: descuento={} comisión={}",
-                n.getEmail(), descuentoPct, comisionPct);
+        log.info("Comisión de {} actualizada: {}", n.getEmail(), comisionPct);
         return toResponse(repository.save(n));
     }
 
@@ -222,7 +216,6 @@ public class AdminNutricionistaService {
                 n.getValidadoAt(),
                 n.getNotasValidacion(),
                 n.getCreatedAt(),
-                parametros.descuentoPctDe(n),
                 parametros.comisionPctDe(n),
                 n.isActivo(),
                 emailVerificado);

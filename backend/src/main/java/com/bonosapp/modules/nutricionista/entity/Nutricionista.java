@@ -57,16 +57,6 @@ public class Nutricionista extends BaseEntity {
 
     private String notasValidacion;
 
-    /**
-     * % de descuento de las recetas de esta nutricionista. Lo setea sólo el admin.
-     *
-     * <p>V011: obligatorio. Antes era nullable y {@code null} significaba "usá el global de
-     * {@code configuracion_sistema}", tabla que dejó de existir — el dato vive en un solo lugar.
-     * En el alta lo completa {@code NutricionistaProperties}; después lo ajusta el admin.
-     */
-    @Column(nullable = false)
-    private BigDecimal descuentoPct;
-
     /** % de comisión de esta nutricionista. Obligatorio (V011). Lo setea sólo el admin. */
     @Column(nullable = false)
     private BigDecimal comisionPct;

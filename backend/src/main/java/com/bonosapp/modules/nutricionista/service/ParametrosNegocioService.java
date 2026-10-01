@@ -9,29 +9,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Resuelve el % de descuento y de comisión que aplica a una nutricionista.
- *
- * <p>Desde la migración {@code V011} cada nutricionista tiene los suyos y son obligatorios: no hay
- * global ni fallback. Antes (C-01) el campo era nullable y {@code null} significaba "usá el valor de
- * {@code configuracion_sistema}", lo que dejaba el mismo dato en dos lugares y hacía que cualquier
- * lectura que se salteara este servicio devolviera un número distinto al de la emisión.
- *
- * <p>Sigue siendo el único punto donde se decide esto, porque los valores se <b>snapshotean</b> en
- * la receta al emitir (descuento) y al convertir (comisión): cambiar un % no reescribe la historia
- * ni mueve los cierres ya cerrados.
- */
+/** Resuelve el % de comisión de una nutricionista; el descuento es del producto (F-14). */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParametrosNegocioService {
 
     private final NutricionistaRepository nutricionistaRepository;
-
-    /** % de descuento de las recetas de esta nutricionista. */
-    public BigDecimal descuentoPctDe(Nutricionista nutri) {
-        return nutri != null ? nutri.getDescuentoPct() : BigDecimal.ZERO;
-    }
 
     /** % de comisión de esta nutricionista. */
     public BigDecimal comisionPctDe(Nutricionista nutri) {

@@ -53,6 +53,9 @@ construye la UI contra ese contrato. Así nadie espera al otro tocando el mismo 
 - **F-10 · Perfil:** "Descuento de tus bonos" → "**Tu comisión**" + mostrar el % cargado (default 1%). → depende de **S-12** (que `/me` exponga `comisionPct`).
 - **F-13 · Emitir bono:** agregar **filtro "% Descuento"** + mostrar el % en la línea del producto (a la izq. del precio) y en "Más info". → depende de **S-02** (descuento por producto en el API).
 - **F-14 · Admin, ficha del profesional:** quitar "Descuento de bonos (%)" de Porcentajes (el descuento ahora es por producto, igual para todos). → coordinar con **S-02/S-12**.
+  ✅ **Hecha (2026-10-01, Santi, por pedido del usuario):** sale de la ficha, de la tabla, de `/me` y del
+  back entero; queda sólo la comisión. Sin fallback: un producto sin % del maestro no puede ir en un bono
+  (422 + aviso en Emitir). El cliente sube el maestro el mismo día.
 - **F-16 · Crear bono:** checkbox "Permitir combinar con otras promociones…" **DESTILDADO** por default. → coordinar con **S-07** (flag del cupón).
 - **F-24 · Admin, nueva solapa PANEL:** UI del consolidado que hoy ve el profesional en su PANEL. → depende de **S-13** (endpoint agregado).
 - **F-25 · Admin, nueva solapa BONOS:** UI de todos los bonos de todos los profesionales; replicar los filtros del user + agregar filtro **Profesional (nombre y apellido)**. → depende de **S-14** (endpoint).
@@ -182,6 +185,7 @@ reparto; se corrigen tres supuestos y aparecen dos decisiones que necesitan al c
   (`sinMaestro=2277`). Hasta que lo haga, el % de la ficha es el único descuento que existe: si Fran
   saca el campo antes, no queda forma de emitir un bono con descuento. Orden correcto: S-01/S-02
   desplegadas → cliente importa el maestro → recién ahí F-14.
+  **Destrabada el 2026-10-01:** el usuario decidió avanzar; el maestro se sube ese mismo día.
 
 ## Decisiones que necesitan al cliente (Gon)
 

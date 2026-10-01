@@ -42,7 +42,7 @@ class RegistroServiceVerificacionTest {
 
     private RegistroService service() {
         NutricionistaProperties props =
-                new NutricionistaProperties(new BigDecimal("15.00"), new BigDecimal("1.00"));
+                new NutricionistaProperties(new BigDecimal("1.00"));
         return new RegistroService(repository, keycloak, archivoService, props, notificaciones, profesiones,
                 new com.bonosapp.modules.registro.RegistroProperties(true));
     }
@@ -109,7 +109,7 @@ class RegistroServiceVerificacionTest {
     void conElInterruptorApagado_aceptaAltasSinDatosProfesionales() {
         keycloakCrea();
         RegistroService sinExigir = new RegistroService(repository, keycloak, archivoService,
-                new NutricionistaProperties(new BigDecimal("15.00"), new BigDecimal("1.00")),
+                new NutricionistaProperties(new BigDecimal("1.00")),
                 notificaciones, profesiones, new com.bonosapp.modules.registro.RegistroProperties(false));
         RegistroRequest viejo = new RegistroRequest("Ana", "García", "ana@x.com", "+5491155551234",
                 "CABA · N° 1234", null, null, "30123456", "27301234564", "Monotributo", "secreto123");

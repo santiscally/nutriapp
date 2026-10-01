@@ -2,9 +2,9 @@ package com.bonosapp.modules.receta.service;
 
 import com.bonosapp.common.error.ConflictException;
 import com.bonosapp.common.error.NotFoundException;
+import com.bonosapp.common.error.UnprocessableException;
 import com.bonosapp.integrations.IntegrationUnavailableException;
 import com.bonosapp.integrations.tiendanube.TiendaNubeClient;
-import com.bonosapp.modules.nutricionista.service.ParametrosNegocioService;
 import com.bonosapp.modules.notificacion.service.NotificacionService;
 import com.bonosapp.modules.nutricionista.entity.Nutricionista;
 import com.bonosapp.modules.nutricionista.service.NutricionistaService;
@@ -58,7 +58,6 @@ public class RecetaService {
     private final TiendaNubeClient tiendaNubeClient;
     private final CuponSyncService cuponSyncService;
     private final RecetaProperties props;
-    private final ParametrosNegocioService parametrosNegocioService;
     private final WaMeLinkBuilder waMeLinkBuilder;
 
     @Transactional(readOnly = true)
@@ -128,7 +127,7 @@ public class RecetaService {
             receta.addItem(item);
         }
         // Se snapshotea acá: cambiar el % después no reescribe los bonos ya emitidos.
-        receta.setDescuentoPct(descuentoDe(productos, nutri));
+        receta.setDescuentoPct(descuentoDe(productos));
 
         cuponSyncService.registrar(receta);
 
@@ -142,18 +141,16 @@ public class RecetaService {
         return toResponseDetalle(saved);
     }
 
-    /**
-     * S-02: el descuento es del producto, no de la profesional. Mientras el maestro no esté
-     * importado ningún producto lo tiene cargado y cae al % de ella, que es como venía funcionando.
-     *
-     * <p>Dos productos con % distintos no se pueden emitir juntos: el cupón de TiendaNube es un
-     * solo porcentaje y no hay forma de honrar los dos.
-     */
-    private BigDecimal descuentoDe(List<Producto> productos, Nutricionista nutri) {
+    /** El descuento sale sólo del maestro: el cupón es un único %, así que todos deben tener el mismo. */
+    private BigDecimal descuentoDe(List<Producto> productos) {
         List<BigDecimal> distintos = new ArrayList<>();
         for (Producto p : productos) {
             BigDecimal pct = p.getDescuentoPct();
-            if (pct != null && distintos.stream().noneMatch(d -> d.compareTo(pct) == 0)) {
+            if (pct == null || pct.signum() <= 0) {
+                throw new UnprocessableException("El producto «" + p.getNombre()
+                        + "» no tiene % de descuento cargado en el maestro: no se puede emitir un bono con él");
+            }
+            if (distintos.stream().noneMatch(d -> d.compareTo(pct) == 0)) {
                 distintos.add(pct);
             }
         }
@@ -161,7 +158,7 @@ public class RecetaService {
             throw new ConflictException(
                     "Un bono no puede combinar productos con distinto % de descuento");
         }
-        return distintos.isEmpty() ? parametrosNegocioService.descuentoPctDe(nutri) : distintos.get(0);
+        return distintos.get(0);
     }
 
     /**

@@ -19,16 +19,13 @@ export interface NutricionistaAdmin {
   validadoAt?: string | null;
   notasValidacion?: string | null;
   createdAt: string;
-  // V011: los % son propios de cada una y siempre vienen (se eliminó el valor global, y con él la
-  // distinción entre "override" y "efectivo").
-  descuentoPct: number;
+  // F-14: el descuento es del producto; de la profesional queda sólo la comisión.
   comisionPct: number;
   /** ¿Puede loguearse hoy? Espejo del enabled de Keycloak. */
   activo: boolean;
 }
 
-/** PUT /admin/nutricionistas/{id}/parametros — ambos obligatorios. */
+/** PUT /admin/nutricionistas/{id}/parametros */
 export interface ParametrosRequest {
-  descuentoPct: number;
   comisionPct: number;
 }

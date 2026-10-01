@@ -108,11 +108,7 @@ bonosapp:
     # Tope del Excel maestro que sube el admin (el real pesa ~1,5 MB).
     import-max-bytes: ${CATALOGO_IMPORT_MAX_BYTES:20971520}
   nutricionistas:
-    # Porcentajes con los que nace una nutricionista al registrarse. NO es una configuración global
-    # de negocio (V011 la eliminó): es sólo el punto de partida, porque el registro es público y
-    # nadie elige ahí su propio descuento. El admin los ajusta al aprobarla y desde entonces manda
-    # el valor de su ficha.
-    descuento-pct-default: ${NUTRICIONISTA_DESCUENTO_PCT_DEFAULT:15.00}
+    # Comisión con la que nace una nutricionista al registrarse; el admin la ajusta en su ficha.
     comision-pct-default: ${NUTRICIONISTA_COMISION_PCT_DEFAULT:1.00}
   registro:
     # S-11: profesión, jurisdicción y matrícula numérica obligatorias. En false vuelve a aceptar altas
@@ -120,7 +116,7 @@ bonosapp:
     exigir-datos-profesionales: ${REGISTRO_EXIGIR_DATOS_PROFESIONALES:true}
   recetas:
     vigencia-dias: ${RECETA_VIGENCIA_DIAS:30}
-    # Los % de descuento y comisión no viven acá: son de cada nutricionista (ver arriba).
+    # El % de descuento es de cada producto (maestro) y la comisión, de cada nutricionista.
     max-items: ${RECETA_MAX_ITEMS:10}
     # Cron del job de vencimiento (diario 03:00 AR). Catch-up adicional al arrancar.
     vencimiento-cron: ${RECETA_VENCIMIENTO_CRON:0 0 3 * * *}

@@ -41,9 +41,11 @@ HN="Authorization: Bearer $NT"
 
 echo "== Emitir receta a convertir =="
 PAC_ID=$(curl -s -H "$HN" "$API/pacientes?size=1" | py "d['content'][0]['id']")
-PROD_ID=$(curl -s -H "$HN" "$API/productos?size=1" | py "d['content'][0]['id']")
+# F-14: sin maestro importado ningún producto tiene % y la emisión da 422.
+DESC=$(curl -s -H "$HN" "$API/productos/filtros" | py "d['descuentos'][0]")
+PROD_ID=$(curl -s -H "$HN" "$API/productos?size=1&descuentoPct=$DESC" | py "d['content'][0]['id']")
 NEW=$(curl -s -H "$HN" -H "Content-Type: application/json" \
-  -d "{\"pacienteId\":\"$PAC_ID\",\"items\":[{\"productoId\":\"$PROD_ID\",\"cantidad\":1,\"indicaciones\":\"wh\"}],\"descuentoPct\":20}" \
+  -d "{\"pacienteId\":\"$PAC_ID\",\"items\":[{\"productoId\":\"$PROD_ID\",\"cantidad\":1,\"indicaciones\":\"wh\"}]}" \
   "$API/recetas")
 REC_ID=$(echo "$NEW" | py "d['id']"); REC_COD=$(echo "$NEW" | py "d['codigo']")
 check "receta emitida PENDIENTE" "PENDIENTE" "$(echo "$NEW" | py "d['estado']")"

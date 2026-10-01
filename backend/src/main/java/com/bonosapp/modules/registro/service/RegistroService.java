@@ -75,9 +75,6 @@ public class RegistroService {
             n.setCuit(req.cuitNormalizado());
             n.setCondicionFiscal(req.condicionFiscal());
             n.setEstadoValidacion(EstadoValidacion.PENDIENTE);
-            // V011: los % son obligatorios y propios de cada una. Acá van los de arranque; el admin
-            // los ajusta al aprobarla (que es cuando recién puede emitir algo).
-            n.setDescuentoPct(props.descuentoPctDefault());
             n.setComisionPct(props.comisionPctDefault());
             Nutricionista saved = repository.save(n);
             // El adjunto es parte del alta: si falla, falla el registro entero y se compensa

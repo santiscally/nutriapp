@@ -48,9 +48,11 @@ check "detalle trae notificaciones" "True" "$(curl -s -H "$HN" "$API/recetas/$PE
 
 echo "== Emitir receta -> encola EMAIL+WHATSAPP QUEUED =="
 PAC_ID=$(curl -s -H "$HN" "$API/pacientes?size=1" | py "d['content'][0]['id']")
-PROD_ID=$(curl -s -H "$HN" "$API/productos?size=1" | py "d['content'][0]['id']")
+# F-14: sin maestro importado ningún producto tiene % y la emisión da 422.
+DESC=$(curl -s -H "$HN" "$API/productos/filtros" | py "d['descuentos'][0]")
+PROD_ID=$(curl -s -H "$HN" "$API/productos?size=1&descuentoPct=$DESC" | py "d['content'][0]['id']")
 NEW=$(curl -s -w $'\n%{http_code}' -H "$HN" -H "Content-Type: application/json" \
-  -d "{\"pacienteId\":\"$PAC_ID\",\"items\":[{\"productoId\":\"$PROD_ID\",\"cantidad\":1,\"indicaciones\":\"smoke\"}],\"descuentoPct\":20}" \
+  -d "{\"pacienteId\":\"$PAC_ID\",\"items\":[{\"productoId\":\"$PROD_ID\",\"cantidad\":1,\"indicaciones\":\"smoke\"}]}" \
   "$API/recetas")
 check "POST /recetas 201" "201" "$(echo "$NEW" | tail -1)"
 NEW_BODY=$(echo "$NEW" | sed '$d'); NEW_ID=$(echo "$NEW_BODY" | py "d['id']")

@@ -11,7 +11,6 @@ import { PacientePicker } from "../components/receta/PacientePicker";
 import { ProductoBuscador } from "../components/receta/ProductoBuscador";
 import { RecetaExito } from "../components/receta/RecetaExito";
 import { Icon } from "../components/ui/Icon";
-import { useAuth } from "../auth/AuthContext";
 import { money, pctCorto } from "../lib/format";
 import type { Paciente } from "../types/paciente";
 import type { Producto } from "../types/producto";
@@ -33,20 +32,19 @@ export function EmitirReceta() {
   // contrario, así que el checkbox arranca destildado y se manda combinable=false.
   const [combinable, setCombinable] = useState(false);
 
-  const { me } = useAuth();
-
-  // S-02 — el descuento pasó a ser del PRODUCTO; el de la profesional (que viene en /me desde
-  // V011) queda de fallback para los productos que todavía no están en el maestro.
+  // F-14 — el descuento sale sólo del producto (maestro); sin %, el backend rechaza la emisión.
   const descuentosDeProducto = useMemo(
-    () => [...new Set(items.map((i) => i.producto.descuentoPct).filter((d): d is number => d != null))],
+    () => [...new Set(items.map((i) => i.producto.descuentoPct).filter((d): d is number => d != null && d > 0))],
+    [items],
+  );
+  const sinDescuento = useMemo(
+    () => items.filter((i) => i.producto.descuentoPct == null || i.producto.descuentoPct <= 0),
     [items],
   );
   // Dos productos con % distinto no entran en un mismo cupón: el backend responde 409. Se avisa
   // acá para no gastar el viaje ni dejarla adivinando por qué falló.
   const descuentosEnConflicto = descuentosDeProducto.length > 1;
-  const descuentoPct = descuentosDeProducto.length === 1
-    ? descuentosDeProducto[0]
-    : me?.descuentoPct ?? 0;
+  const descuentoPct = descuentosDeProducto.length === 1 ? descuentosDeProducto[0] : 0;
 
   const selectedIds = useMemo(() => new Set(items.map((i) => i.producto.id)), [items]);
 
@@ -71,7 +69,8 @@ export function EmitirReceta() {
   }
 
   const canSubmit =
-    paciente !== null && items.length > 0 && !submitting && !descuentosEnConflicto;
+    paciente !== null && items.length > 0 && !submitting && !descuentosEnConflicto
+    && sinDescuento.length === 0;
 
   async function onSubmit() {
     if (!paciente) return;
@@ -220,6 +219,14 @@ export function EmitirReceta() {
               />
               <span>Permitir combinar con otras promociones de la tienda</span>
             </label>
+
+            {sinDescuento.length > 0 && (
+              <div className="alert alert--error">
+                {sinDescuento.length === 1
+                  ? `«${sinDescuento[0].producto.nombre}» no tiene % de descuento cargado en el maestro, así que no puede ir en un bono. Sacalo o pedile al administrador que lo cargue.`
+                  : `Hay ${sinDescuento.length} productos sin % de descuento cargado en el maestro, así que no pueden ir en un bono. Sacalos o pedile al administrador que los cargue.`}
+              </div>
+            )}
 
             {descuentosEnConflicto && (
               <div className="alert alert--error">

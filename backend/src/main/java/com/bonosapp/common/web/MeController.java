@@ -45,13 +45,6 @@ public class MeController {
                 .map(n -> archivoService.fotoDataUri(n.getId()))
                 .orElse(null);
 
-        // V011: el descuento es propio de cada nutricionista. Viaja acá porque la pantalla de
-        // emisión lo muestra como dato de sólo lectura y antes lo sacaba de GET /configuracion,
-        // que dejó de existir junto con el valor global.
-        BigDecimal descuentoPct = nutricionistaService.findCurrent()
-                .map(Nutricionista::getDescuentoPct)
-                .orElse(null);
-
         BigDecimal comisionPct = nutricionistaService.findCurrent()
                 .map(Nutricionista::getComisionPct)
                 .orElse(null);
@@ -73,7 +66,6 @@ public class MeController {
                 authorities,
                 estadoValidacion,
                 foto,
-                descuentoPct,
                 comisionPct,
                 profesion,
                 jurisdiccion);
@@ -89,8 +81,6 @@ public class MeController {
             String estadoValidacion,
             /** C-17: data URI del avatar, o null si no cargó foto. */
             String foto,
-            /** % de descuento propio. null para el admin, que no emite recetas (C-07). */
-            BigDecimal descuentoPct,
             /** % de comisión propio. null para el admin. Lo muestra el perfil (F-10). */
             BigDecimal comisionPct,
             /** S-11. null en las altas anteriores a V014 y para el admin. */

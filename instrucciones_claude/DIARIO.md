@@ -32,6 +32,50 @@
 
 ## Entradas
 
+## 2026-10-01 — Santi — backend+frontend (F-14: el descuento deja de ser de la profesional; queda sólo la comisión) — ⚠️ toca zona de Fran
+
+**Qué:** "Descuento de bonos (%)" sale de la ficha del admin, de la tabla de Profesionales, de `GET /me`,
+de `NutricionistaResponse` y del `PUT /parametros`, que ahora lleva sólo `comisionPct`. El descuento del
+bono sale **únicamente del producto** (maestro). Backend **254 tests + `RecetaFlowIT`** en verde; front con
+`tsc -b` y `oxlint` limpios.
+
+**Por qué:** pedido del usuario: avanzar con F-14 aunque se pierda el fallback, porque el cliente sube
+el maestro hoy mismo. Todas las filas del maestro que mandaron traen `DESCUENTO %` (2212 al 20 % y 40 al
+55 %), así que lo único que se queda sin % son los productos que no matcheen por SKU.
+
+**La decisión de diseño — producto sin %:** sin el % de la profesional no hay a qué caer, y un bono al
+0 % no tiene sentido. Se eligió **rechazar la emisión** (`422`, nombrando el producto; también con 0 % y
+cuando uno de varios no tiene %), y la pantalla de Emitir lo avisa antes y deshabilita el botón. **No** se
+ocultan del buscador: eso cambiaba `PublicacionPolicy` ("ante la duda, publicar") y obligaba a recalcular
+`publicado` en todo el catálogo. Si el cliente prefiere que no aparezcan, es una regla más en la policy.
+
+**La base no se toca:** `nutricionistas.descuento_pct` queda con su default de V011 y nadie la lee ni la
+escribe. Sin migración, volver a la imagen anterior sigue funcionando. `NUTRICIONISTA_DESCUENTO_PCT_DEFAULT`
+ya no se lee (si está en el `.env` del VPS, no molesta).
+
+**Compatibilidad durante el deploy:** un front viejo que mande `descuentoPct` al guardar la comisión no
+falla (Jackson ignora el campo). Un front viejo abriendo la ficha sí rompe (`nutri.descuentoPct` llega
+`undefined`): se resuelve recargando, y `deploy.sh` sube back y front juntos.
+
+**Problemas:** `mvn verify` sin `clean` levantó un `PdfSimpleBonoGenerator.class` viejo de `target/`
+(la clase ya no existe en el código) y el contexto de `RecetaFlowIT` no cargaba por dos beans de
+`BonoPdfGenerator`. Con `clean verify` pasa. Si te pasa, es eso.
+
+**En local también hace falta el maestro:** sin importarlo, ningún producto tiene % y emitir da 422. Se
+importa desde Integraciones con el Excel de `modificaciones post primera entrega/`. No se siembran % de
+mentira (regla de oro). `smoke-fase1.sh` y `smoke-webhook.sh` ahora eligen un producto **con** % (vía
+`/productos/filtros`) y dejaron de mandar el `descuentoPct` que el back ignoraba.
+
+**Aparte:** el usuario da por **solucionado** lo de Promociones/Spam (S-18 / F-22).
+
+**Impacto para el otro (Fran):** toqué `ParametrosModal.tsx` (sale el campo; el bloque se llama
+"Comisión"), `Nutricionistas.tsx` (sale la columna), `EmitirReceta.tsx` (el % sale sólo de los productos;
+aviso + botón deshabilitado si alguno no tiene), `types/nutricionista.ts` y `types/session.ts` (sale
+`descuentoPct`). F-14 queda cerrada: ya no es tuya.
+
+**Refs:** `RecetaService.descuentoDe`, `ParametrosNegocioService`, `AdminNutricionistaService.actualizarParametros`,
+`MeController`, `05-api-endpoints.md` ("Parámetros de negocio" y S-02).
+
 ## 2026-09-30 (3) — Fran — backend/mail (⚠️ TOCA ZONA DE SANTI — el bono pasa a ser el cuerpo del mail, en HTML)
 
 **Qué:** Cambio de enfoque de F-20, pedido por el usuario: el paciente **no tiene que abrir un archivo** para

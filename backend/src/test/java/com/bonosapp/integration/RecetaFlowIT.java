@@ -35,7 +35,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Flujo núcleo end-to-end contra la DB real: emisión de receta (descuento fijo de config) →
+ * Flujo núcleo end-to-end contra la DB real: emisión de receta (descuento del producto) →
  * webhook simulado {@code order/paid} (conversión con comisión de config) → receta APLICADA →
  * cierre mensual reflejando la comisión.
  */
@@ -63,9 +63,6 @@ class RecetaFlowIT extends PostgresITBase {
         nutri.setEmail(email);
         nutri.setEstadoValidacion(EstadoValidacion.APROBADA);
         nutri.setKeycloakUserId(sub);
-        // V011: los % son propios de cada nutricionista y obligatorios (ya no hay global al que caer).
-        // De estos dos salen el descuento de la receta emitida y la comisión de la conversión.
-        nutri.setDescuentoPct(new BigDecimal("15.00"));
         nutri.setComisionPct(new BigDecimal("10.00"));
         nutri.setActivo(true);
         nutri = nutricionistaRepository.save(nutri);
@@ -88,6 +85,7 @@ class RecetaFlowIT extends PostgresITBase {
         prod.setNombre("Producto de test");
         prod.setPrecio(new BigDecimal("10000.00"));
         prod.setStock(50);
+        prod.setDescuentoPct(new BigDecimal("20.00"));
         prod.setPublicado(true);
         productoId = productoRepository.save(prod).getId();
     }
@@ -107,7 +105,7 @@ class RecetaFlowIT extends PostgresITBase {
 
     @Test
     void emision_a_conversion_a_cierre() throws Exception {
-        // 1. Emitir. El % de descuento NO viaja en el request: lo aplica el back desde config (seed 15%).
+        // 1. Emitir. El % de descuento NO viaja en el request: lo pone el back desde el producto.
         String body = objectMapper.writeValueAsString(Map.of(
                 "pacienteId", pacienteId.toString(),
                 "items", List.of(Map.of("productoId", productoId.toString(), "cantidad", 1))));
@@ -123,7 +121,7 @@ class RecetaFlowIT extends PostgresITBase {
         UUID recetaId = UUID.fromString(receta.get("id").asText());
         String codigo = receta.get("codigo").asText();
         assertThat(receta.get("estado").asText()).isEqualTo("PENDIENTE");
-        assertThat(receta.get("descuentoPct").decimalValue()).isEqualByComparingTo("15.00");
+        assertThat(receta.get("descuentoPct").decimalValue()).isEqualByComparingTo("20.00");
         // En stub el cupón no sincroniza: queda PENDIENTE (degradación esperada, no falla la emisión).
         assertThat(receta.get("cuponSyncEstado").asText()).isEqualTo("PENDIENTE");
 

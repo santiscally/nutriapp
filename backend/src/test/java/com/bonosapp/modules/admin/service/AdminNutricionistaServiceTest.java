@@ -59,7 +59,6 @@ class AdminNutricionistaServiceTest {
         nutri.setKeycloakUserId("kc-123");
         nutri.setEstadoValidacion(EstadoValidacion.APROBADA);
         nutri.setActivo(true);
-        nutri.setDescuentoPct(new BigDecimal("15.00"));
         nutri.setComisionPct(new BigDecimal("10.00"));
 
         when(repository.findById(id)).thenReturn(Optional.of(nutri));
@@ -176,12 +175,10 @@ class AdminNutricionistaServiceTest {
     // --- parámetros ---
 
     @Test
-    void actualizarParametros_guardaLosDosPorcentajes() {
-        var resp = service.actualizarParametros(id, new BigDecimal("30"), new BigDecimal("8"));
+    void actualizarParametros_guardaLaComision() {
+        var resp = service.actualizarParametros(id, new BigDecimal("8"));
 
-        assertThat(nutri.getDescuentoPct()).isEqualByComparingTo("30");
         assertThat(nutri.getComisionPct()).isEqualByComparingTo("8");
-        assertThat(resp.descuentoPct()).isEqualByComparingTo("30");
         assertThat(resp.comisionPct()).isEqualByComparingTo("8");
     }
 
